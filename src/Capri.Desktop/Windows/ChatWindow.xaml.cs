@@ -12,6 +12,7 @@ public partial class ChatWindow : Window
     public ObservableCollection<ChatTurn> Messages { get; } = new();
     private bool _busy;
     private bool _syncing;
+    private string _activePage = "CHAT";
 
     public ChatWindow()
     {
@@ -21,6 +22,7 @@ public partial class ChatWindow : Window
         InitializeWatchIntervals();
         RefreshBrainConfiguration();
         SyncCapabilitySwitches();
+        SelectPage("CHAT");
 
         foreach (var turn in App.Instance.Store.LoadHistory())
             Messages.Add(turn);
@@ -107,13 +109,60 @@ public partial class ChatWindow : Window
     private void OpenConnections_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenConnections();
 
-    private void ListRoutines_Click(object sender, RoutedEventArgs e) =>
+    private void ListRoutines_Click(object sender, RoutedEventArgs e)
+    {
+        SelectPage("CHAT");
         AppendNotification("Try: gaming mode (Discord + Steam + Spotify), " +
             "Roblox mode (Discord + Roblox home + Spotify), " +
             "Roblox dev mode (Creator Dashboard + VS Code + Spotify), " +
             "study mode (VS Code + Notepad + Spotify). " +
             "Enable DESKTOP ACTIONS or HANDS-FREE first. Say 'Capri stop all' " +
             "to cancel remaining steps.");
+    }
+
+    private void Navigate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string section)
+            SelectPage(section);
+    }
+
+    private void SelectPage(string section)
+    {
+        if (section is not ("CHAT" or "MODES" or "CONTROLS" or "CONNECT"))
+            section = "CHAT";
+        _activePage = section;
+        ChatPage.Visibility = section == "CHAT" ? Visibility.Visible : Visibility.Collapsed;
+        ModesPage.Visibility = section == "MODES" ? Visibility.Visible : Visibility.Collapsed;
+        ControlsPage.Visibility = section == "CONTROLS" ? Visibility.Visible : Visibility.Collapsed;
+        ConnectionsPage.Visibility = section == "CONNECT" ? Visibility.Visible : Visibility.Collapsed;
+        PageTitle.Text = section switch
+        {
+            "MODES" => "Start a session",
+            "CONTROLS" => "Senses & control",
+            "CONNECT" => "Apps & tools",
+            _ => "Talk to Capri"
+        };
+        PageSubtitle.Text = section switch
+        {
+            "MODES" => "One click can prepare your whole desktop.",
+            "CONTROLS" => "Manage voice, vision, actions and your AI models.",
+            "CONNECT" => "Keep music, games and linked services within reach.",
+            _ => "Ask a question, launch a task or just talk. Capri is here."
+        };
+        var regular = (Style)FindResource("CapriNavButton");
+        var selected = (Style)FindResource("CapriNavActiveButton");
+        NavChat.Style = section == "CHAT" ? selected : regular;
+        NavModes.Style = section == "MODES" ? selected : regular;
+        NavControls.Style = section == "CONTROLS" ? selected : regular;
+        NavConnect.Style = section == "CONNECT" ? selected : regular;
+    }
+
+    private void LaunchRoutine_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string command }) return;
+        SelectPage("CHAT");
+        _ = SendAsync(command);
+    }
 
     private void GameHelp_Click(object sender, RoutedEventArgs e) =>
         StartGameHelp();
@@ -147,6 +196,7 @@ public partial class ChatWindow : Window
     private void StopVoice_Click(object sender, RoutedEventArgs e) => App.Instance.StopVoiceOutput();
     public void FocusPrompt()
     {
+        SelectPage("CHAT");
         Show();
         Activate();
         PromptBox.Focus();
@@ -167,14 +217,25 @@ public partial class ChatWindow : Window
         HandsFreeCheck.IsChecked = App.Instance.Settings.SkipActionConfirmations;
         HandsFreeCheck.Content = App.Instance.Settings.SkipActionConfirmations &&
             !App.Instance.Settings.EnableDesktopActions
-                ? "HANDS-FREE · DISARMED" : "HANDS-FREE · NO POPUPS";
+                ? "Hands-free (disarmed)" : "Hands-free · no popups";
+        QuickMicState.Text = App.Instance.MicrophoneMuted ? "MIC  /  MUTED" :
+            App.Instance.Settings.ListenToMicrophone ? "MIC  /  ON" : "MIC  /  OFF";
+        QuickSenseState.Text = App.Instance.Settings.WatchScreen ? "SCREEN  /  WATCHING" :
+            App.Instance.LivePresenceEnabled ? "PRESENCE  /  LOCAL" :
+            App.Instance.Settings.EnableSituationalContext ? "CONTEXT  /  ON" : "SENSE  /  OFF";
+        QuickActionsState.Text = !App.Instance.Settings.EnableDesktopActions ?
+            "ACTIONS  /  DISARMED" : App.Instance.Settings.SkipActionConfirmations ?
+            "ACTIONS  /  HANDS-FREE" : "ACTIONS  /  CONFIRM";
         _syncing = false;
     }
 
     public void AppendNotification(string text) => Add("system", text);
 
-    private void ShowReminders_Click(object sender, RoutedEventArgs e) =>
+    private void ShowReminders_Click(object sender, RoutedEventArgs e)
+    {
+        SelectPage("CHAT");
         AppendNotification(App.Instance.Reminders.Describe());
+    }
 
     public void SubmitVoiceText(string recognized)
     {
@@ -367,6 +428,7 @@ public partial class ChatWindow : Window
         if (_busy) return;
         var prompt = (voiceOrDefaultPrompt ?? PromptBox.Text).Trim();
         if (prompt.Length == 0) return;
+        SelectPage("CHAT");
 
         _busy = true;
         SendButton.IsEnabled = false;
