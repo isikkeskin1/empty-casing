@@ -1877,6 +1877,7 @@ public partial class App : System.Windows.Application
                 break;
             case nameof(InputShortcuts.ToggleCompanion): ToggleCompanion(); break;
             case nameof(InputShortcuts.BringHere): _companion?.BringNearPointer(); break;
+            case nameof(InputShortcuts.StopReply): CancelCurrentReply(); break;
             case nameof(InputShortcuts.StopVoice): StopAllInputs(); break;
         }
     }
