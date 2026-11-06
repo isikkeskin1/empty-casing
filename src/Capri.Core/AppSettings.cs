@@ -29,6 +29,9 @@ public sealed class AppSettings
     public bool EnableSituationalContext { get; set; }
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }
+    // Windows TTS can begin complete sentences during streamed model output.
+    // Fish Audio continues its whole-MP3 path until verified streaming support.
+    public bool SpeakWhileGenerating { get; set; } = true;
     public bool EnableDesktopActions { get; set; }
     // Saved preference, NOT a startup permission grant. Desktop actions are re-armed
     // explicitly each session; STOP INPUTS revokes all active execution permission.
