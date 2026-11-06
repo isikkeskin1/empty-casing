@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using Color = System.Windows.Media.Color;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Button = System.Windows.Controls.Button;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace Capri.Desktop.Windows;
 
@@ -117,8 +118,7 @@ public partial class ScreenSketchWindow : Window
             bitmap.Render(SketchCanvas);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using var output = new System.IO.FileStream(dialog.FileName,
-                System.IO.FileMode.Create, System.IO.FileAccess.Write);
+            using var output = System.IO.File.Create(dialog.FileName);
             encoder.Save(output);
             SketchStatus.Text = "Sketch saved. No game screenshot was included.";
         }
