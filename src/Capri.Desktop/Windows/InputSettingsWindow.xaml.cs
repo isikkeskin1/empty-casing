@@ -61,6 +61,7 @@ public partial class InputSettingsWindow : Window
         FocusTypingKey.Text = keys.FocusTyping;
         ToggleCompanionKey.Text = keys.ToggleCompanion;
         BringHereKey.Text = keys.BringHere;
+        StopReplyKey.Text = keys.StopReply;
         StopVoiceKey.Text = keys.StopVoice;
     }
 
@@ -73,6 +74,7 @@ public partial class InputSettingsWindow : Window
         FocusTyping = FocusTypingKey.Text,
         ToggleCompanion = ToggleCompanionKey.Text,
         BringHere = BringHereKey.Text,
+        StopReply = StopReplyKey.Text,
         StopVoice = StopVoiceKey.Text
     };
 
