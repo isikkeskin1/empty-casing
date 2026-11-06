@@ -66,6 +66,25 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Voice Call Companion (experimental, explicitly disclosed AI)
+
+Mainframe → **VOICE CALL** configures an opt-in spoken companion over the
+existing call application (Discord, Zoom, etc.). The call must be joined
+by the account owner in that app. Select a Fish Audio voice and a non-default
+output device connected to a virtual microphone cable in INPUTS. After
+informing other call participants and confirming consent, START CALL MODE
+listens to Windows default playback through local speech recognition and
+responds only to phrases addressed to "Capri". Her first spoken line identifies
+her as an AI companion. Call speech is *never* routed to desktop-command
+planning, purchases, or prior private chat context.
+
+Call audio PCM stays local and is not recorded. Addressed recognized text
+may be sent to your configured cloud AI, and the reply is sent to Fish
+Audio for synthesis. STOP CALL MODE, closing the panel, or STOP ALL closes
+the loopback capture, cancels the task and stops speech. This does **not**
+auto-join a Discord channel, impersonate you, or silently record others.
+See [Call Mode](docs/CALL_COMPANION.md).
+
 ## Now Playing — song/video awareness and controls
 
 Use **NOW PLAYING** in Mainframe or ask "what song is playing?" / "what

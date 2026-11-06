@@ -26,6 +26,11 @@ public partial class App : System.Windows.Application
     private bool _mediaSessionBusy;
     private NowPlayingInfo? _lastMediaInfo;
     private GameCenterWindow? _gameCenter;
+    private CallCompanionWindow? _callWindow;
+    private CallLoopbackListeningService? _callListener;
+    private CancellationTokenSource? _callReplyCts;
+    private bool _callReplyBusy;
+    public bool CallCompanionActive => _callListener?.IsListening == true;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
@@ -270,6 +275,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        StopCallCompanionMode();
         StopAutonomousTask();
         _actionEpoch++;
         _voiceRouter.Reset();
@@ -681,6 +687,107 @@ public partial class App : System.Windows.Application
         finally { _mediaSessionBusy = false; }
     }
 
+    public void OpenCallCompanion()
+    {
+        if (_callWindow is null)
+        {
+            _callWindow = new CallCompanionWindow();
+            _callWindow.Closed += (_, _) => _callWindow = null;
+        }
+        _callWindow.Show();
+        _callWindow.Activate();
+    }
+
+    public string StartCallCompanionMode(bool participantsInformed)
+    {
+        if (!participantsInformed)
+            return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
+        if (CallCompanionActive)
+            return "Call Mode is already running.";
+        if (!CallCompanionPolicy.IsOutputRoutable(
+            Settings.VoiceProvider, Settings.SpeakReplies, Settings.SpeakerDeviceIndex))
+            return "Choose Fish Audio voice, enable SPEAK REPLIES, and select a non-default virtual cable output under INPUTS.";
+        if (!Secrets.HasKey("fish"))
+            return "Configure a Fish Audio API key in Voice Setup before routing call responses.";
+        if (!AudioInputDevices.SpeakerExists(Settings.SpeakerDeviceIndex))
+            return "The selected outgoing playback device is disconnected. Reconfigure INPUTS.";
+
+        // One recognized source at a time: call playback and normal mic
+        // cannot both authorize requests to the computer.
+        if (Settings.ListenToMicrophone) SetMicrophoneEnabled(false);
+        var listener = new CallLoopbackListeningService(
+            recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
+            () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
+                  _speech?.IsSpeaking == true);
+        try
+        {
+            listener.Start();
+            _callListener = listener;
+            _callReplyCts?.Dispose();
+            _callReplyCts = new CancellationTokenSource();
+
+            // An audible identification announces that the speaker is an AI,
+            // and tests the user's virtual-mic routing without impersonation.
+            SpeakIfEnabled(CallCompanionPolicy.AudibleIntroduction);
+            _callWindow?.RefreshState();
+            return "Call Mode ON. Listening locally to default Windows playback. " +
+                "Say 'Capri' before a question. Outgoing Fish voice uses the selected speaker endpoint.";
+        }
+        catch
+        {
+            listener.Dispose();
+            _callListener = null;
+            throw;
+        }
+    }
+
+    private async Task ReceiveCallUtteranceAsync(string recognized)
+    {
+        if (!CallCompanionActive || _callReplyBusy ||
+            !CallCompanionPolicy.TryExtractRequest(recognized, out var question))
+            return;
+
+        var token = _callReplyCts?.Token ?? CancellationToken.None;
+        _callReplyBusy = true;
+        try
+        {
+            // Call participants cannot drive desktop action planning or read
+            // previous private conversations. Only this addressed utterance is
+            // offered to the configured brain; raw playback stays local.
+            var turn = new ChatTurn
+            {
+                Role = "user",
+                Text = CallCompanionPolicy.BuildReplyPrompt(question)
+            };
+            var reply = await Brain.ReplyAsync(new[] { turn }, token);
+            if (!CallCompanionActive || token.IsCancellationRequested) return;
+            reply = reply.Trim();
+            if (reply.Length == 0) return;
+            if (reply.Length > 330) reply = reply[..330];
+            SpeakIfEnabled(reply);
+            _companion?.ShowReaction("Answered a call question as Capri (AI).");
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Call companion reply unavailable: " + ex.GetType().Name);
+            _callWindow?.SetStatus("Call reply failed; check brain and Fish quota.");
+        }
+        finally { _callReplyBusy = false; }
+    }
+
+    public void StopCallCompanionMode()
+    {
+        var listener = _callListener;
+        _callListener = null;
+        _callReplyCts?.Cancel();
+        _callReplyCts?.Dispose();
+        _callReplyCts = null;
+        listener?.Dispose();
+        if (listener is not null) CancelVoiceOutput();
+        _callWindow?.RefreshState();
+    }
+
     public void OpenGameCenter()
     {
         if (_gameCenter is null)
@@ -932,6 +1039,7 @@ public partial class App : System.Windows.Application
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
+        context.Items.Add("Voice Call Companion", null, (_, _) => Dispatcher.Invoke(OpenCallCompanion));
         context.Items.Add("Inspect window controls", null, (_, _) => Dispatcher.Invoke(OpenUiInspector));
         context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
         {
@@ -1051,6 +1159,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        StopCallCompanionMode();
         StopAutonomousTask();
         _mediaSessionTimer.Stop();
         _watchTimer.Stop();

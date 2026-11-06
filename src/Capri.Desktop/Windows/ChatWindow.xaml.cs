@@ -102,6 +102,8 @@ public partial class ChatWindow : Window
         App.Instance.OpenGameCenter();
     private void OpenNowPlaying_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenNowPlaying();
+    private void OpenCallCompanion_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenCallCompanion();
 
     private void GameHelp_Click(object sender, RoutedEventArgs e) =>
         StartGameHelp();

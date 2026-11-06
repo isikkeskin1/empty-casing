@@ -80,3 +80,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Pause/resume/previous/next media session | Implemented with desktop-action permission and optional hands-free | Media-app support varies |
 | Local track-change reactions | Every 10s while DANCE TO AUDIO is enabled | Human review for noisy browser media |
 | True BPM tracking, lyrics, music search/queue | Not implemented | Provider integrations and streaming DSP required |
+
+
+| Disclosed AI Call Companion | Experimental call-playback local speech recognition, AI replies via routed Fish TTS | Real-device/virtual-cable QA |
+| Discord automatic join / speaking through Discord bot connection | Not implemented; requires approved integration | Discord OAuth/application voice tooling |
+| Call participant command restrictions | Only addressed conversational replies, no desktop action planner | Adversarial and real-call tests |
