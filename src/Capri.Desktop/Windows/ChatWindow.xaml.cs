@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Windows.Controls;
 using Button = System.Windows.Controls.Button;
 using System.Windows;
@@ -686,6 +687,67 @@ public partial class ChatWindow : Window
         Add("user", prompt);
         App.Instance.SetMood(CompanionMood.Thinking);
         UpdateStatus(lookNow ? "LOOKING AT SCREEN" : "THINKING", Colors.Plum);
+        ChatTurn? livePreview = null;
+        var streamed = false;
+        var speakingSentences = false;
+        var partialText = new StringBuilder();
+        var lastPreview = DateTimeOffset.MinValue;
+
+        async Task OnModelDeltaAsync(string delta)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!Dispatcher.CheckAccess())
+            {
+                await Dispatcher.InvokeAsync(() => ApplyModelDelta(delta));
+                return;
+            }
+            ApplyModelDelta(delta);
+        }
+
+        void ApplyModelDelta(string delta)
+        {
+            token.ThrowIfCancellationRequested();
+            if (livePreview is null)
+            {
+                livePreview = new ChatTurn
+                {
+                    Role = "stream",
+                    Text = "…",
+                    Timestamp = DateTimeOffset.Now
+                };
+                Messages.Add(livePreview); // NEVER persist partial assistant text.
+            }
+            partialText.Append(delta);
+            var now = DateTimeOffset.UtcNow;
+            if (partialText.Length >= 100 &&
+                now - lastPreview >= TimeSpan.FromMilliseconds(70) ||
+                lastPreview == DateTimeOffset.MinValue)
+            {
+                var index = Messages.IndexOf(livePreview);
+                if (index >= 0)
+                {
+                    livePreview = new ChatTurn
+                    {
+                        Role = "stream",
+                        Text = partialText.ToString(),
+                        Timestamp = livePreview.Timestamp
+                    };
+                    Messages[index] = livePreview;
+                    if (IsVisible)
+                        Dispatcher.BeginInvoke(() => TranscriptScroll.ScrollToEnd());
+                }
+                lastPreview = now;
+            }
+            if (speakingSentences)
+                App.Instance.PushLiveSpeechDelta(delta);
+        }
+
+        void ClearLivePreview()
+        {
+            if (livePreview is null) return;
+            Messages.Remove(livePreview);
+            livePreview = null;
+        }
 
         try
         {
@@ -707,19 +769,36 @@ public partial class ChatWindow : Window
                 answer = await App.Instance.AskScreenAsync(prompt, token);
             }
             else
-                answer = await App.Instance.TryHandleActionAsync(prompt)
-                         ?? await App.Instance.ReplyWithAmbientContextAsync(Messages.ToArray(), token);
+            {
+                var action = await App.Instance.TryHandleActionAsync(prompt);
+                if (action is not null)
+                    answer = action;
+                else
+                {
+                    streamed = true;
+                    speakingSentences = App.Instance.BeginLiveSpeech();
+                    answer = await App.Instance.ReplyWithAmbientContextAsync(
+                        Messages.Where(x => x.Role != "stream").ToArray(),
+                        token, OnModelDeltaAsync);
+                }
+            }
 
             // Model cancellation also prevents stale answers from being saved or
             // spoken. It cannot roll back an external tool action already sent.
             token.ThrowIfCancellationRequested();
+            ClearLivePreview();
             Add("assistant", answer);
             App.Instance.SetMood(CompanionMood.Reply);
-            App.Instance.SpeakIfEnabled(answer);
+            if (streamed && speakingSentences)
+                App.Instance.CompleteLiveSpeech();
+            else
+                App.Instance.SpeakIfEnabled(answer);
             UpdateStatus("READY", Colors.LightGreen);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
+            ClearLivePreview();
+            if (streamed) App.Instance.StopVoiceOutput();
             App.Instance.SetMood(CompanionMood.Idle);
             Add("system", "Reply interrupted. Any external action already initiated may still complete.");
             UpdateStatus("REPLY INTERRUPTED", Colors.LightSkyBlue);
@@ -727,11 +806,15 @@ public partial class ChatWindow : Window
         catch (Exception exception) when (token.IsCancellationRequested)
         {
             // Providers can return a transport error while cancellation races.
+            ClearLivePreview();
+            if (streamed) App.Instance.StopVoiceOutput();
             App.Instance.SetMood(CompanionMood.Idle);
             UpdateStatus("REPLY INTERRUPTED", Colors.LightSkyBlue);
         }
         catch (Exception exception)
         {
+            ClearLivePreview();
+            if (streamed) App.Instance.StopVoiceOutput();
             App.Instance.SetMood(CompanionMood.Error);
             Add("system", "Request failed: " + exception.Message +
                 "\nCheck your selected model, local Ollama status, or cloud key and quota.");
@@ -744,7 +827,7 @@ public partial class ChatWindow : Window
             _busy = false;
             SendButton.IsEnabled = true;
             PromptBox.IsEnabled = true;
-            PromptBox.Focus();
+            if (IsVisible) PromptBox.Focus();
             if (_queuedVoicePrompt is { Length: > 0 } next)
             {
                 _queuedVoicePrompt = null;
