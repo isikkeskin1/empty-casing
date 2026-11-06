@@ -248,7 +248,7 @@ public partial class ChatWindow : Window
             result.StartsWith("Visual lookout armed", StringComparison.Ordinal)
                 ? Colors.LightGreen : Colors.Orange);
         if (result.StartsWith("Visual lookout armed", StringComparison.Ordinal))
-            App.Instance.SetMood(CompanionMood.Thinking);
+            App.Instance.SetMood(CompanionMood.Reply);
         else
             System.Windows.MessageBox.Show(result, "Capri — visual lookout",
                 MessageBoxButton.OK, MessageBoxImage.Information);
