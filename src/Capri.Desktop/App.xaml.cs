@@ -1,3 +1,4 @@
+using System.IO;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Interop;
@@ -20,6 +21,12 @@ public partial class App : System.Windows.Application
     public CodeHuskBridge CodeHusk { get; private set; } = null!;
     public CodeHuskHookInstaller HuskHooks { get; private set; } = null!;
     public NowPlayingService NowPlaying { get; } = new();
+    public ObsReplayService ObsReplays { get; } = new();
+    private bool _obsClipsEnabled;
+    private CancellationTokenSource? _obsRequestCts;
+    private string? _lastObsClipPath;
+    public bool ObsClipsEnabled => _obsClipsEnabled;
+    public bool ObsPasswordSaved => Secrets?.HasKey(ObsReplayProtocol.PasswordKey) == true;
     public AmbientContextService AmbientSense { get; private set; } = null!;
     private NowPlayingWindow? _nowPlayingWindow;
     private readonly DispatcherTimer _mediaSessionTimer = new()
@@ -432,6 +439,7 @@ public partial class App : System.Windows.Application
         StopAutonomousTask();
         StopSessionRoutine();
         CodeHusk.SetEnabled(false);
+        SetObsClipsEnabled(false);
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();
@@ -527,6 +535,122 @@ public partial class App : System.Windows.Application
     /// while unsolicited commentary and TTS stay silent. User-set reminders
     /// still show Windows notifications.
     /// </summary>
+    public void ConfigureObs(int port, string? password)
+    {
+        if (!ObsReplayProtocol.IsValidPort(port))
+            throw new ArgumentOutOfRangeException(nameof(port), "Use a local OBS port from 1024 to 65535.");
+        if (password is not null)
+        {
+            if (string.IsNullOrWhiteSpace(password) || password.Length > 256)
+                throw new ArgumentException("Enter your OBS WebSocket password (1–256 characters).");
+            Secrets.Save(ObsReplayProtocol.PasswordKey, password);
+        }
+        Settings.ObsWebSocketPort = port;
+        Store.SaveSettings(Settings);
+        _chat?.RefreshObsClipStatus();
+    }
+
+    public void ForgetObsPassword()
+    {
+        _obsRequestCts?.Cancel();
+        _obsClipsEnabled = false;
+        Secrets.Delete(ObsReplayProtocol.PasswordKey);
+        _lastObsClipPath = null;
+        _chat?.RefreshObsClipStatus();
+    }
+
+    public void SetObsClipsEnabled(bool enabled)
+    {
+        if (enabled && !ObsPasswordSaved)
+            throw new InvalidOperationException(
+                "Save your OBS WebSocket password in Apps & Tools → Game Clips first.");
+        _obsClipsEnabled = enabled;
+        if (!enabled) _obsRequestCts?.Cancel();
+        _chat?.RefreshObsClipStatus();
+    }
+
+    public string ObsClipStatus => !_obsClipsEnabled
+        ? "DISARMED · Capri cannot control OBS clips"
+        : "ARMED · Local OBS replay controls are available";
+
+    /// <summary>
+    /// A fixed subset of localhost-only OBS replay actions. Voice commands do not
+    /// add arbitrary OBS RPC requests, and STOP ALL revokes any in-flight request.
+    /// </summary>
+    public async Task<string> RunObsReplayAsync(string action)
+    {
+        if (!ObsReplayProtocol.IsAuthorizedRequest(action))
+            return "Unsupported OBS replay operation.";
+        if (!_obsClipsEnabled)
+            return "Game Clips is disarmed. Open Apps & Tools → Game Clips, " +
+                   "save your OBS password, then enable CLIP CONTROLS.";
+        if (_obsRequestCts is not null)
+            return "Another OBS clip operation is already running.";
+        using var cts = new CancellationTokenSource();
+        _obsRequestCts = cts;
+        var epoch = _actionEpoch;
+        try
+        {
+            var port = ObsReplayProtocol.IsValidPort(Settings.ObsWebSocketPort)
+                ? Settings.ObsWebSocketPort : ObsReplayProtocol.DefaultPort;
+            var password = Secrets.Read(ObsReplayProtocol.PasswordKey) ?? "";
+            if (!_obsClipsEnabled || epoch != _actionEpoch)
+                return "OBS request cancelled.";
+            var result = await ObsReplays.ExecuteAsync(action, port, password, cts.Token);
+            if (!_obsClipsEnabled || epoch != _actionEpoch || cts.IsCancellationRequested)
+                return "OBS request stopped. If OBS already started saving, it may finish writing.";
+            if (action == ObsReplayProtocol.LastReplay)
+                _lastObsClipPath = result.FilePath;
+            if (action == ObsReplayProtocol.Save && !_quietMode)
+                _companion?.ShowReaction("Clip requested. Check your OBS replay folder, choom.");
+            _chat?.RefreshObsClipStatus();
+            return result.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            return "OBS request cancelled.";
+        }
+        catch (System.Net.WebSockets.WebSocketException)
+        {
+            return "Could not connect to OBS on this PC. Start OBS, enable its WebSocket server " +
+                   "under Tools → WebSocket Server Settings, and verify the port/password.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            return "OBS replay unavailable: " + ex.Message;
+        }
+        catch (Exception ex)
+        {
+            return "OBS replay unavailable (" + ex.GetType().Name + "). Check OBS setup.";
+        }
+        finally
+        {
+            if (ReferenceEquals(_obsRequestCts, cts)) _obsRequestCts = null;
+        }
+    }
+
+    public string OpenLastObsClip()
+    {
+        var path = _lastObsClipPath;
+        if (path is null || !File.Exists(path))
+            return "No verified local replay path. Press FIND LAST CLIP first.";
+        try
+        {
+            var full = Path.GetFullPath(path);
+            if (full.StartsWith(@"\\", StringComparison.Ordinal))
+                return "Opening network paths is disabled.";
+            var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            start.ArgumentList.Add("/select,");
+            start.ArgumentList.Add(full);
+            Process.Start(start);
+            return "Opened the replay in Windows Explorer.";
+        }
+        catch (Exception ex)
+        {
+            return "Couldn't open the replay folder (" + ex.GetType().Name + ").";
+        }
+    }
+
     public void SetCodeHuskEnabled(bool enabled)
     {
         CodeHusk.SetEnabled(enabled);
@@ -1355,6 +1479,9 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        var clipAction = ObsReplayProtocol.ClassifyIntent(command);
+        if (clipAction is not null)
+            return await RunObsReplayAsync(clipAction);
         if (command.Equals("code husk status", StringComparison.OrdinalIgnoreCase) ||
             command.Equals("what is codex doing", StringComparison.OrdinalIgnoreCase) ||
             command.Equals("what is claude code doing", StringComparison.OrdinalIgnoreCase))
@@ -1720,6 +1847,11 @@ public partial class App : System.Windows.Application
             try { StartTalkOnce(); }
             catch (Exception ex) { _companion?.ShowReaction("Talk Once unavailable: " + ex.Message); }
         }));
+        context.Items.Add("Save OBS replay (if armed)", null, async (_, _) =>
+        {
+            var result = await RunObsReplayAsync(ObsReplayProtocol.Save);
+            Dispatcher.Invoke(() => _companion?.ShowReaction(result));
+        });
         context.Items.Add("Code/Husk monitor on", null, (_, _) =>
             Dispatcher.Invoke(() => SetCodeHuskEnabled(true)));
         context.Items.Add("Code/Husk monitor off", null, (_, _) =>
@@ -1848,6 +1980,7 @@ public partial class App : System.Windows.Application
         _presenceTimer.Stop();
         _presenceJournal.Reset();
         CodeHusk?.Dispose();
+        SetObsClipsEnabled(false);
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
         _audioReactions?.Dispose();

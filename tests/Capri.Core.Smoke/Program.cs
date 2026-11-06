@@ -344,6 +344,42 @@ try
     catch (InvalidDataException) { malformedHooksRejected = true; }
     Check(malformedHooksRejected, "bad hook configs fail closed rather than overwriting user settings");
 
+    Check(ObsReplayProtocol.ClassifyIntent("Clip that!") == ObsReplayProtocol.Save &&
+          ObsReplayProtocol.ClassifyIntent("save replay") == ObsReplayProtocol.Save &&
+          ObsReplayProtocol.ClassifyIntent("start replay buffer") == ObsReplayProtocol.Start &&
+          ObsReplayProtocol.ClassifyIntent("clip status") == ObsReplayProtocol.Status &&
+          ObsReplayProtocol.ClassifyIntent("show last clip") == ObsReplayProtocol.LastReplay &&
+          ObsReplayProtocol.ClassifyIntent("stream to Twitch") is null &&
+          ObsReplayProtocol.ClassifyIntent("switch scene") is null &&
+          ObsReplayProtocol.ClassifyIntent("delete last clip") is null &&
+          ObsReplayProtocol.ClassifyIntent("clip that and upload it") is null,
+        "OBS voice intents route only to a fixed replay-buffer allowlist");
+    Check(ObsReplayProtocol.IsAuthorizedRequest("SaveReplayBuffer") &&
+          !ObsReplayProtocol.IsAuthorizedRequest("StartStream") &&
+          !ObsReplayProtocol.IsAuthorizedRequest("RemoveScene") &&
+          ObsReplayProtocol.IsValidPort(4455) &&
+          !ObsReplayProtocol.IsValidPort(80) &&
+          ObsReplayProtocol.Endpoint(4455).Host == "127.0.0.1" &&
+          ObsReplayProtocol.Endpoint(4455).Scheme == "ws",
+        "OBS connector cannot accept remote targets or stream-setting RPCs");
+    Check(ObsReplayProtocol.Authenticate("test-password", "test-salt", "test-challenge")
+            == "zBIloly70ANx+T9nUkQVuTCqTUuHtfrqEdn8XDQ3m/s=",
+        "OBS WebSocket v5 challenge response follows official salted SHA256 scheme");
+    using (var obsStatusPayload = System.Text.Json.JsonDocument.Parse(
+        "{\"outputActive\":true,\"savedReplayPath\":\"C:\\\\Clips\\\\Replay.mkv\"}"))
+    {
+        Check(ObsReplayProtocol.ReadReplayRunning(obsStatusPayload.RootElement) == true &&
+              ObsReplayProtocol.ReadReplayPath(obsStatusPayload.RootElement) ==
+                  @"C:\Clips\Replay.mkv",
+            "OBS replay status and local saved clip path are parsed explicitly");
+    }
+    using (var unsafePath = System.Text.Json.JsonDocument.Parse(
+        "{\"savedReplayPath\":\"\\\\\\\\server\\\\share\\\\clip.mkv\"}"))
+    {
+        Check(ObsReplayProtocol.ReadReplayPath(unsafePath.RootElement) is null,
+            "OBS clip viewer refuses network paths");
+    }
+
     var simulatedNow = new DateTimeOffset(2026, 11, 6, 12, 0, 0, TimeSpan.Zero);
     var lookout = ScreenLookoutPolicy.Parse("tell me when my health is low", simulatedNow);
     Check(lookout is not null && lookout.Condition == "my health is low" &&

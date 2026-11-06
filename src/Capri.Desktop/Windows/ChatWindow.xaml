@@ -420,6 +420,72 @@
                         Style="{StaticResource CapriButton}" HorizontalAlignment="Left"/>
               </StackPanel>
             </Border>
+            <!-- OBS WebSocket replay integration: explicit, localhost-only,
+                 encrypted password and an always-visible per-session arm switch. -->
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// GAME CLIPS / OBS REPLAY" Style="{StaticResource CapriLabel}"
+                           Foreground="{StaticResource CapriYellowBrush}"/>
+                <TextBlock Text="Save real gameplay video with 'Capri, clip that'. Requires OBS Studio's Replay Buffer and local WebSocket server."
+                           Style="{StaticResource CapriSubtext}" Margin="0,7,0,11"/>
+                <WrapPanel Margin="0,0,0,6">
+                  <StackPanel Margin="0,0,10,9">
+                    <TextBlock Text="LOCAL PORT" Style="{StaticResource CapriLabel}"
+                               Margin="0,0,0,5"/>
+                    <TextBox x:Name="ObsPortBox" Width="102" Text="4455"
+                             Style="{StaticResource CapriInput}"/>
+                  </StackPanel>
+                  <StackPanel Margin="0,0,10,9">
+                    <TextBlock Text="OBS WEBSOCKET PASSWORD" Style="{StaticResource CapriLabel}"
+                               Margin="0,0,0,5"/>
+                    <PasswordBox x:Name="ObsPasswordBox" Width="215"
+                                 MinHeight="35" Padding="10,7" FontSize="13"
+                                 Background="#182A39" Foreground="{StaticResource CapriTextBrush}"
+                                 BorderBrush="#537183" BorderThickness="1"
+                                 ToolTip="Paste the password from OBS → Tools → WebSocket Server Settings. Stored encrypted for this Windows user."/>
+                  </StackPanel>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button Content="SAVE CONNECTION" Click="ObsSaveCredentials_Click"
+                          Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,8"/>
+                  <Button Content="FORGET PASSWORD" Click="ObsForgetPassword_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                </WrapPanel>
+                <CheckBox x:Name="ObsArmedCheck"
+                          Content="Enable clip controls for this session"
+                          Style="{StaticResource CapriToggle}"
+                          Checked="ObsArmed_Changed" Unchecked="ObsArmed_Changed"/>
+                <TextBlock x:Name="ObsClipStatusText"
+                           Text="DISARMED · Capri cannot control OBS clips"
+                           Foreground="{StaticResource CapriCyanBrush}"
+                           FontFamily="Consolas" FontSize="11"
+                           TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <WrapPanel Margin="0,0,0,3">
+                  <Button Content="CHECK OBS" Tag="GetReplayBufferStatus"
+                          Click="ObsReplay_Click" Style="{StaticResource CapriButton}"
+                          Margin="0,0,9,8"/>
+                  <Button Content="START BUFFER" Tag="StartReplayBuffer"
+                          Click="ObsReplay_Click" Style="{StaticResource CapriButton}"
+                          Margin="0,0,9,8"/>
+                  <Button Content="SAVE CLIP" Tag="SaveReplayBuffer"
+                          Click="ObsReplay_Click" Style="{StaticResource CapriPrimaryButton}"
+                          Margin="0,0,9,8"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="FIND LAST CLIP" Tag="GetLastReplayBufferReplay"
+                          Click="ObsReplay_Click" Style="{StaticResource CapriButton}"
+                          Margin="0,0,9,8"/>
+                  <Button Content="SHOW SAVED FILE" Click="ObsShowClip_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                </WrapPanel>
+                <TextBlock x:Name="ObsClipFeedbackText"
+                           Text="Set up OBS Replay Buffer first; clip length, audio and file location are controlled by OBS."
+                           Style="{StaticResource CapriSubtext}" FontSize="11"
+                           Margin="0,5,0,10"/>
+                <TextBlock Text="Your OBS password is encrypted locally, never included in chat. Clip commands send only fixed requests to 127.0.0.1. STOP ALL disarms the connection. No streaming, uploads or automatic recordings."
+                           Style="{StaticResource CapriSubtext}" FontSize="10"/>
+              </StackPanel>
+            </Border>
             <!-- Code/Husk watches only sanitized lifecycle events from user-installed
                  local coding-agent hooks. It cannot answer approvals or run tools. -->
             <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">

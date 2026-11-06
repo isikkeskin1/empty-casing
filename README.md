@@ -86,6 +86,12 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Instant game clips via OBS Replay Buffer
+
+Capri now supports real video highlights through a **local, authenticated OBS Studio WebSocket 5 connection**. In Control Deck → Apps & Tools → Game Clips, save your OBS WebSocket password (Windows DPAPI encrypted), arm clip controls for this session, start/check the OBS Replay Buffer and press **SAVE CLIP**, or say **“Capri, clip that.”** The clip is saved by OBS to the folder you configured. You can also locate the last file in Explorer.
+
+OBS must be installed, configured and running; Capri cannot capture moments from before replay buffering started. This integration never livestreams, uploads, switches scenes or runs arbitrary OBS requests. STOP ALL disarms the link. See [OBS game clipping guide](docs/GAME_CLIPS_OBS.md).
+
 ## Code/Husk Mode — follow Codex and Claude Code work
 
 Capri can now act as a quiet, read-only companion while **local Codex CLI or Claude Code** runs. In Control Deck → **Apps & Tools → Code/Husk**, install the respective user-level hooks with an explicit review prompt and automatic config backup, restart the coding assistant, then turn **Watch coding assistants** on for the session.
