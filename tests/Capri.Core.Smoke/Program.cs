@@ -136,6 +136,40 @@ try
         "public OAuth app client IDs persist in settings, not provider secrets");
     store.SaveSettings(settings);
 
+    var gamingRoutine = CompanionRoutine.Parse("set up my gaming session");
+    Check(gamingRoutine is { Name: "Gaming session" } &&
+          CompanionRoutine.TryValidate(gamingRoutine, out _) &&
+          gamingRoutine.Steps.Count == 3 &&
+          gamingRoutine.Steps[0] == new AssistantAction("open_app", "discord") &&
+          gamingRoutine.Steps[2] == new AssistantAction("open_app", "spotify"),
+        "gaming routine builds one explicitly named, fixed app launch sequence");
+    var creatorRoutine = CompanionRoutine.Parse("Roblox dev mode");
+    Check(CompanionRoutine.TryValidate(creatorRoutine, out _) &&
+          creatorRoutine!.Steps[0].Argument ==
+              "https://create.roblox.com/dashboard/creations",
+        "Roblox creator routine uses an allowlisted official creator dashboard");
+    Check(CompanionRoutine.TryValidate(CompanionRoutine.Parse("study mode"), out _) &&
+          CompanionRoutine.TryValidate(CompanionRoutine.Parse("roblox mode"), out _) &&
+          CompanionRoutine.Parse("please send my files and open discord") is null &&
+          CompanionRoutine.Parse("gaming mode and buy robux") is null &&
+          CompanionRoutine.Parse("open powershell and run a script") is null,
+        "routine routing recognizes only exact known owner intents and rejects sensitive extras");
+    Check(!CompanionRoutine.TryValidate(
+          new CompanionRoutine("Unsafe", new[]
+          {
+              new AssistantAction("open_app", "powershell")
+          }), out _) &&
+          !CompanionRoutine.TryValidate(
+          new CompanionRoutine("Duplicate", new[]
+          {
+              new AssistantAction("open_app", "steam"),
+              new AssistantAction("open_app", "steam")
+          }), out _) &&
+          !CompanionRoutine.TryValidate(
+          new CompanionRoutine("Oversized", Enumerable.Repeat(
+              new AssistantAction("media", "next"), 5).ToArray()), out _),
+        "routine execution rejects disallowed, repeated and oversized plans");
+
     var journal = new CompanionPresenceJournal();
     var stamp = new DateTimeOffset(2026, 11, 6, 13, 0, 0, TimeSpan.Zero);
     Check(journal.Observe(new AmbientContext("explorer", "", ""), stamp) is null,
@@ -432,15 +466,23 @@ try
     Check(voice.Evaluate("What time is it?", clock.AddSeconds(8), true, false, false)
               .Intent == VoiceIntent.Prompt,
         "opted-in short follow-up can omit wake prefix");
-    Check(voice.Evaluate("Can you hear me?", clock.AddSeconds(21), true, false, false)
+    Check(voice.Evaluate("And then what?", clock.AddSeconds(22), true, false, false)
+              .Intent == VoiceIntent.Prompt,
+        "accepted follow-up refreshes the opted-in conversation window");
+    Check(voice.Evaluate("Can you hear me?", clock.AddSeconds(43), true, false, false)
               .Intent == VoiceIntent.Ignore,
-        "follow-up permission expires after twenty seconds");
+        "conversation lease expires twenty seconds after last accepted question");
     Check(voice.Evaluate("Capri, mute microphone", clock.AddSeconds(30), false, false, false)
               .Intent == VoiceIntent.MuteMicrophone,
         "microphone mute is a deterministic local command");
     Check(voice.Evaluate("Capri stop inputs", clock.AddSeconds(33), false, false, false)
               .Intent == VoiceIntent.StopInputs,
         "input shutdown is never delegated to an AI planner");
+    Check(voice.Evaluate("Capri stop all", clock.AddSeconds(35), true, false, false)
+              .Intent == VoiceIntent.StopInputs &&
+          voice.Evaluate("talk about this", clock.AddSeconds(36), true, false, false)
+              .Intent == VoiceIntent.Ignore,
+        "spoken STOP ALL revokes the voice follow-up lease");
 
     voice.Reset();
     voice.ArmOneShot(clock, TimeSpan.FromSeconds(20));
