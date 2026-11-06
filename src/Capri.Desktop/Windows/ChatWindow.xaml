@@ -260,6 +260,10 @@
                             Checked="Mic_Changed" Unchecked="Mic_Changed"/>
                   <CheckBox x:Name="SpeakCheck" Content="Speak replies" Style="{StaticResource CapriToggle}"
                             Checked="Speak_Changed" Unchecked="Speak_Changed"/>
+                  <CheckBox x:Name="QuietCheck" Content="Quiet mode (no commentary)"
+                            ToolTip="Session-only. Suppresses unsolicited speech and visual comments, but requested reminder notifications still work."
+                            Style="{StaticResource CapriToggle}"
+                            Checked="Quiet_Changed" Unchecked="Quiet_Changed"/>
                 </WrapPanel>
                 <WrapPanel>
                   <Button Content="STOP SPEAKING" Click="StopVoice_Click"
@@ -309,6 +313,34 @@
                               MinWidth="175" Padding="7,7" Background="#182A39"/>
                   </StackPanel>
                 </WrapPanel>
+                <Border BorderBrush="#36596A" BorderThickness="1"
+                        Background="#10212B" Padding="12" Margin="0,3,0,0"
+                        CornerRadius="0,7,0,0">
+                  <StackPanel>
+                    <TextBlock Text="/// VISUAL LOOKOUT" Style="{StaticResource CapriLabel}"
+                               Foreground="{StaticResource CapriYellowBrush}"/>
+                    <TextBlock Text="Tell Capri what to watch for, such as a low health bar or a finished download. Requires WATCH SCREEN; cloud screenshots use the same permission."
+                               Style="{StaticResource CapriSubtext}" Margin="0,7,0,11"/>
+                    <TextBox x:Name="LookoutConditionBox"
+                             Style="{StaticResource CapriInput}"
+                             Text="my health is low"
+                             ToolTip="A visible condition, e.g. the download finishes."
+                             Margin="0,0,0,10"/>
+                    <WrapPanel>
+                      <Button Content="START LOOKOUT" Click="StartLookout_Click"
+                              Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,8"/>
+                      <Button Content="CANCEL LOOKOUT" Click="CancelLookout_Click"
+                              Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="LookoutStatusText" Text="No screen alert armed."
+                               Foreground="{StaticResource CapriMutedBrush}"
+                               TextWrapping="Wrap" FontSize="11"
+                               Margin="0,3,0,0"/>
+                    <TextBlock Text="Visual detection is an AI estimate, not a guaranteed game telemetry feed. Lookouts expire after two hours and never control the game."
+                               Style="{StaticResource CapriSubtext}" FontSize="10"
+                               Margin="0,7,0,0"/>
+                  </StackPanel>
+                </Border>
               </StackPanel>
             </Border>
             <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
@@ -391,8 +423,10 @@
             <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
               <StackPanel>
                 <TextBlock Text="/// TOOLS" Style="{StaticResource CapriLabel}"/>
-                <TextBlock Text="Review a selected text file or check local reminders."
+                <TextBlock Text="Review a selected text file, or schedule reminders for a specific date and time."
                            Style="{StaticResource CapriSubtext}" Margin="0,8,0,15"/>
+                <TextBlock Text="Example: remind me on 5 December at 9am to call Mum."
+                           Style="{StaticResource CapriSubtext}" Margin="0,0,0,13" FontSize="11"/>
                 <WrapPanel>
                   <Button Content="READ FILE" Click="ReadFile_Click"
                           Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
