@@ -913,7 +913,7 @@ public partial class App : System.Windows.Application
         {
             var info = await NowPlaying.GetCurrentAsync();
             if (!Settings.DanceToSystemAudio) return;
-            if (MediaMetadataPolicy.ShouldAnnounce(info, _lastMediaInfo) &&
+            if (!_quietMode && MediaMetadataPolicy.ShouldAnnounce(info, _lastMediaInfo) &&
                 !(Settings.ListenToMicrophone && !MicrophoneMuted))
             {
                 // The metadata is shown locally only; no cloud request or TTS.
