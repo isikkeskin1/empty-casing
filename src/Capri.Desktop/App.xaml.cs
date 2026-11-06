@@ -29,6 +29,9 @@ public partial class App : System.Windows.Application
     private string? _lastScreenObservation;
     private DateTimeOffset _lastObservedAt;
     private long _actionEpoch;
+    private readonly VoiceTurnRouter _voiceRouter = new();
+    private readonly DispatcherTimer _talkOnceTimeout = new() { Interval = TimeSpan.FromSeconds(20) };
+    private bool _talkOnceRestoresOff;
 
     public static App Instance => (App)Current;
     public AppSettings Settings { get; private set; } = new();
@@ -66,6 +69,18 @@ public partial class App : System.Windows.Application
         _watchTimer.Interval = TimeSpan.FromSeconds(
             AllowedWatchIntervals.Contains(Settings.WatchIntervalSeconds)
                 ? Settings.WatchIntervalSeconds : 45);
+        _talkOnceTimeout.Tick += (_, _) =>
+        {
+            _talkOnceTimeout.Stop();
+            if (_voiceRouter.IsOneShotExpired(DateTimeOffset.UtcNow))
+            {
+                _voiceRouter.DisarmOneShot();
+                if (_talkOnceRestoresOff) SetMicrophoneEnabled(false);
+                _talkOnceRestoresOff = false;
+                _companion?.ShowReaction("Talk Once timed out. No request sent.");
+                _chat?.SyncCapabilitySwitches();
+            }
+        };
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
@@ -75,20 +90,74 @@ public partial class App : System.Windows.Application
 
     private void ReceiveRecognizedSpeech(string recognized)
     {
-        if (!Settings.ListenToMicrophone || MicrophoneMuted ||
-            _voicePlayback?.IsPlaying == true) return;
-        var text = recognized.Trim();
-        var prefix = text.StartsWith("hey capri", StringComparison.OrdinalIgnoreCase) ? 9 :
-                     text.StartsWith("capri", StringComparison.OrdinalIgnoreCase) ? 5 : 0;
-        if (prefix == 0) return;
+        if (!Settings.ListenToMicrophone || MicrophoneMuted) return;
 
-        var request = text[prefix..].Trim(' ', ',', '.', '!', '?');
-        ShowChat();
-        if (!string.IsNullOrWhiteSpace(request))
-            _chat?.SubmitVoiceText(request);
-        else
-            _companion?.ShowReaction("Yeah? I'm listening.");
+        var playing = _voicePlayback?.IsPlaying == true || _speech?.IsSpeaking == true;
+        var decision = _voiceRouter.Evaluate(recognized, DateTimeOffset.UtcNow,
+            Settings.EnableVoiceFollowUps, playing, Settings.AllowVoiceInterrupt);
+        if (decision.Intent == VoiceIntent.Ignore) return;
+
+        if (decision.EndOneShot)
+            FinishTalkOnce();
+
+        switch (decision.Intent)
+        {
+            case VoiceIntent.Wake:
+                _companion?.ShowReaction("Yeah, choom? Go ahead.");
+                break;
+            case VoiceIntent.StopSpeech:
+                CancelVoiceOutput();
+                _companion?.ShowReaction("Okay, I'm quiet.");
+                break;
+            case VoiceIntent.StopInputs:
+                StopAllInputs();
+                break;
+            case VoiceIntent.MuteMicrophone:
+                if (Settings.ListenToMicrophone && !MicrophoneMuted)
+                    ToggleMicrophoneMute();
+                break;
+            case VoiceIntent.Prompt:
+                CancelVoiceOutput();
+                ShowChat();
+                _chat?.SubmitVoiceText(decision.Text);
+                break;
+        }
     }
+
+    /// <summary>
+    /// Explicitly arms one utterance and requires no wake prefix. This does not create
+    /// an always-on hotword service, and the recording device closes after one turn if
+    /// it was initially off.
+    /// </summary>
+    public void StartTalkOnce()
+    {
+        if (_speech is null) return;
+        CancelVoiceOutput();
+        var wasOff = !Settings.ListenToMicrophone;
+        if (wasOff)
+            SetMicrophoneEnabled(true);
+        else if (MicrophoneMuted)
+            ToggleMicrophoneMute();
+
+        _talkOnceRestoresOff = wasOff || _talkOnceRestoresOff;
+        _voiceRouter.ArmOneShot(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(20));
+        _talkOnceTimeout.Stop();
+        _talkOnceTimeout.Start();
+        _companion?.ShowReaction("Talk Once — speak now. I'll listen for one request.");
+        _chat?.SyncCapabilitySwitches();
+    }
+
+    private void FinishTalkOnce()
+    {
+        _talkOnceTimeout.Stop();
+        _voiceRouter.DisarmOneShot();
+        if (_talkOnceRestoresOff)
+            SetMicrophoneEnabled(false);
+        _talkOnceRestoresOff = false;
+        _chat?.SyncCapabilitySwitches();
+    }
+
+    public bool TalkOnceArmed => _voiceRouter.OneShotArmed;
 
     public void SetMicrophoneEnabled(bool enabled)
     {
@@ -98,6 +167,8 @@ public partial class App : System.Windows.Application
             Settings.ListenToMicrophone = false;
             MicrophoneMuted = false;
             _speech.StopListening();
+            _voiceRouter.Reset();
+            _talkOnceTimeout.Stop();
             _chat?.SyncCapabilitySwitches();
             return;
         }
@@ -133,6 +204,9 @@ public partial class App : System.Windows.Application
         }
         else
         {
+            _voiceRouter.DisarmOneShot();
+            _talkOnceTimeout.Stop();
+            _talkOnceRestoresOff = false;
             // Muting closes the audio capture device, not just the transcript callback.
             _speech.StopListening();
             MicrophoneMuted = true;
@@ -144,6 +218,9 @@ public partial class App : System.Windows.Application
     public void StopAllInputs()
     {
         _actionEpoch++;
+        _voiceRouter.Reset();
+        _talkOnceTimeout.Stop();
+        _talkOnceRestoresOff = false;
         SetWatchingEnabled(false);
         SetMicrophoneEnabled(false);
         Settings.EnableDesktopActions = false;
@@ -417,6 +494,10 @@ public partial class App : System.Windows.Application
         switch (action)
         {
             case nameof(InputShortcuts.OpenChat): ToggleChat(); break;
+            case nameof(InputShortcuts.TalkOnce):
+                try { StartTalkOnce(); }
+                catch (Exception ex) { _companion?.ShowReaction("Talk Once unavailable: " + ex.Message); }
+                break;
             case nameof(InputShortcuts.ToggleMic):
                 try { SetMicrophoneEnabled(!Settings.ListenToMicrophone); }
                 catch (Exception ex) { _companion?.ShowReaction("Mic unavailable: " + ex.Message); }
@@ -441,6 +522,11 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
+        context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
+        {
+            try { StartTalkOnce(); }
+            catch (Exception ex) { _companion?.ShowReaction("Talk Once unavailable: " + ex.Message); }
+        }));
         context.Items.Add("Show reminders", null, (_, _) => Dispatcher.Invoke(ShowReminderList));
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
@@ -555,6 +641,7 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         _watchTimer.Stop();
+        _talkOnceTimeout.Stop();
         Reminders?.Dispose();
         CancelVoiceOutput();
         _voicePlayback?.Dispose();

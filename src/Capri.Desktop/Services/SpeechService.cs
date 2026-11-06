@@ -21,6 +21,7 @@ public sealed class SpeechService : IDisposable
     private bool _disposed;
 
     public bool IsListening => _listening;
+    public bool IsSpeaking => _speaking;
 
     public SpeechService(Action<string> heard) => _heard = heard;
 
@@ -47,8 +48,9 @@ public sealed class SpeechService : IDisposable
                 new SpeechAudioFormatInfo(16000, AudioBitsPerSample.Sixteen, AudioChannel.Mono));
             _recognizer.SpeechRecognized += (_, args) =>
             {
-                if (_listening && !_speaking && args.Result.Confidence >= 0.65 &&
-                    !string.IsNullOrWhiteSpace(args.Result.Text))
+                if (_listening && args.Result.Confidence >= 0.68 &&
+                    !string.IsNullOrWhiteSpace(args.Result.Text) &&
+                    (!_speaking || Capri.Core.VoiceTurnRouter.IsInterruptPhrase(args.Result.Text)))
                     _heard(args.Result.Text);
             };
 

@@ -110,9 +110,66 @@ try
           !monotonic.Observe(80, 1, 1300),
         "ordinary one-direction cursor movement is not a pet");
 
+    var clock = new DateTimeOffset(2026, 11, 6, 8, 0, 0, TimeSpan.Zero);
+    var voice = new VoiceTurnRouter();
+    Check(voice.Evaluate("open Notepad", clock, false, false, false).Intent == VoiceIntent.Ignore,
+        "ambient speech without wake prefix is ignored");
+    Check(voice.Evaluate("caprice open notepad", clock, false, false, false).Intent == VoiceIntent.Ignore,
+        "wake-prefix parser does not match ordinary words");
+    var spoken = voice.Evaluate("Hey Capri, set a timer for 30 seconds", clock, false, false, false);
+    Check(spoken.Intent == VoiceIntent.Prompt && spoken.Text == "set a timer for 30 seconds",
+        "explicit voice requests are routed without prefix");
+    Check(voice.Evaluate("Hey Capri, set a timer for 30 seconds", clock.AddMilliseconds(500),
+              false, false, false).Intent == VoiceIntent.Ignore,
+        "recognizer duplicates are debounced");
+    Check(voice.Evaluate("what about tomorrow", clock.AddSeconds(3), false, false, false)
+              .Intent == VoiceIntent.Ignore, "follow-up speech requires explicit opt-in");
+
+    voice.Reset();
+    var wakeOnly = voice.Evaluate("Capri", clock, true, false, false);
+    Check(wakeOnly.Intent == VoiceIntent.Wake, "wake prefix with no action opens a follow-up window");
+    Check(voice.Evaluate("What time is it?", clock.AddSeconds(8), true, false, false)
+              .Intent == VoiceIntent.Prompt,
+        "opted-in short follow-up can omit wake prefix");
+    Check(voice.Evaluate("Can you hear me?", clock.AddSeconds(21), true, false, false)
+              .Intent == VoiceIntent.Ignore,
+        "follow-up permission expires after twenty seconds");
+    Check(voice.Evaluate("Capri, mute microphone", clock.AddSeconds(30), false, false, false)
+              .Intent == VoiceIntent.MuteMicrophone,
+        "microphone mute is a deterministic local command");
+    Check(voice.Evaluate("Capri stop inputs", clock.AddSeconds(33), false, false, false)
+              .Intent == VoiceIntent.StopInputs,
+        "input shutdown is never delegated to an AI planner");
+
+    voice.Reset();
+    voice.ArmOneShot(clock, TimeSpan.FromSeconds(20));
+    Check(voice.OneShotArmed &&
+          voice.Evaluate("Search the web for weather", clock.AddSeconds(4), false, false, false)
+              is { Intent: VoiceIntent.Prompt, EndOneShot: true } &&
+          !voice.OneShotArmed,
+        "Talk Once accepts a single explicit utterance without wake phrase");
+    voice.ArmOneShot(clock, TimeSpan.FromSeconds(20));
+    Check(voice.Evaluate("open something", clock.AddSeconds(21), false, false, false)
+              .Intent == VoiceIntent.Ignore && !voice.OneShotArmed,
+        "expired Talk Once permission cannot authorize new speech");
+
+    Check(VoiceTurnRouter.IsInterruptPhrase("Capri stop talking") &&
+          !VoiceTurnRouter.IsInterruptPhrase("Capri please purchase something") &&
+          !VoiceTurnRouter.IsInterruptPhrase("stop talking"),
+        "only a prefixed stop phrase is eligible for speech interruption");
+    voice.Reset();
+    Check(voice.Evaluate("Capri stop", clock, false, true, false)
+              .Intent == VoiceIntent.Ignore &&
+          voice.Evaluate("Capri stop", clock.AddSeconds(1), false, true, true)
+              .Intent == VoiceIntent.StopSpeech,
+        "speaker barge-in is opt-in and permits only stopping output");
+    Check(voice.Evaluate("Capri buy this", clock.AddSeconds(3), false, true, true)
+              .Intent == VoiceIntent.Ignore,
+        "speaker output cannot authorize other agent requests");
+
     var defaultKeys = new InputShortcuts();
     Check(InputShortcuts.TryValidate(defaultKeys, out _),
-        "all seven default global shortcuts are valid and distinct");
+        "all eight default global shortcuts are valid and distinct");
     Check(GlobalShortcut.TryParse("Ctrl+Alt+V", out var toggleKey) &&
           toggleKey.Modifiers == (GlobalShortcut.Ctrl | GlobalShortcut.Alt) &&
           toggleKey.VirtualKey == (uint)'V',

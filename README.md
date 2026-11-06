@@ -51,9 +51,23 @@ Select **LOOK NOW** to inspect the selected monitor once. Mainframe's monitor pi
 
 Read [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md) for exact supported behavior, limitations and privacy details.
 
+## Voice conversation controls
+
+**TALK ONCE** in Mainframe or Ctrl+Alt+Space opens the selected microphone for one
+utterance, for up to 20 seconds. You don't need to repeat "Capri" in that turn.
+If the mic was previously off, it closes automatically after the turn or timeout.
+For continuous voice commands, keep MIC ON and start requests with "Capri" or
+"Hey Capri". Voice recognition remains local to installed Windows speech packs.
+
+Input Control Center can opt into a 20-second follow-up window after addressing
+Capri, and into the spoken "Capri, stop" interruption command. Both are OFF by
+default, since speaker output and other people nearby can be mistakenly recognized.
+The **STOP VOICE** button halts speech; **STOP INPUTS** also shuts down mic,
+screen watching and desktop-action permissions. See [voice protocol](docs/VOICE_CONVERSATION.md).
+
 ## Input Control Center
 
-Open INPUTS in Mainframe or Input settings / hotkeys in the tray. Choose a real microphone, test its level for five seconds, pick Fish Audio's speaker and customize seven global shortcuts. Mic mute stops capture; STOP INPUTS ends mic, screen and speech and disables desktop actions. See [Input architecture](docs/INPUT_SYSTEMS.md).
+Open INPUTS in Mainframe or Input settings / hotkeys in the tray. Choose a real microphone, test its level for five seconds, pick Fish Audio's speaker and customize eight global shortcuts. Mic mute stops capture; STOP INPUTS ends mic, screen and speech and disables desktop actions. See [Input architecture](docs/INPUT_SYSTEMS.md).
 
 ## Build and verify
 

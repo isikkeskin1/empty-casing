@@ -58,3 +58,21 @@ Turning off petting in Input Control Center disables gesture reactions.
 STOP INPUTS now also invalidates pending AI desktop action plans, so a proposal
 completed after the stop is not executed. Approval dialogs already on screen
 still need manual dismissal; purchases remain forbidden.
+
+
+## Voice turn-taking
+
+A deterministic local VoiceTurnRouter ignores recognized phrases without the
+"Capri"/"Hey Capri" prefix unless the owner explicitly armed Talk Once or enabled
+a temporary follow-up window. Talk Once lasts at most 20 seconds and captures
+only one recognized utterance; if the mic was off before it started, it closes.
+No wake-word recognizer runs while the mic is off.
+
+When opted into voice interruption, only recognized "Capri stop", "Capri
+stop talking", "Capri quiet" or "Capri be quiet" can interrupt speech output.
+While audio output is active, other recognized phrases are ignored; this does
+not implement acoustic echo cancellation or full-duplex audio. Follow-up
+listening and spoken interruption are both off by default. Windows recognition
+can be affected by speaker leakage, recognition errors and device drivers.
+No recognized text is sent to cloud speech services by this routing layer;
+normal user requests can still be sent to the configured AI brain.

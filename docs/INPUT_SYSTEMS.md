@@ -107,3 +107,31 @@ Emergency stop increments the action-session generation. Any desktop action
 proposal still being planned when stopped is rejected before its confirmation
 and execution. Existing MessageBox approvals cannot be forcibly dismissed;
 a future task controller must implement full per-step cancellation.
+
+
+## Voice turn-taking v1 (Windows recognition)
+
+- Mainframe TALK ONCE or Ctrl+Alt+Space: arm a single utterance, automatically
+  time out after 20 seconds. If voice listening was previously off, the mic is
+  closed after receiving the utterance or timing out. No wake phrase needed.
+- MIC ON / Ctrl+Alt+V: continual Windows dictation, **only** treating speech
+  prefixed by "Capri" or "Hey Capri" as a request.
+- Optional follow-up: after an explicitly addressed turn, accept subsequent
+  utterances without repeating the prefix within 20 seconds. Disabled by default.
+- Optional speech interruption: with microphone listening enabled, permit
+  the exact prefixed stop command to halt speech output, but no other command
+  while Capri is speaking. Disabled by default, as echo cancellation is
+  not provided.
+- Local commands ("Capri mute microphone", "Capri stop inputs", "Capri stop")
+  do not call the language model.
+- Mainframe STOP VOICE cancels in-flight Fish TTS generation or stops active
+  speech playback. STOP INPUTS also disables desktop-action permissions and
+  perception channels.
+- Recognizer duplicates are de-bounced before sending an AI request.
+- A selected recording device, Windows Speech language pack and microphone
+  permission remain prerequisites. Captured raw audio isn't saved by Capri.
+
+This is a lower-latency turn-handling improvement but **not** full-duplex voice,
+speaker separation, neural VAD, echo cancellation, or an always-on offline
+keyword detector. Tests cover routing, timeouts, duplicates and local commands;
+physical-device voice QA remains required.

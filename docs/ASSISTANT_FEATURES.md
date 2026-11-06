@@ -67,3 +67,14 @@ interruptions. No screen frames or signatures are stored permanently.
 Capri reacts to deliberate horizontal or vertical mouse rubs on her body,
 with a cooldown and a toggle in INPUTS. Gesture detection is localized to
 the WPF overlay. It does not monitor the user's general pointer movements.
+
+
+## Voice conversation controls
+
+Talk Once uses the selected local microphone for a single turn (maximum 20
+seconds), with no wake prefix needed. Ctrl+Alt+Space is its default shortcut.
+Continuous dictation still requires the "Capri"/"Hey Capri" prefix. Owners may
+separately opt into short 20-second follow-up turns and interruptible speech;
+both are off by default. Local stop/mute/shutdown phrases bypass the AI brain.
+Voice turns are de-duplicated. This still uses Windows speech-recognition
+language packs, not streaming, echo-cancelled full-duplex chat.
