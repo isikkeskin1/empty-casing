@@ -17,6 +17,14 @@ public partial class App : System.Windows.Application
     private UiInspectorWindow? _uiInspector;
     public UiAutomationNavigator UiNavigator { get; } = new();
     public SteamGameService SteamGames { get; } = new();
+    public NowPlayingService NowPlaying { get; } = new();
+    private NowPlayingWindow? _nowPlayingWindow;
+    private readonly DispatcherTimer _mediaSessionTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(10)
+    };
+    private bool _mediaSessionBusy;
+    private NowPlayingInfo? _lastMediaInfo;
     private GameCenterWindow? _gameCenter;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
@@ -93,6 +101,7 @@ public partial class App : System.Windows.Application
                 _chat?.SyncCapabilitySwitches();
             }
         };
+        _mediaSessionTimer.Tick += async (_, _) => await ObserveNowPlayingAsync();
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
@@ -326,6 +335,8 @@ public partial class App : System.Windows.Application
         {
             Settings.DanceToSystemAudio = false;
             _audioReactions.Stop();
+            _mediaSessionTimer.Stop();
+            _lastMediaInfo = null;
             _chat?.SyncCapabilitySwitches();
             return;
         }
@@ -334,6 +345,8 @@ public partial class App : System.Windows.Application
         {
             _audioReactions.Start();
             Settings.DanceToSystemAudio = true;
+            _mediaSessionTimer.Start();
+            _ = ObserveNowPlayingAsync();
             _chat?.SyncCapabilitySwitches();
         }
         catch
@@ -604,6 +617,70 @@ public partial class App : System.Windows.Application
 
     public void SetAutonomousTaskGoal(string goal) => _uiInspector?.SetGoal(goal);
 
+    public void OpenNowPlaying()
+    {
+        if (_nowPlayingWindow is null)
+        {
+            _nowPlayingWindow = new NowPlayingWindow();
+            _nowPlayingWindow.Closed += (_, _) => _nowPlayingWindow = null;
+        }
+        _nowPlayingWindow.Show();
+        _nowPlayingWindow.Activate();
+    }
+
+    public async Task<string> TryControlMediaAsync(MediaIntent intent)
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to control playback.";
+        if (intent is not (MediaIntent.Pause or MediaIntent.Play or
+            MediaIntent.TogglePlayback or MediaIntent.NextTrack or MediaIntent.PreviousTrack))
+            return "Unsupported media command.";
+
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations)
+        {
+            var approval = System.Windows.MessageBox.Show(
+                "Control the currently selected Windows media session?\n\n" + intent,
+                "Capri — media action",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No);
+            if (approval != MessageBoxResult.Yes)
+                return "Media control cancelled.";
+        }
+        if (!Settings.EnableDesktopActions || _actionEpoch != epoch)
+            return "Stopped. Media action was not sent.";
+
+        try { return await NowPlaying.ExecuteAsync(intent); }
+        catch (Exception ex)
+        {
+            return "Windows media command unavailable: " + ex.GetType().Name;
+        }
+    }
+
+    private async Task ObserveNowPlayingAsync()
+    {
+        if (_mediaSessionBusy || !Settings.DanceToSystemAudio) return;
+        _mediaSessionBusy = true;
+        try
+        {
+            var info = await NowPlaying.GetCurrentAsync();
+            if (!Settings.DanceToSystemAudio) return;
+            if (MediaMetadataPolicy.ShouldAnnounce(info, _lastMediaInfo) &&
+                !(Settings.ListenToMicrophone && !MicrophoneMuted))
+            {
+                // The metadata is shown locally only; no cloud request or TTS.
+                _companion?.ShowReaction("Now vibing: " +
+                    MediaMetadataPolicy.Clean(info!.Title, 48));
+            }
+            _lastMediaInfo = info;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Media metadata not available: " + ex.GetType().Name);
+        }
+        finally { _mediaSessionBusy = false; }
+    }
+
     public void OpenGameCenter()
     {
         if (_gameCenter is null)
@@ -678,6 +755,24 @@ public partial class App : System.Windows.Application
 
     public async Task<string?> TryHandleActionAsync(string request)
     {
+        var mediaIntent = MediaMetadataPolicy.Parse(request);
+        if (mediaIntent == MediaIntent.Status)
+        {
+            try
+            {
+                var info = await NowPlaying.GetCurrentAsync();
+                return info?.FriendlyDescription ??
+                    "Windows isn't exposing an active song or video. Try opening Spotify or playing media in your browser.";
+            }
+            catch (Exception ex)
+            {
+                return "Now Playing is unavailable: " + ex.GetType().Name;
+            }
+        }
+        if (mediaIntent != MediaIntent.None)
+            return await TryControlMediaAsync(mediaIntent);
+
+
         if (request.Equals("list games", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("show my games", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("steam library", StringComparison.OrdinalIgnoreCase))
@@ -836,6 +931,7 @@ public partial class App : System.Windows.Application
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
+        context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
         context.Items.Add("Inspect window controls", null, (_, _) => Dispatcher.Invoke(OpenUiInspector));
         context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
         {
@@ -956,6 +1052,7 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         StopAutonomousTask();
+        _mediaSessionTimer.Stop();
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
         _audioReactions?.Dispose();

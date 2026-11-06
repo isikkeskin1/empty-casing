@@ -66,6 +66,23 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Now Playing — song/video awareness and controls
+
+Use **NOW PLAYING** in Mainframe or ask "what song is playing?" / "what
+video is playing?" to read the current Windows media session (Spotify,
+Chrome/Edge, or other apps that publish System Media Transport Controls).
+Capri shows available title/artist/source information, and can pause,
+resume, skip next and skip previous through the session. These
+**commands are allowed only with DESKTOP ACTIONS enabled**; HANDS-FREE
+removes repeated confirmation prompts.
+
+When DANCE TO AUDIO is enabled, Capri keeps her existing local sound
+energy/rhythm reactions and checks the Windows media session every
+10 seconds for a track change. She can show a brief local "Now vibing"
+reaction on song changes. The song title and PCM never go to a cloud
+model for this feature. Media support depends on the playback app
+exposing a Windows media session. See [Now Playing](docs/NOW_PLAYING.md).
+
 ## Game Center — installed Steam games and screenshot help
 
 Open **GAMES** in Mainframe to search your installed Steam library and launch

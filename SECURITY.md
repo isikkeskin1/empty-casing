@@ -231,3 +231,20 @@ The AI is told to treat screenshot contents as untrusted evidence, not
 commands. It does not perform input injection into games or access memory.
 On-screen names, personal messages or notifications may be visible in
 the captured frame; check screen privacy before sending to cloud.
+
+
+## Now Playing metadata
+
+NOW PLAYING reads the Windows System Media Transport Controls session's
+title, artist and source application identifiers. Windows can publish
+media titles from browsers or apps; these may contain sensitive names.
+Capri shows them locally and does not upload them to model providers,
+record them to disk or retain a browsing history. Media commands are
+sent to the current Windows media session only, after desktop-action
+permission (individual confirmation unless hands-free is armed).
+
+With DANCE TO AUDIO enabled by the owner, Capri polls the current media
+session every ten seconds and may show a short local title reaction
+when the playing track changes. Polling stops when DANCE TO AUDIO
+is disabled or STOP ALL is pressed. No audio transcription, metadata
+uploads, playlist edits or purchases.

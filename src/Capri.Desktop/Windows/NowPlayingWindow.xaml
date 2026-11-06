@@ -1,0 +1,47 @@
+<Window x:Class="Capri.Desktop.Windows.NowPlayingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Capri — Now Playing" Width="510" Height="400"
+        MinWidth="420" MinHeight="355" Background="#0E1825"
+        Foreground="#E9F2FC" WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Background" Value="#28374E"/>
+      <Setter Property="Foreground" Value="#F4F8FF"/>
+      <Setter Property="BorderBrush" Value="#60788E"/>
+      <Setter Property="Padding" Value="10,7"/>
+      <Setter Property="Margin" Value="0,0,7,0"/>
+      <Setter Property="FontFamily" Value="Consolas"/>
+    </Style>
+  </Window.Resources>
+  <StackPanel Margin="24">
+    <TextBlock Text="CAPRI // NOW PLAYING" FontFamily="Consolas"
+               FontWeight="Bold" FontSize="23" Foreground="#F78EB1"/>
+    <TextBlock Text="Windows media session • Spotify, browsers and other compatible apps"
+               FontSize="11" TextWrapping="Wrap" Foreground="#94ADBF" Margin="0,5,0,18"/>
+    <Border Background="#17263B" Padding="15" CornerRadius="6"
+            BorderThickness="1" BorderBrush="#496679">
+      <StackPanel>
+        <TextBlock x:Name="SongText" Text="Looking for an active session..."
+                   TextWrapping="Wrap" FontWeight="Bold" FontSize="20"/>
+        <TextBlock x:Name="ArtistText" Foreground="#B9D0D9"
+                   TextWrapping="Wrap" Margin="0,9,0,0"/>
+        <TextBlock x:Name="SourceText" Foreground="#88A7BA" FontSize="11"
+                   Margin="0,7,0,0" TextWrapping="Wrap"/>
+        <TextBlock x:Name="PlaybackText" Foreground="#81E1C9" FontSize="11"
+                   Margin="0,10,0,0" FontWeight="Bold"/>
+      </StackPanel>
+    </Border>
+    <WrapPanel Margin="0,15,0,10">
+      <Button Content="REFRESH" Click="Refresh_Click"/>
+      <Button Content="◀ PREVIOUS" Click="Previous_Click"/>
+      <Button Content="PAUSE" Click="Pause_Click"/>
+      <Button Content="PLAY" Click="Play_Click"/>
+      <Button Content="NEXT ▶" Click="Next_Click"/>
+    </WrapPanel>
+    <TextBlock x:Name="FeedbackText" Text="Controls require DESKTOP ACTIONS or HANDS-FREE."
+               TextWrapping="Wrap" Foreground="#A4C6D9" Margin="0,9,0,0"/>
+    <TextBlock Text="DANCE TO AUDIO in Mainframe enables local song-change reactions and sound-level movement. Capri never uploads track titles just to animate."
+               TextWrapping="Wrap" FontSize="11" Foreground="#7E9BAD" Margin="0,10,0,0"/>
+  </StackPanel>
+</Window>
