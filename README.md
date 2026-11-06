@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Your Memory Vault + in-game coach HUD
+
+Capri now has a real **Memory Vault** under **Control Deck → 05 My memory**. You can explicitly save, edit, forget, export, and clear short personal notes. Voice/chat commands include `remember that I prefer short answers`, `list memories`, and `forget memory #1`. No memory is mined from conversations, files or screenshots automatically. **Use my saved notes in AI replies** is OFF by default; cloud providers require separate opt-in before notes are included in normal chat prompts. Notes are plain local JSON; don't store secrets.
+
+In the Steam Game Center, **GAME HELP (SCREEN)** can now respond through a **30-second cyberpunk click-through Game Coach HUD**, keeping your borderless game focused. It is an AI tip based on one chosen screenshot, not telemetry or game automation. Cloud screenshot help requests permission before sending the image. The HUD can be hidden and never captures gameplay continuously.
+
+See [Memory Vault and Game HUD guide](docs/MEMORY_AND_GAME_HUD.md) for exact file paths, deletion limits, security and platform notes.
+
 ## Live model replies — incremental text and early Windows voice
 
 Capri now displays **streaming chat tokens** as the model generates them. Local Ollama uses newline-delimited chat chunks; supported OpenAI-compatible cloud brains use Chat Completions server-sent events. This applies to normal assistant conversations, not action plans or screen screenshots. Partial text is an ephemeral UI preview: only successfully completed answers are saved to history.
