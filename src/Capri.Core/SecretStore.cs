@@ -43,7 +43,9 @@ public sealed class SecretStore
         string.Equals(provider, "spotify", StringComparison.OrdinalIgnoreCase)
             ? "spotify" :
         string.Equals(provider, "roblox", StringComparison.OrdinalIgnoreCase)
-            ? "roblox" : ProviderCatalog.Get(provider).Id;
+            ? "roblox" :
+        string.Equals(provider, "obs", StringComparison.OrdinalIgnoreCase)
+            ? "obs" : ProviderCatalog.Get(provider).Id;
 
     private string FileFor(string provider) =>
         Path.Combine(_directory, CredentialId(provider) + ".dpapi");
