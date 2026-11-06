@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ComboBox = System.Windows.Controls.ComboBox;
+using TextBox = System.Windows.Controls.TextBox;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Capri.Core;
 using Capri.Desktop.Services;

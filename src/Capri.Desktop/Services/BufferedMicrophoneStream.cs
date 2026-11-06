@@ -51,7 +51,6 @@ internal sealed class BufferedMicrophoneStream : Stream
             return copied;
         }
         catch (InvalidOperationException) { return 0; }
-        catch (ObjectDisposedException) { return 0; }
     }
 
     public override bool CanRead => !_closed;
