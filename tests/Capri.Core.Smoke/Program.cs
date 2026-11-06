@@ -148,6 +148,16 @@ try
           creatorRoutine!.Steps[0].Argument ==
               "https://create.roblox.com/dashboard/creations",
         "Roblox creator routine uses an allowlisted official creator dashboard");
+    var customRoutine = CompanionRoutine.Parse("Launch Discord, Steam and Spotify");
+    Check(CompanionRoutine.TryValidate(customRoutine, out _) &&
+          customRoutine!.Steps.Select(action => action.Argument)
+              .SequenceEqual(new[] { "discord", "steam", "spotify" }),
+        "explicit compound app launch requests build a deterministic multi-step plan");
+    Check(CompanionRoutine.Parse("open Discord and PowerShell") is null &&
+          CompanionRoutine.Parse("open Discord and Discord") is null &&
+          CompanionRoutine.Parse("open Discord and Spotify and send a message") is null &&
+          CompanionRoutine.Parse("launch Discord, Steam, Spotify, Chrome, Edge") is null,
+        "compound requests reject unknown, duplicate, sensitive, or oversized actions");
     Check(CompanionRoutine.TryValidate(CompanionRoutine.Parse("study mode"), out _) &&
           CompanionRoutine.TryValidate(CompanionRoutine.Parse("roblox mode"), out _) &&
           CompanionRoutine.Parse("please send my files and open discord") is null &&
