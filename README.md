@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Voice Conversation v2 — interrupt, rephrase, stay in-game
+
+Capri's existing Windows speech recognizer and optional Fish Audio voice can now be controlled more naturally. **STOP REPLY** in Control Deck or **Ctrl+Alt+R** cancels the current chat/vision generation and audio playback *without* disarming desktop inputs. With separately opted-in spoken interruptions, **"Capri, cancel that"** does the same. **TALK ONCE** now interrupts an old answer before starting one new capture; if you rephrase while the model is thinking, only the newest recognized question is retained.
+
+The optional 20-second wake-free follow-up window is refreshed **after Capri finishes speaking**, not just when you initially asked. Spoken requests also **avoid popping the chat window above a game by default**; choose "Open the full chat window for spoken requests" in INPUTS if you prefer visible conversations. When speech output is disabled, the full chat opens so your answers are visible.
+
+These changes still use whole-utterance Windows recognition and whole-answer audio: **not** full-duplex low-latency streamed voice or acoustic echo cancellation. Voice-interrupt recognition remains opt-in to reduce speaker-loopback false triggers. STOP ALL continues to revoke every sensitive permission; canceling a reply cannot undo an already dispatched external action. See [Voice Conversation guide](docs/VOICE_CONVERSATION.md).
+
 ## Instant game clips via OBS Replay Buffer
 
 Capri now supports real video highlights through a **local, authenticated OBS Studio WebSocket 5 connection**. In Control Deck → Apps & Tools → Game Clips, save your OBS WebSocket password (Windows DPAPI encrypted), arm clip controls for this session, start/check the OBS Replay Buffer and press **SAVE CLIP**, or say **“Capri, clip that.”** The clip is saved by OBS to the folder you configured. You can also locate the last file in Explorer.
