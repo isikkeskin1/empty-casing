@@ -70,18 +70,19 @@ See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
 The **AUTO TASK** button in Mainframe launches a scoped AI navigation task using
 the goal typed in the chat prompt. Choose/refresh the target window in WINDOW
-CONTROLS, then approve the task **once**. Capri independently inspects that
-application's accessible tab labels, asks your configured local/cloud model
-which safe tab advances the goal, rechecks its identity, selects it, and
-repeats—without stopping for per-click approval. The run lasts at most **5
+CONTROLS, then approve the task **once**. Capri inspects the approved application's accessible tabs, expandable
+navigation trees and a small allowlist of navigation buttons, then uses your
+local/cloud model to choose each verified step. It can operate those controls
+without stopping for per-click approval. The run lasts at most **5
 selections / 90 seconds**, and never changes to a different window.
 **STOP TASK** or global **STOP INPUTS** cancels the remaining task.
 Cloud mode explicitly discloses that the window title, tab labels and goal
 will be sent to the chosen provider.
 
-This first release intentionally supports tab navigation, not arbitrary
-clicking, typing, sending messages, changing settings, deleting files,
-payments or shopping. It is a real model-guided observe/plan/act/reobserve
+The navigation-button allowlist is deliberately narrow (for example Back,
+Home, Help, Menu and Overview); it excludes generic Save, Send, Submit,
+Next, checkout and other risky buttons. The agent cannot type, change
+settings, delete files, buy anything or invoke arbitrary UI controls. It is a real model-guided observe/plan/act/reobserve
 loop but not yet an unrestricted desktop agent. See
 [Autonomous task safety](docs/AUTONOMOUS_TASKS.md).
 

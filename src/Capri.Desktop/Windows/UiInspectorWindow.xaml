@@ -18,7 +18,7 @@
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
       <TextBlock Text="CAPRI // WINDOW CONTROLS" Foreground="#FD7FB0"
                  FontWeight="Bold" FontSize="22" FontFamily="Consolas"/>
-      <TextBlock Text="Approve one task, then let Capri navigate verified tabs without repeated confirmations."
+      <TextBlock Text="Approve one task; Capri navigates real tabs, trees and safe buttons without per-step prompts."
                  Foreground="#A0BACB" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
@@ -78,7 +78,7 @@
                     Click="StopTask_Click" IsEnabled="False"
                     Background="#803047" BorderBrush="#E16D82"/>
           </StackPanel>
-          <TextBlock Text="Maximum 5 accessible tab selections or 90 seconds. No per-step prompts. STOP TASK cancels the lease. No checkout, typing, messages or destructive actions."
+          <TextBlock Text="Up to 5 tab selections, navigation-tree expansions or strictly allowlisted navigation-button activations in 90 seconds. No per-step prompts. STOP TASK cancels. No Save, Send, checkout or typing."
                      TextWrapping="Wrap" Foreground="#9DB7C4" FontSize="11"
                      Margin="0,0,0,9"/>
           <TextBox x:Name="TaskLog" Height="105" IsReadOnly="True"

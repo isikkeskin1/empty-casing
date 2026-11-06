@@ -37,13 +37,14 @@ public partial class UiInspectorWindow : Window
         WindowName.Text = string.IsNullOrWhiteSpace(snapshot.Title)
             ? "(Untitled application)" : snapshot.Title;
         WindowDetails.Text = "PID " + snapshot.ProcessId + " · " +
-            snapshot.Tabs.Count + " tab(s) · " +
+            snapshot.Tabs.Count + " tab(s), " +
+            snapshot.NavigationControls.Count + " navigation control(s) · " +
             snapshot.CapturedAt.ToLocalTime().ToString("HH:mm:ss");
         TabsList.ItemsSource = snapshot.Tabs;
         SelectButton.IsEnabled = false;
-        StatusText.Text = snapshot.Tabs.Count == 0
-            ? "This application exposes no tab controls. No action taken."
-            : "Choose a tab. This inspection expires in 20 seconds.";
+        StatusText.Text = snapshot.Tabs.Count == 0 && snapshot.NavigationControls.Count == 0
+            ? "This app exposes no supported navigation controls. No action."
+            : "Manually select an accessible tab or run a scoped AI task below.";
     }
 
     private void Tab_Changed(object sender, SelectionChangedEventArgs e)

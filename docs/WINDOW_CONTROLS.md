@@ -121,3 +121,23 @@ Suggested manual QA:
   a browser redirect midway through a task.
 - Verify no screenshots or form values are sent to an AI; a cloud
   provider receives names only with explicit task-level disclosure.
+
+
+## Navigation controls in autonomous tasks
+
+Auto tasks may inspect eligible collapsed TreeItem controls and a small
+allowlist of buttons whose labels indicate navigation only. These control
+names and their action types are supplied to the planner alongside tabs.
+The model chooses a numeric index and copies the corresponding action
+(`select_tab`, `expand_tree`, `press_navigation` or `done`).
+Capri rechecks the same pinned app and element runtime ID after the
+model's choice, using SelectionItemPattern, ExpandCollapsePattern or
+InvokePattern as appropriate. It rejects all unknown actions and
+button names outside the exact allowlist. No per-step popup occurs
+during a previously approved navigation task.
+
+This is deliberately narrower than generic button clicking: Help, Home,
+Back, Menu, More, Sidebar and related navigation buttons are eligible,
+while Next, Save, Delete, Send, Submit, Buy, Checkout, and configuration
+forms cannot be automatically activated. UI providers may be deceptive,
+so use trusted apps for testing.

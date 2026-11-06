@@ -7,8 +7,16 @@ namespace Capri.Desktop.Services;
 public sealed record UiTabInfo(string Name, string AutomationId, string RuntimeKey,
     bool Enabled, bool Offscreen, bool Selected = false);
 
+public sealed record UiNavigationControl(
+    string Name, string AutomationId, string RuntimeKey, string Action,
+    bool Enabled, bool Offscreen, bool Expanded = false);
+
 public sealed record UiWindowSnapshot(IntPtr Handle, int ProcessId, string Title,
-    DateTimeOffset CapturedAt, IReadOnlyList<UiTabInfo> Tabs);
+    DateTimeOffset CapturedAt, IReadOnlyList<UiTabInfo> Tabs)
+{
+    public IReadOnlyList<UiNavigationControl> NavigationControls { get; init; } =
+        Array.Empty<UiNavigationControl>();
+}
 
 /// <summary>
 /// Strictly bounded, user-triggered Windows UI Automation for tab navigation only.
@@ -60,6 +68,22 @@ public sealed class UiAutomationNavigator
         return await WithScanTimeoutAsync(() => SelectTabCore(snapshot, target, token), token);
     }
 
+    public async Task<string> OperateNavigationControlAsync(
+        UiWindowSnapshot snapshot, UiNavigationControl target,
+        CancellationToken token = default)
+    {
+        if (target.Action is not ("expand_tree" or "press_navigation"))
+            return "Unsupported navigation action.";
+        if (!UiNavigationPolicy.CanOperateNavigation(
+            target.Name, target.Name, target.Action, target.Enabled,
+            target.Offscreen, snapshot.CapturedAt,
+            DateTimeOffset.UtcNow, true, out var reason))
+            return "Blocked: " + reason;
+
+        return await WithScanTimeoutAsync(
+            () => OperateNavigationCore(snapshot, target, token), token);
+    }
+
     private static UiWindowSnapshot InspectWindow(IntPtr handle)
     {
         if (handle == IntPtr.Zero || !IsWindow(handle))
@@ -89,9 +113,44 @@ public sealed class UiAutomationNavigator
             if (tabs.Count >= 50) break;
         }
 
+        var controls = new List<UiNavigationControl>();
+        foreach (var item in ScanNavigationElements(root))
+        {
+            var name = SafeRead(() => item.Current.Name)?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 72) continue;
+            var role = SafeRead(() => item.Current.ControlType);
+            var action = role == ControlType.TreeItem ? "expand_tree" :
+                         role == ControlType.Button ? "press_navigation" : "";
+            if (action == "expand_tree" && !UiNavigationPolicy.IsSafeTabLabel(name) ||
+                action == "press_navigation" && !UiNavigationPolicy.IsSafeNavigationButton(name))
+                continue;
+            var id = SafeRead(() => item.Current.AutomationId) ?? "";
+            var runtime = SafeRead(() => string.Join(".", item.GetRuntimeId())) ?? "";
+            if (runtime.Length == 0) continue;
+            var enabled = SafeBool(() => item.Current.IsEnabled, false);
+            var offscreen = SafeBool(() => item.Current.IsOffscreen, true);
+            var expanded = false;
+            if (action == "expand_tree")
+            {
+                var expandable = SafeBool(() =>
+                    item.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var pattern) &&
+                    pattern is ExpandCollapsePattern expander &&
+                    expander.Current.ExpandCollapseState != ExpandCollapseState.LeafNode, false);
+                if (!expandable) continue;
+                expanded = SafeBool(() =>
+                    item.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var pattern) &&
+                    pattern is ExpandCollapsePattern expander &&
+                    expander.Current.ExpandCollapseState == ExpandCollapseState.Expanded, false);
+            }
+            controls.Add(new UiNavigationControl(name, id, runtime, action,
+                enabled, offscreen, expanded));
+            if (controls.Count >= 50) break;
+        }
+
         return new UiWindowSnapshot(handle, processId,
             title.Length > 110 ? title[..110] : title,
-            DateTimeOffset.UtcNow, tabs);
+            DateTimeOffset.UtcNow, tabs)
+        { NavigationControls = controls };
     }
 
     private static string SelectTabCore(
@@ -139,6 +198,91 @@ public sealed class UiAutomationNavigator
         return selected == true
             ? "Selected tab \"" + chosen.Name + "\" in " + snapshot.Title + "."
             : "Windows did not confirm the tab selection. No further action taken.";
+    }
+
+    private static string OperateNavigationCore(
+        UiWindowSnapshot snapshot, UiNavigationControl target, CancellationToken token)
+    {
+        if (!IsWindow(snapshot.Handle))
+            return "The approved window was closed. No action.";
+        var root = AutomationElement.FromHandle(snapshot.Handle);
+        var currentTitle = root is null ? "" : SafeRead(() => root.Current.Name) ?? "";
+        if (currentTitle.Length > 110) currentTitle = currentTitle[..110];
+        if (root is null || SafeRead(() => root.Current.ProcessId) != snapshot.ProcessId ||
+            !string.Equals(currentTitle, snapshot.Title, StringComparison.Ordinal))
+            return "The approved application changed. No action.";
+
+        var matching = ScanNavigationElements(root).Where(item =>
+        {
+            var role = SafeRead(() => item.Current.ControlType);
+            var action = role == ControlType.TreeItem ? "expand_tree" :
+                         role == ControlType.Button ? "press_navigation" : "";
+            return action == target.Action &&
+                string.Equals(SafeRead(() => item.Current.Name), target.Name,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(SafeRead(() => item.Current.AutomationId) ?? "",
+                    target.AutomationId, StringComparison.Ordinal) &&
+                string.Equals(SafeRead(() => string.Join(".", item.GetRuntimeId())) ?? "",
+                    target.RuntimeKey, StringComparison.Ordinal);
+        }).Take(2).ToArray();
+        if (matching.Length != 1)
+            return "Navigation control changed or is ambiguous. No action.";
+
+        var selected = matching[0];
+        if (!UiNavigationPolicy.CanOperateNavigation(
+            target.Name, SafeRead(() => selected.Current.Name), target.Action,
+            SafeBool(() => selected.Current.IsEnabled, false),
+            SafeBool(() => selected.Current.IsOffscreen, true),
+            snapshot.CapturedAt, DateTimeOffset.UtcNow, true, out var reason))
+            return "Blocked: " + reason;
+
+        if (target.Action == "expand_tree")
+        {
+            if (!selected.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var pattern) ||
+                pattern is not ExpandCollapsePattern expander ||
+                SafeRead(() => expander.Current.ExpandCollapseState) != ExpandCollapseState.Collapsed)
+                return "Tree control is no longer collapsed. No action.";
+            token.ThrowIfCancellationRequested();
+            expander.Expand();
+            return "Expanded navigation tree \"" + target.Name + "\".";
+        }
+
+        if (!selected.TryGetCurrentPattern(InvokePattern.Pattern, out var invoked) ||
+            invoked is not InvokePattern button)
+            return "This navigation button does not support accessibility activation.";
+
+        // Invoke is allowed ONLY for a tiny exact navigation-label allowlist.
+        if (!UiNavigationPolicy.IsSafeNavigationButton(target.Name))
+            return "Button label not approved for autonomous navigation.";
+        token.ThrowIfCancellationRequested();
+        button.Invoke();
+        return "Activated navigation button \"" + target.Name + "\".";
+    }
+
+    private static IEnumerable<AutomationElement> ScanNavigationElements(AutomationElement root)
+    {
+        var walker = TreeWalker.ControlViewWalker;
+        var pending = new Queue<(AutomationElement Element, int Depth)>();
+        pending.Enqueue((root, 0));
+        var visited = 0;
+        while (pending.Count > 0 && visited < 320)
+        {
+            var (element, depth) = pending.Dequeue();
+            visited++;
+            var type = depth > 0 ? SafeRead(() => element.Current.ControlType) : null;
+            if (type == ControlType.TreeItem || type == ControlType.Button)
+                yield return element;
+            if (depth >= 12) continue;
+
+            var child = SafeRead(() => walker.GetFirstChild(element));
+            var siblings = 0;
+            while (child is not null && visited + pending.Count < 320 && siblings++ < 80)
+            {
+                pending.Enqueue((child, depth + 1));
+                var old = child;
+                child = SafeRead(() => walker.GetNextSibling(old));
+            }
+        }
     }
 
     private static IEnumerable<AutomationElement> ScanTabs(AutomationElement root)
