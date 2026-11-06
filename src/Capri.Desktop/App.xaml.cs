@@ -171,7 +171,7 @@ public partial class App : System.Windows.Application
                 _companion?.ShowReaction("Yeah, choom? Go ahead.");
                 break;
             case VoiceIntent.StopSpeech:
-                CancelVoiceOutput();
+                StopVoiceOutput();
                 _companion?.ShowReaction("Okay, I'm quiet.");
                 break;
             case VoiceIntent.CancelReply:
@@ -187,7 +187,10 @@ public partial class App : System.Windows.Application
                 break;
             case VoiceIntent.Prompt:
                 CancelVoiceOutput();
-                ShowChat();
+                if (Settings.OpenChatForVoiceRequests || !Settings.SpeakReplies || _quietMode)
+                    ShowChat();
+                else
+                    EnsureChatWindow();
                 _chat?.SubmitVoiceText(decision.Text);
                 break;
         }
@@ -807,7 +810,11 @@ public partial class App : System.Windows.Application
     /// <summary>Used only when a chat turn produces no spoken reply.</summary>
     public void OnSilentReplyFinished() => OnVoicePlaybackFinished();
 
-    public void StopVoiceOutput() => CancelVoiceOutput();
+    public void StopVoiceOutput()
+    {
+        _voiceRouter.CancelPendingReply();
+        CancelVoiceOutput();
+    }
 
     public void RefreshChatConfiguration() => _chat?.RefreshBrainConfiguration();
 
@@ -1989,14 +1996,17 @@ public partial class App : System.Windows.Application
         });
     }
 
+    private void EnsureChatWindow()
+    {
+        if (_chat is not null) return;
+        _chat = new ChatWindow();
+        _chat.Closed += (_, _) => _chat = null;
+    }
+
     public void ShowChat()
     {
-        if (_chat is null)
-        {
-            _chat = new ChatWindow();
-            _chat.Closed += (_, _) => _chat = null;
-        }
-        _chat.Show();
+        EnsureChatWindow();
+        _chat!.Show();
         _chat.Activate();
     }
 
