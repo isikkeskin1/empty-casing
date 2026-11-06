@@ -40,6 +40,60 @@ public sealed class OllamaBrain : IBrainProvider, IDisposable
         return PostAsync(_settings.OllamaModel, messages, false, ct);
     }
 
+    /// <summary>
+    /// Streams local assistant text as Ollama NDJSON. Action planning and visual
+    /// analysis retain their non-streaming JSON/vision code paths.
+    /// </summary>
+    public async Task<string> StreamReplyAsync(
+        IReadOnlyList<ChatTurn> turns, Func<string, Task> onDelta,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.OllamaModel))
+            throw new InvalidOperationException("No Ollama model selected.");
+        ArgumentNullException.ThrowIfNull(onDelta);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint + "/api/chat")
+        {
+            Content = JsonContent.Create(new
+            {
+                model = _settings.OllamaModel,
+                messages = Conversation(turns),
+                stream = true
+            })
+        };
+        using var response = await _client.SendAsync(request,
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException("Ollama streaming HTTP " +
+                (int)response.StatusCode + ". Check your local model.");
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+        var text = new System.Text.StringBuilder();
+        var done = false;
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) is not null)
+        {
+            ct.ThrowIfCancellationRequested();
+            var (delta, complete) = StreamingReplyDecoder.ReadOllamaLine(line);
+            if (delta.Length > 0)
+            {
+                if (text.Length + delta.Length > StreamingReplyDecoder.MaxReplyCharacters)
+                    throw new InvalidOperationException("Streaming answer exceeded the safety limit.");
+                text.Append(delta);
+                await onDelta(delta);
+            }
+            if (complete)
+            {
+                done = true;
+                break;
+            }
+        }
+        ct.ThrowIfCancellationRequested();
+        if (!done)
+            throw new InvalidOperationException("Ollama stream closed before completion.");
+        return text.ToString().Trim() is { Length: > 0 } result
+            ? result : "(The local model returned an empty reply.)";
+    }
+
     public Task<string> SeeScreenAsync(byte[] jpeg, string question, CancellationToken ct = default)
     {
         if (jpeg.Length == 0 || jpeg.Length > 5_000_000)
