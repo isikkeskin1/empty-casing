@@ -469,6 +469,7 @@ public partial class App : System.Windows.Application
         StopCallCompanionMode();
         StopAutonomousTask();
         StopSessionRoutine();
+        HideGameCoachTip();
         CodeHusk.SetEnabled(false);
         SetObsClipsEnabled(false);
         _chat?.CancelActiveReply();
@@ -682,6 +683,49 @@ public partial class App : System.Windows.Application
             return "Couldn't open the replay folder (" + ex.GetType().Name + ").";
         }
     }
+
+    public void SetMemoryContextEnabled(bool enabled, bool approveCloud)
+    {
+        if (enabled && !Brain.IsLocal)
+        {
+            if (!approveCloud &&
+                !string.Equals(Settings.MemoryCloudProviderConsent, Settings.BrainProvider,
+                    StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    "Memory sharing with this cloud provider needs explicit approval.");
+            if (approveCloud)
+                Settings.MemoryCloudProviderConsent = Settings.BrainProvider;
+        }
+        Settings.UsePersonalMemoryInReplies = enabled;
+        Store.SaveSettings(Settings);
+        _chat?.RefreshMemoryVault();
+    }
+
+    public string HandleMemoryCommand(MemoryCommand command)
+    {
+        var result = command.Kind switch
+        {
+            MemoryCommandKind.Add => Memories.Add(command.Text),
+            MemoryCommandKind.Forget => Memories.ForgetNumber(command.Number),
+            MemoryCommandKind.List => Memories.ListSummary(),
+            _ => "Unsupported memory command."
+        };
+        _chat?.RefreshMemoryVault();
+        return result;
+    }
+
+    public void ShowGameCoachTip(string tip)
+    {
+        if (!Settings.ShowGameCoachHud || string.IsNullOrWhiteSpace(tip)) return;
+        if (_gameCoachHud is null)
+        {
+            _gameCoachHud = new GameCoachHudWindow();
+            _gameCoachHud.Closed += (_, _) => _gameCoachHud = null;
+        }
+        _gameCoachHud.ShowTip(tip);
+    }
+
+    public void HideGameCoachTip() => _gameCoachHud?.HideTip();
 
     public void SetCodeHuskEnabled(bool enabled)
     {
