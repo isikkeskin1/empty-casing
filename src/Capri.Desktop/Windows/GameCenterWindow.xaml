@@ -31,7 +31,7 @@
     <StackPanel DockPanel.Dock="Bottom">
       <TextBlock x:Name="StatusText" Foreground="#A2D2DB" FontSize="11"
                  TextWrapping="Wrap" Margin="0,12,0,10"/>
-      <StackPanel Orientation="Horizontal">
+      <WrapPanel>
         <Button x:Name="LaunchButton" Content="LAUNCH SELECTED" Click="Launch_Click"
                 IsEnabled="False" Background="#245D57" BorderBrush="#7EE0BF"/>
         <Button Content="GAME HELP (SCREEN)" Click="GameHelp_Click"
@@ -40,7 +40,7 @@
                 Background="#24333E" BorderBrush="#4BBAC1"/>
         <Button Content="SCREEN SKETCH" Click="Sketch_Click"
                 Background="#2F334A" BorderBrush="#F0D33C" Margin="8,0,0,0"/>
-      </StackPanel>
+      </WrapPanel>
       <TextBlock Text="SCREEN SKETCH opens an interactive overlay; while active, it captures mouse input for drawing. ESC, EXIT or STOP ALL closes it."
                  Foreground="#8AAFC5" FontSize="10" TextWrapping="Wrap"
                  Margin="0,9,0,0"/>
