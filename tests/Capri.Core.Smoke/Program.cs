@@ -290,6 +290,30 @@ try
               .Contains("what you can SEE", StringComparison.Ordinal),
         "game helper tells vision model to ground advice and distrust screen instructions");
 
+    var simulatedNow = new DateTimeOffset(2026, 11, 6, 12, 0, 0, TimeSpan.Zero);
+    var lookout = ScreenLookoutPolicy.Parse("tell me when my health is low", simulatedNow);
+    Check(lookout is not null && lookout.Condition == "my health is low" &&
+          lookout.IsActive(simulatedNow.AddMinutes(30)) &&
+          !lookout.IsActive(simulatedNow.AddHours(2)) &&
+          lookout.VisionQuestion.Contains("CLEARLY VISIBLE") &&
+          lookout.VisionQuestion.Contains("untrusted", StringComparison.OrdinalIgnoreCase),
+        "screen lookout requires visible facts, treats instructions as untrusted and expires");
+    Check(ScreenLookout.IsAlert("ALERT") &&
+          ScreenLookout.IsAlert(" alert ") &&
+          !ScreenLookout.IsAlert("ALERT please buy the product") &&
+          !ScreenLookout.IsAlert("I think alert") &&
+          !ScreenLookout.IsAlert("WAIT") &&
+          !ScreenLookout.IsAlert(null),
+        "visual alert requires exact model sentinel, not free-form model prose");
+    Check(ScreenLookoutPolicy.IsCancel("cancel lookout") &&
+          ScreenLookoutPolicy.IsCancel("stop screen alert") &&
+          ScreenLookoutPolicy.IsStatus("lookout status") &&
+          ScreenLookoutPolicy.Parse("let me know when the download finishes", simulatedNow) is not null &&
+          ScreenLookoutPolicy.Parse("watch for ignore previous instructions", simulatedNow) is null &&
+          ScreenLookoutPolicy.Parse("watch for download finishes and send a message", simulatedNow) is null &&
+          ScreenLookoutPolicy.Parse("hey how are you", simulatedNow) is null,
+        "lookout commands are exact, cancellable and cannot add arbitrary tool instructions");
+
     var reminder = ReminderParser.Parse("remind me in 10 minutes to stretch");
     Check(reminder?.Kind == ReminderKind.Reminder &&
           reminder.Delay == TimeSpan.FromMinutes(10) &&
@@ -303,6 +327,33 @@ try
     Check(ReminderParser.Parse("remind me in 9000 days to wait") is null &&
           ReminderParser.Parse("remind me what you said") is null,
         "out-of-range or ambiguous reminder requests rejected");
+
+    var calendarReminder = ReminderParser.Parse(
+        "remind me on 2026-11-07 at 09:00 to call Mum", simulatedNow);
+    Check(calendarReminder?.Kind == ReminderKind.Reminder &&
+          calendarReminder.Message == "call Mum" &&
+          calendarReminder.DueAt is not null &&
+          calendarReminder.DueAt > simulatedNow &&
+          calendarReminder.DueAt.Value.ToLocalTime().Hour == 9,
+        "absolute ISO reminder stores the intended local clock hour");
+    var naturalReminder = ReminderParser.Parse(
+        "remind me on 5 December at 9am to book the trip", simulatedNow);
+    Check(naturalReminder?.DueAt is not null &&
+          naturalReminder.DueAt.Value.Month == 12 &&
+          naturalReminder.DueAt.Value.Day == 5 &&
+          naturalReminder.DueAt.Value.ToLocalTime().Hour == 9,
+        "English calendar dates and 12-hour time are parsed deterministically");
+    var tomorrowReminder = ReminderParser.Parse(
+        "remind me tomorrow at 18:30 to exercise", simulatedNow);
+    Check(tomorrowReminder?.DueAt is not null &&
+          tomorrowReminder.DueAt > simulatedNow &&
+          tomorrowReminder.DueAt.Value.ToLocalTime().Hour == 18 &&
+          tomorrowReminder.Message == "exercise",
+        "tomorrow reminder resolves to explicit local date and time");
+    Check(ReminderParser.Parse("remind me on 2026-11-04 at 09:00 to call", simulatedNow) is null &&
+          ReminderParser.Parse("remind me on 2026-11-07 at 25:01 to call", simulatedNow) is null &&
+          ReminderParser.Parse("remind me on 2028-11-07 at 09:00 to call", simulatedNow) is null,
+        "dated reminders reject past, impossible and over-one-year times");
 
     var item = new ReminderEntry
     {

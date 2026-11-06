@@ -18,6 +18,9 @@ The original fan project has a broad feature set. This file tracks our independe
 | Additional cloud TTS (ElevenLabs/OpenAI) | Not implemented | Provider security and licensing |
 | Song selection, music mini-player | Not implemented | Media session integration |
 | Reminders and timers | Implemented: local relative scheduling | Absolute dates and OS background scheduler |
+| Visual Lookout (owner-armed screen condition alerts) | Implemented: 2-hour RAM rule, uses consented WATCH SCREEN, strict verdict, one notification | Physical-game vision QA and confidence calibration |
+| Quiet Mode | Implemented: per-session suppression of unsolicited commentary and speech | Accessibility and user-state QA |
+| Absolute-date reminders | Implemented: ISO dates, tomorrow, English month names, local time | DST/time-zone field testing; no OS background alarm |
 | Game clips/live reactions | Not implemented | Event and capture pipeline |
 | File drop and reading | Not implemented | Parsers and explicit file selection |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |

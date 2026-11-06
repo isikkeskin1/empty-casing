@@ -86,6 +86,16 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Visual Lookout, Quiet Mode and calendar reminders
+
+**Watch for a visible condition.** Enable WATCH SCREEN in Senses & Control (and approve the cloud screenshot disclosure if applicable), then enter `my health is low` or `the download finishes` into Visual Lookout. Or say `Capri, tell me when my health is low`. Capri uses the selected vision model to assess changed frames; a possible match sends a local alert and automatically disarms the lookout. `Cancel lookout`, STOP ALL, or the two-hour session limit ends it.
+
+**Quiet Mode** suppresses unsolicited visual comments and speech while retaining manually requested tools and reminder tray notifications. It is a per-session switch, not a permission grant. Try `Capri, quiet mode` and `quiet off`.
+
+**Calendar reminders:** `remind me on 5 December at 9am to call Mum` or `remind me tomorrow at 18:30 to exercise`. Dates and clocks use the local PC time zone. Reminders persist and overdue items trigger when Capri is next opened; this is not a background OS alarm.
+
+See [Visual Lookout and calendar guide](docs/LOOKOUT_AND_CALENDAR.md) for consent details, limits and examples.
+
 ## Capri Control Deck — cyberpunk UI refresh
 
 The desktop Mainframe now uses a consistent Capri-inspired **dark / neon-yellow / cyan / pink** visual language, guided by the owner's reference video. The chat-first layout has a permanent composer, accessible navigation rail, large routine cards, grouped opt-in controls, and a dedicated apps/tools page. Capri's floating desktop character has a small angular speech card with **TALK TO ME** and dismiss actions; the first button activates Talk Once or opens chat if Windows speech isn't configured.
