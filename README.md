@@ -86,6 +86,12 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Screen Sketch — draw over your desktop
+
+Capri can now open an interactive **Screen Sketch Mode** from **Game Center → SCREEN SKETCH**, **Apps & Tools → DRAW ON SCREEN**, or `Capri, draw on screen`. After a confirmation warning, use three neon pen colors, undo, clear, and an explicit **SAVE PNG** that exports only strokes, without capturing the screen. ESC, EXIT, STOP ALL and a three-minute timer always close the drawing surface. Unlike the click-through Game Coach HUD, the temporary sketch window deliberately captures mouse clicks while you draw, so do not leave it active during gameplay.
+
+The overlay is a regular WPF window best suited to desktop/borderless apps, not anti-cheat overlays or exclusive fullscreen. See [Screen Sketch guide](docs/SCREEN_SKETCH.md) for safety and compatibility.
+
 ## Your Memory Vault + in-game coach HUD
 
 Capri now has a real **Memory Vault** under **Control Deck → 05 My memory**. You can explicitly save, edit, forget, export, and clear short personal notes. Voice/chat commands include `remember that I prefer short answers`, `list memories`, and `forget memory #1`. No memory is mined from conversations, files or screenshots automatically. **Use my saved notes in AI replies** is OFF by default; cloud providers require separate opt-in before notes are included in normal chat prompts. Notes are plain local JSON; don't store secrets.

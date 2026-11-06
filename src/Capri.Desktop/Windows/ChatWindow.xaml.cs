@@ -115,6 +115,15 @@ public partial class ChatWindow : Window
     private void OpenConnections_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenConnections();
 
+    private void SketchMode_Click(object sender, RoutedEventArgs e)
+    {
+        var result = App.Instance.OpenScreenSketch();
+        if (result.StartsWith("Screen Sketch active", StringComparison.Ordinal))
+            Hide();
+        else
+            AppendNotification(result);
+    }
+
     private void ListRoutines_Click(object sender, RoutedEventArgs e)
     {
         SelectPage("CHAT");

@@ -68,6 +68,14 @@ public partial class GameCenterWindow : Window
             App.Instance.HideGameCoachTip();
     }
 
+    private void Sketch_Click(object sender, RoutedEventArgs e)
+    {
+        var result = App.Instance.OpenScreenSketch();
+        StatusText.Text = result;
+        if (result.StartsWith("Screen Sketch active", StringComparison.Ordinal))
+            Hide();
+    }
+
     private void HideCoach_Click(object sender, RoutedEventArgs e)
     {
         App.Instance.HideGameCoachTip();

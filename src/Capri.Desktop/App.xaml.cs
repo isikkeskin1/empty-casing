@@ -93,6 +93,7 @@ public partial class App : System.Windows.Application
     public LocalDataStore Store { get; private set; } = null!;
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
+    private ScreenSketchWindow? _screenSketch;
     public BrainRouter Brain { get; private set; } = null!;
     public SecretStore Secrets { get; private set; } = null!;
     public ReminderScheduler Reminders { get; private set; } = null!;
@@ -469,6 +470,7 @@ public partial class App : System.Windows.Application
         StopCallCompanionMode();
         StopAutonomousTask();
         StopSessionRoutine();
+        StopScreenSketch();
         HideGameCoachTip();
         CodeHusk.SetEnabled(false);
         SetObsClipsEnabled(false);
@@ -712,6 +714,35 @@ public partial class App : System.Windows.Application
         };
         _chat?.RefreshMemoryVault();
         return result;
+    }
+
+    public string OpenScreenSketch()
+    {
+        if (_screenSketch is { IsVisible: true })
+            return "Screen Sketch is already active. Press ESC to exit.";
+        if (System.Windows.MessageBox.Show(
+                "Open Screen Sketch Mode?\n\nThis transparent drawing surface " +
+                "temporarily intercepts mouse clicks while you draw over your " +
+                "desktop/game.\n\nPress ESC, the EXIT button or STOP ALL " +
+                "to restore normal mouse input. It also closes automatically " +
+                "after three minutes.\n\nNo game pixels or chats are recorded. Continue?",
+                "Capri — enable screen drawing",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Screen drawing not started.";
+        HideGameCoachTip();
+        _screenSketch = new ScreenSketchWindow();
+        _screenSketch.Closed += (_, _) => _screenSketch = null;
+        _screenSketch.Show();
+        return "Screen Sketch active. Draw over the desktop; ESC or STOP ALL exits. " +
+               "Your drawn strokes are temporary unless you explicitly save PNG.";
+    }
+
+    public void StopScreenSketch()
+    {
+        if (_screenSketch is not null)
+            _screenSketch.Close();
+        _screenSketch = null;
     }
 
     public void ShowGameCoachTip(string tip)
@@ -1688,6 +1719,14 @@ public partial class App : System.Windows.Application
         var memoryCommand = PersonalMemoryPolicy.ParseCommand(command);
         if (memoryCommand is not null)
             return HandleMemoryCommand(memoryCommand);
+        var sketch = ScreenSketchPolicy.Parse(command);
+        if (sketch == "open")
+            return OpenScreenSketch();
+        if (sketch == "close")
+        {
+            StopScreenSketch();
+            return "Screen drawing closed. Normal mouse input restored.";
+        }
         var clipAction = ObsReplayProtocol.ClassifyIntent(command);
         if (clipAction is not null)
             return await RunObsReplayAsync(clipAction);
