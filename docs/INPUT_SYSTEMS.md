@@ -135,3 +135,20 @@ This is a lower-latency turn-handling improvement but **not** full-duplex voice,
 speaker separation, neural VAD, echo cancellation, or an always-on offline
 keyword detector. Tests cover routing, timeouts, duplicates and local commands;
 physical-device voice QA remains required.
+
+
+## Music / system sound amplitude input
+
+DANCE TO AUDIO in Mainframe uses WASAPI loopback on the default Windows
+playback device. After a visible per-session consent warning, it derives
+RMS amplitude and simple pulse timing, discarding raw sample buffers without
+persisting or uploading them. The companion switches to a music-perch
+animation while sound is present and returns to idle/perch after two seconds
+of silence. A brief visual pulse can accompany stronger transients.
+
+**Important:** output audio includes call participants, videos and other
+applications. Unlike a microphone, it is output capture and cannot identify
+which app produced each sound. It never authorizes desktop actions. This
+feature starts OFF after every restart and STOP INPUTS turns it off.
+No song-title detection, audio recording, speaker separation, or accurate
+BPM estimation is claimed.

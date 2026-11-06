@@ -21,6 +21,7 @@ public partial class App : System.Windows.Application
     private SpeechService? _speech;
     private FishAudioClient? _fishVoice;
     private VoicePlaybackService? _voicePlayback;
+    private SystemAudioActivityService? _audioReactions;
     private CancellationTokenSource? _voiceCts;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromSeconds(45) };
     private bool _watchBusy;
@@ -59,12 +60,17 @@ public partial class App : System.Windows.Application
         _companion = new CompanionWindow();
         MainWindow = _companion;
         _companion.Show();
+        _audioReactions = new SystemAudioActivityService(Dispatcher,
+            active => _companion?.SetMusicActivity(active),
+            () => _companion?.OnMusicPulse(),
+            () => _voicePlayback?.IsPlaying == true || _speech?.IsSpeaking == true);
 
         // Security invariant: no persisted opt-in starts the mic or screenshot watcher
         // until the owner explicitly enables the feature in the current app session.
         Settings.WatchScreen = false;
         Settings.ListenToMicrophone = false;
         Settings.EnableDesktopActions = false;
+        Settings.DanceToSystemAudio = false;
 
         _watchTimer.Interval = TimeSpan.FromSeconds(
             AllowedWatchIntervals.Contains(Settings.WatchIntervalSeconds)
@@ -222,6 +228,7 @@ public partial class App : System.Windows.Application
         _talkOnceTimeout.Stop();
         _talkOnceRestoresOff = false;
         SetWatchingEnabled(false);
+        SetDanceToSystemAudio(false);
         SetMicrophoneEnabled(false);
         Settings.EnableDesktopActions = false;
         CancelVoiceOutput();
@@ -272,6 +279,32 @@ public partial class App : System.Windows.Application
             ? "Last screen observation (" + _lastObservedAt.ToLocalTime().ToString("HH:mm") +
               "): " + _lastScreenObservation
             : null;
+
+    public void SetDanceToSystemAudio(bool enabled)
+    {
+        if (_audioReactions is null) return;
+        if (!enabled)
+        {
+            Settings.DanceToSystemAudio = false;
+            _audioReactions.Stop();
+            _chat?.SyncCapabilitySwitches();
+            return;
+        }
+
+        try
+        {
+            _audioReactions.Start();
+            Settings.DanceToSystemAudio = true;
+            _chat?.SyncCapabilitySwitches();
+        }
+        catch
+        {
+            Settings.DanceToSystemAudio = false;
+            _audioReactions.Stop();
+            _chat?.SyncCapabilitySwitches();
+            throw;
+        }
+    }
 
     public void SetWatchingEnabled(bool enabled)
     {
@@ -642,6 +675,7 @@ public partial class App : System.Windows.Application
     {
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
+        _audioReactions?.Dispose();
         Reminders?.Dispose();
         CancelVoiceOutput();
         _voicePlayback?.Dispose();

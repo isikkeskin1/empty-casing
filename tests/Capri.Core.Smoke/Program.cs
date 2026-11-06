@@ -75,6 +75,26 @@ try
     }
     Check(motion.Stopped, "toss decelerates and settles on the screen floor");
 
+    var pulses = new AudioPulseDetector();
+    var audioClock = new DateTimeOffset(2026, 11, 6, 9, 0, 0, TimeSpan.Zero);
+    Check(!pulses.Observe(0, audioClock).Active, "silent system playback is inactive");
+    var firstBeat = pulses.Observe(0.22, audioClock.AddMilliseconds(100));
+    Check(firstBeat.Active && firstBeat.Pulse,
+        "energy onset activates music response and produces beat pulse");
+    var suppressedBeat = pulses.Observe(0.4, audioClock.AddMilliseconds(200));
+    Check(suppressedBeat.Active && !suppressedBeat.Pulse,
+        "closely spaced peaks cannot spam music animations");
+    Check(pulses.IsActive(audioClock.AddSeconds(1)),
+        "active playback persists briefly across sparse WASAPI callbacks");
+    Check(!pulses.IsActive(audioClock.AddSeconds(4)),
+        "inactive system audio stops the music state");
+    pulses.Reset();
+    Check(!pulses.IsActive(audioClock.AddSeconds(5)),
+        "stop/reset clears all remembered activity");
+    Check(!pulses.Observe(double.NaN, audioClock.AddSeconds(6)).Active &&
+          !pulses.Observe(double.PositiveInfinity, audioClock.AddSeconds(7)).Active,
+        "non-finite audio levels are safely ignored");
+
     var screenGate = new ScreenChangeGate();
     var brightFrame = Enumerable.Repeat((byte)90, 144).ToArray();
     Check(screenGate.ShouldObserve(brightFrame, -1),
