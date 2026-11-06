@@ -46,16 +46,18 @@ public static class DesktopActionExecutor
         switch (action.Kind)
         {
             case "open_app":
-                Process.Start(new ProcessStartInfo
+                if (Process.Start(new ProcessStartInfo
                 {
                     FileName = Apps[action.Argument], UseShellExecute = true
-                }) ?? throw new InvalidOperationException("Windows could not start that app.");
+                }) is null)
+                    throw new InvalidOperationException("Windows could not start that app.");
                 return "Windows launched " + action.Argument + ".";
             case "open_url":
-                Process.Start(new ProcessStartInfo
+                if (Process.Start(new ProcessStartInfo
                 {
                     FileName = action.Argument, UseShellExecute = true
-                }) ?? throw new InvalidOperationException("Windows could not open the browser.");
+                }) is null)
+                    throw new InvalidOperationException("Windows could not open the browser.");
                 return "Opened website in your default browser.";
             case "media":
                 var key = MediaKeys[action.Argument];
