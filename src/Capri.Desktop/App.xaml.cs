@@ -72,6 +72,10 @@ public partial class App : System.Windows.Application
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
         context.Items.Add("Reload character art", null, (_, _) => Dispatcher.Invoke(() => _companion?.ReloadArt()));
+        context.Items.Add("Perch on frontmost window", null,
+            (_, _) => Dispatcher.Invoke(() => _companion?.PerchOnFrontWindow()));
+        context.Items.Add("Detach from window", null,
+            (_, _) => Dispatcher.Invoke(() => _companion?.DetachWindow()));
         var animationMenu = new System.Windows.Forms.ToolStripMenuItem("Preview animation");
         foreach (var (title, mood) in new (string, CompanionMood)[]
         {

@@ -1,17 +1,26 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Capri.Core;
 using Capri.Desktop.Services;
 
 namespace Capri.Desktop.Windows;
 
 public partial class CompanionWindow : Window
 {
-    private FrameAnimator? _frames;
-    private CompanionMood _mood = CompanionMood.Idle;
+    private readonly WindowDockingService _windows = new();
     private readonly DispatcherTimer _returnToIdle = new();
+    private readonly DispatcherTimer _follow = new() { Interval = TimeSpan.FromMilliseconds(120) };
+    private readonly DispatcherTimer _flight = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private FrameAnimator? _frames;
+    private WindowDockingService.Target? _attached;
+    private double _relativeX = 0.5;
+    private TossMotion.State _motion;
+    private long _lastMotionTick;
+    private CompanionMood _mood = CompanionMood.Idle;
 
     public CompanionWindow()
     {
@@ -20,13 +29,17 @@ public partial class CompanionWindow : Window
         Closed += (_, _) =>
         {
             _returnToIdle.Stop();
+            _follow.Stop();
+            _flight.Stop();
             _frames?.Dispose();
         };
         _returnToIdle.Tick += (_, _) =>
         {
             _returnToIdle.Stop();
-            SetMood(CompanionMood.Idle);
+            SetMood(_attached.HasValue ? CompanionMood.Perching : CompanionMood.Idle);
         };
+        _follow.Tick += (_, _) => TrackAttachedWindow();
+        _flight.Tick += (_, _) => AdvanceFlight();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -64,15 +77,141 @@ public partial class CompanionWindow : Window
             return;
         }
 
+        _flight.Stop();
+        _follow.Stop();
+        var originalLeft = Left;
+        var originalTop = Top;
+        var watch = Stopwatch.StartNew();
+
         try
         {
             DragMove();
-            App.Instance.SavePosition(Left, Top);
         }
         catch (InvalidOperationException)
         {
-            // A click can finish before Windows initiates a drag.
+            return;
         }
+        finally
+        {
+            watch.Stop();
+        }
+
+        var travel = Math.Sqrt(Math.Pow(Left - originalLeft, 2) + Math.Pow(Top - originalTop, 2));
+        if (travel < 8)
+        {
+            // A click on a perched character should not unpin her from the window.
+            if (_attached.HasValue) _follow.Start();
+            return;
+        }
+
+        DetachWindow();
+        // DragMove returns after mouse release; measure the drop against other apps' top edges.
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var target = _windows.WindowNearEdge(cursor);
+        if (target.HasValue)
+        {
+            Attach(target.Value, cursor.X);
+            return;
+        }
+
+        var dt = Math.Max(0.13, watch.Elapsed.TotalSeconds);
+        var dx = Left - originalLeft;
+        var dy = Top - originalTop;
+        var speed = Math.Sqrt(dx * dx + dy * dy) / dt;
+
+        if (speed > 850 && Math.Sqrt(dx * dx + dy * dy) > 90)
+        {
+            // Velocity is clamped to avoid launching the companion far off-screen.
+            _motion = new TossMotion.State(Left, Top,
+                Math.Clamp(dx / dt * 0.55, -1600, 1600),
+                Math.Clamp(dy / dt * 0.55, -1600, 1600), false);
+            _lastMotionTick = Stopwatch.GetTimestamp();
+            _flight.Start();
+            SetMood(CompanionMood.Tossed);
+        }
+        else
+        {
+            SetMood(CompanionMood.Idle);
+            App.Instance.SavePosition(Left, Top);
+        }
+    }
+
+    private System.Windows.Point ToDip(int pixelX, int pixelY)
+    {
+        var source = PresentationSource.FromVisual(this);
+        var matrix = source?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        return matrix.Transform(new System.Windows.Point(pixelX, pixelY));
+    }
+
+    private void Attach(WindowDockingService.Target target, double centerXInPixels)
+    {
+        _flight.Stop();
+        var pLeft = ToDip(target.Rect.Left, target.Rect.Top);
+        var pRight = ToDip(target.Rect.Right, target.Rect.Bottom);
+        var preferredCenter = ToDip((int)centerXInPixels, target.Rect.Top).X;
+        _relativeX = PerchLayout.RelativePosition(preferredCenter, pLeft.X, pRight.X);
+        _attached = target;
+        _follow.Start();
+        TrackAttachedWindow();
+        SetMood(CompanionMood.Perching);
+    }
+
+    public void PerchOnFrontWindow()
+    {
+        var target = _windows.FrontmostWindow();
+        if (!target.HasValue)
+        {
+            SetMood(CompanionMood.Glitching);
+            return;
+        }
+        Attach(target.Value, target.Value.Rect.Left + target.Value.Rect.Width * 0.72);
+    }
+
+    public void DetachWindow()
+    {
+        _attached = null;
+        _follow.Stop();
+        if (_mood is CompanionMood.Perching or CompanionMood.MusicPerch)
+            SetMood(CompanionMood.Idle);
+    }
+
+    private void TrackAttachedWindow()
+    {
+        if (!_attached.HasValue) return;
+        if (!_windows.TryGetBounds(_attached.Value.Handle, out var bounds))
+        {
+            DetachWindow();
+            App.Instance.SavePosition(Left, Top);
+            return;
+        }
+
+        var leftTop = ToDip(bounds.Left, bounds.Top);
+        var rightBottom = ToDip(bounds.Right, bounds.Bottom);
+        var target = PerchLayout.Place(leftTop.X, rightBottom.X, leftTop.Y,
+            _relativeX, Width, SystemParameters.VirtualScreenTop + 6);
+
+        Left = target.Left;
+        Top = target.Top;
+    }
+
+    private void AdvanceFlight()
+    {
+        var now = Stopwatch.GetTimestamp();
+        var dt = (double)(now - _lastMotionTick) / Stopwatch.Frequency;
+        _lastMotionTick = now;
+
+        var screenLeft = SystemParameters.VirtualScreenLeft;
+        var screenTop = SystemParameters.VirtualScreenTop;
+        var screenRight = screenLeft + SystemParameters.VirtualScreenWidth - Width;
+        var screenBottom = screenTop + SystemParameters.VirtualScreenHeight - Height;
+        _motion = TossMotion.Step(_motion, dt, screenLeft, screenTop, screenRight, screenBottom);
+
+        Left = _motion.Left;
+        Top = _motion.Top;
+        if (!_motion.Stopped) return;
+
+        _flight.Stop();
+        App.Instance.SavePosition(Left, Top);
     }
 
     public void SetMood(CompanionMood mood)
@@ -88,10 +227,11 @@ public partial class CompanionWindow : Window
             CompanionMood.Glitching => ("GLITCHING", "#C994FA", "glitch"),
             CompanionMood.Tossed => ("TOSSED", "#FE7995", "tossed"),
             CompanionMood.Sleeping => ("SLEEPING", "#8C9EC3", "sleep"),
-            CompanionMood.Perching => ("PERCH PREVIEW", "#71DDF1", "perch"),
-            CompanionMood.MusicPerch => ("MUSIC PREVIEW", "#71DDF1", "perch-music"),
+            CompanionMood.Perching => ("PERCHED", "#71DDF1", "perch"),
+            CompanionMood.MusicPerch => ("MUSIC PERCH", "#71DDF1", "perch-music"),
             _ => ("IDLE", "#71DDF1", "idle")
         };
+
         StatusText.Text = "CAPRI // " + label;
         StatusLight.Fill = new SolidColorBrush(
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color)!);
@@ -116,7 +256,13 @@ public partial class CompanionWindow : Window
     private void OpenChat_Click(object sender, RoutedEventArgs e) => App.Instance.ShowChat();
     private void OpenArt_Click(object sender, RoutedEventArgs e) => App.Instance.OpenCharacterFolder();
     private void ReloadArt_Click(object sender, RoutedEventArgs e) => ReloadArt();
-    private void Idle_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Idle);
+    private void Idle_Click(object sender, RoutedEventArgs e)
+    {
+        DetachWindow();
+        SetMood(CompanionMood.Idle);
+    }
+    private void Attach_Click(object sender, RoutedEventArgs e) => PerchOnFrontWindow();
+    private void Detach_Click(object sender, RoutedEventArgs e) => DetachWindow();
     private void Talk_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Talking);
     private void Glitch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Glitching);
     private void Toss_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Tossed);

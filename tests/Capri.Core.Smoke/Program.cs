@@ -30,6 +30,27 @@ try
     Check(AnimationTiming.Load(timingPath).DurationAt(0) == 100,
         "invalid animation manifest falls back safely");
 
+    var near = PerchLayout.IsNearTopEdge(118, 100, 30);
+    Check(near && !PerchLayout.IsNearTopEdge(200, 100, 30),
+        "perch triggers only near an application top edge");
+    Check(Math.Abs(PerchLayout.RelativePosition(180, 100, 500) - 0.2) < 0.001,
+        "window perch remembers the horizontal attachment");
+    var perch = PerchLayout.Place(100, 600, 500, 0.6, 270, 0);
+    Check(perch.Left >= 100 && perch.Left <= 330 && perch.Top == 244,
+        "perch aligns with the window edge and stays within its width");
+    var maximized = PerchLayout.Place(0, 800, 0, 0.5, 270, 6);
+    Check(maximized.Top == 6, "maximized windows keep Capri visible");
+    var narrow = PerchLayout.Place(100, 220, 400, 0.5, 270, 0);
+    Check(Math.Abs(narrow.Left - 25) < 0.001, "narrow windows center the overlay");
+
+    var motion = new TossMotion.State(100, 100, 900, -600, false);
+    for (var i = 0; i < 1800 && !motion.Stopped; i++)
+    {
+        motion = TossMotion.Step(motion, 1.0 / 60.0, 0, 0, 700, 350);
+        CheckBounds(motion);
+    }
+    Check(motion.Stopped, "toss decelerates and settles on the screen floor");
+
     var fakeHandler = new FakeHandler();
     using var client = new HttpClient(fakeHandler);
     using var brain = new OllamaBrain(settings, client);
@@ -48,6 +69,12 @@ static void Check(bool condition, string description)
 {
     if (!condition) throw new Exception("FAILED: " + description);
     Console.WriteLine("PASS: " + description);
+}
+
+static void CheckBounds(TossMotion.State motion)
+{
+    if (motion.Left < 0 || motion.Left > 700 || motion.Top < 0 || motion.Top > 350)
+        throw new Exception("Toss escaped the desktop bounds");
 }
 
 sealed class FakeHandler : HttpMessageHandler
@@ -71,3 +98,4 @@ sealed class FakeHandler : HttpMessageHandler
             { Content = new StringContent("{\"message\":{\"role\":\"assistant\",\"content\":\"ready\"}}") };
     }
 }
+

@@ -6,6 +6,12 @@ Transparent movable Windows overlay, state-driven animation host with seven time
 
 **Release gate:** successful Windows CI run and manual keyboard/mouse tests on a Windows 10/11 desktop.
 
+## Phase 1.5 — interactive desktop presence (implemented in source)
+
+Window-edge snapping on drop, attaching to the frontmost eligible app, position tracking while an app moves, detaching when it minimizes or closes, and bounded toss/inertia physics. User-facing docking controls are available in the context/tray menu.
+
+**Release gate:** confirm docking alignment, z-order, high-DPI multi-monitor behavior, and input interaction on an actual Windows desktop. Only build/smoke checks are automated so far.
+
 ## Phase 2 — faithful animation and interaction
 
 Commission or create appropriately authorized sprite sequences of Capri. Frame-by-frame idle, blink, talking, sleeping, picked-up/tossed, perching and transition animations, with anchoring and hit regions. Improve layout for high-DPI/multimonitor, sound/voice integration, and idle system performance.
