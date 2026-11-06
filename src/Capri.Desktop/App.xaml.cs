@@ -110,6 +110,9 @@ public partial class App : System.Windows.Application
         Reminders = new ReminderScheduler(Store, NotifyReminder);
         _speech = new SpeechService(text =>
             Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
+        _speech.SpeechFinished += () =>
+            Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+        _voicePlayback.PlaybackFinished += OnVoicePlaybackFinished;
 
         _companion = new CompanionWindow();
         MainWindow = _companion;
@@ -171,6 +174,10 @@ public partial class App : System.Windows.Application
                 CancelVoiceOutput();
                 _companion?.ShowReaction("Okay, I'm quiet.");
                 break;
+            case VoiceIntent.CancelReply:
+                CancelCurrentReply();
+                _companion?.ShowReaction("Stopped that reply. Go ahead and rephrase.");
+                break;
             case VoiceIntent.StopInputs:
                 StopAllInputs();
                 break;
@@ -194,7 +201,9 @@ public partial class App : System.Windows.Application
     public void StartTalkOnce()
     {
         if (_speech is null) return;
-        CancelVoiceOutput();
+        // The Talk Once hotkey doubles as a deliberate barge-in button:
+        // abandon any previous AI generation instead of queuing stale speech.
+        CancelCurrentReply();
         var wasOff = !Settings.ListenToMicrophone;
         if (wasOff)
             SetMicrophoneEnabled(true);
@@ -440,6 +449,7 @@ public partial class App : System.Windows.Application
         StopSessionRoutine();
         CodeHusk.SetEnabled(false);
         SetObsClipsEnabled(false);
+        _chat?.CancelActiveReply();
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();
@@ -768,6 +778,35 @@ public partial class App : System.Windows.Application
         }
     }
 
+    /// <summary>
+    /// Stops the current chat generation and audible output. Action effects
+    /// already committed by a tool or external API are not reversible.
+    /// </summary>
+    public void CancelCurrentReply()
+    {
+        _chat?.CancelActiveReply();
+        _voiceRouter.CancelPendingReply();
+        CancelVoiceOutput();
+        _companion?.SetMood(CompanionMood.Idle);
+    }
+
+    private void OnVoicePlaybackFinished()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+            return;
+        }
+        _voiceRouter.ReplyPlaybackFinished(DateTimeOffset.UtcNow,
+            Settings.EnableVoiceFollowUps &&
+            Settings.ListenToMicrophone && !MicrophoneMuted);
+        if (!CallCompanionActive)
+            _companion?.SetMood(CompanionMood.Idle);
+    }
+
+    /// <summary>Used only when a chat turn produces no spoken reply.</summary>
+    public void OnSilentReplyFinished() => OnVoicePlaybackFinished();
+
     public void StopVoiceOutput() => CancelVoiceOutput();
 
     public void RefreshChatConfiguration() => _chat?.RefreshBrainConfiguration();
@@ -785,7 +824,12 @@ public partial class App : System.Windows.Application
 
     public void SpeakIfEnabled(string text)
     {
-        if (_quietMode || !Settings.SpeakReplies || _speech is null || string.IsNullOrWhiteSpace(text)) return;
+        if (_quietMode || !Settings.SpeakReplies || _speech is null || string.IsNullOrWhiteSpace(text))
+        {
+            OnSilentReplyFinished();
+            return;
+        }
+        _companion?.SetMood(CompanionMood.Talking);
         if (!string.Equals(Settings.VoiceProvider, "fish", StringComparison.Ordinal))
         {
             try
@@ -809,14 +853,18 @@ public partial class App : System.Windows.Application
         {
             Debug.WriteLine("Fish speech output failed: " + ex.GetType().Name);
             _companion?.ShowReaction("Fish voice unavailable. Check Voice Setup.");
+            OnVoicePlaybackFinished();
         }
     }
 
-    public async Task<string> AskScreenAsync(string question)
+    public async Task<string> AskScreenAsync(
+        string question, CancellationToken cancellationToken = default)
     {
         var index = Settings.ScreenIndex;
-        var jpeg = await Task.Run(() => ScreenCaptureService.CaptureScreenJpeg(index));
-        return await Brain.SeeScreenAsync(jpeg, question);
+        var jpeg = await Task.Run(() => ScreenCaptureService.CaptureScreenJpeg(index),
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Brain.SeeScreenAsync(jpeg, question, cancellationToken);
     }
 
     private async Task WatchOnceAsync()
@@ -1377,7 +1425,8 @@ public partial class App : System.Windows.Application
     /// The user requested one screenshot. Cloud brain transfer requires its
     /// own disclosure; HANDS-FREE never silently enables external screen upload.
     /// </summary>
-    public async Task<string> AskGameHelpAsync(string question)
+    public async Task<string> AskGameHelpAsync(
+        string question, CancellationToken cancellationToken = default)
     {
         if (!Brain.IsLocal &&
             System.Windows.MessageBox.Show(
@@ -1389,8 +1438,9 @@ public partial class App : System.Windows.Application
                 MessageBoxResult.No) != MessageBoxResult.Yes)
             return "Game help cancelled; no screenshot sent.";
 
+        cancellationToken.ThrowIfCancellationRequested();
         var query = GameHelpPolicy.BuildVisionQuestion(question);
-        return await AskScreenAsync(query);
+        return await AskScreenAsync(query, cancellationToken);
     }
 
     public void OpenUiInspector()
