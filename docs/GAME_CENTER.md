@@ -56,8 +56,7 @@ Advice may be wrong when a screenshot lacks context.
 
 ## Next work
 
-Build Windows system-media "Now Playing" awareness for actual track titles
-plus local beat animations. Discord voice participation needs approved
+The separate Now Playing feature reads local Windows media-session metadata and gives short track-change reactions while DANCE TO AUDIO is enabled. Discord voice participation needs approved
 Discord integration/voice transport and explicitly disclosed AI identity,
 plus per-call audio routing; ordinary app launching is not enough to join
 or speak in a call.

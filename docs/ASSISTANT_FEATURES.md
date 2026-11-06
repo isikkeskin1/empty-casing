@@ -143,3 +143,14 @@ GAME HELP sends a one-frame screenshot to the configured vision model after
 the user requests it. Cloud screenshots always require separate approval,
 even when hands-free desktop actions are armed. Answers are grounded only in
 visible UI and make no claim of access to game internals.
+
+
+## Media session awareness
+
+Local Windows System Media Transport Controls now provide real track/video
+title, artist and source metadata for compatible apps. A NOW PLAYING window
+can pause, play, skip next and skip previous via the current media
+session. Natural commands like "what song is playing" or "pause music"
+use the same methods; HANDS-FREE only skips confirmation when DESKTOP ACTIONS
+is enabled. Under DANCE TO AUDIO, a local 10-second poll produces
+short track-change reactions without sending metadata to a cloud model.

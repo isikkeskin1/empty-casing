@@ -74,3 +74,9 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Game coaching | One-shot screenshot with local/cloud vision, cloud disclosure | In-game screenshot quality and accuracy QA |
 | Multiplayer voice-call participation | Not implemented; requires provider approval/audio routing | Discord Social SDK, device mixing, disclosure and consent |
 | Actual song metadata and synchronized dancing | Not implemented; RMS sound-reactive animation exists | System media metadata and audio timing |
+
+
+| Windows Now Playing metadata | Implemented in source using official Windows SMTC session | Spotify/browser/player compatibility QA |
+| Pause/resume/previous/next media session | Implemented with desktop-action permission and optional hands-free | Media-app support varies |
+| Local track-change reactions | Every 10s while DANCE TO AUDIO is enabled | Human review for noisy browser media |
+| True BPM tracking, lyrics, music search/queue | Not implemented | Provider integrations and streaming DSP required |

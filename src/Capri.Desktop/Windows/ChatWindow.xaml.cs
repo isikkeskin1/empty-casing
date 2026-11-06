@@ -100,6 +100,8 @@ public partial class ChatWindow : Window
     private void OpenUiInspector_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUiInspector();
     private void OpenGames_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenGameCenter();
+    private void OpenNowPlaying_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenNowPlaying();
 
     private void GameHelp_Click(object sender, RoutedEventArgs e) =>
         StartGameHelp();

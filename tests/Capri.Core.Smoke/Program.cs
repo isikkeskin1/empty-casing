@@ -174,6 +174,35 @@ try
     }
     Check(motion.Stopped, "toss decelerates and settles on the screen floor");
 
+    Check(MediaMetadataPolicy.Parse("what song is playing?") == MediaIntent.Status &&
+          MediaMetadataPolicy.Parse("now playing") == MediaIntent.Status &&
+          MediaMetadataPolicy.Parse("what video is playing") == MediaIntent.Status,
+        "now-playing status questions route to Windows SMTC metadata");
+    Check(MediaMetadataPolicy.Parse("pause music") == MediaIntent.Pause &&
+          MediaMetadataPolicy.Parse("resume video") == MediaIntent.Play &&
+          MediaMetadataPolicy.Parse("next song") == MediaIntent.NextTrack &&
+          MediaMetadataPolicy.Parse("previous track") == MediaIntent.PreviousTrack &&
+          MediaMetadataPolicy.Parse("toggle playback") == MediaIntent.TogglePlayback,
+        "media intents distinguish pause, resume, skip and toggle");
+    Check(MediaMetadataPolicy.Parse("buy this album") == MediaIntent.None &&
+          MediaMetadataPolicy.Parse("share my password") == MediaIntent.None &&
+          MediaMetadataPolicy.Parse("play Deepwoken") == MediaIntent.None,
+        "media commands never trigger purchases, credentials or arbitrary games");
+    var currentTrack = new NowPlayingInfo("Test Track", "Test Artist", "Spotify", true);
+    var pausedTrack = currentTrack with { IsPlaying = false };
+    Check(currentTrack.FriendlyDescription.Contains("Test Track") &&
+          pausedTrack.FriendlyDescription.StartsWith("Paused:") &&
+          !MediaMetadataPolicy.ShouldAnnounce(pausedTrack, null),
+        "media output is safely formatted and paused media doesn't trigger reactions");
+    Check(MediaMetadataPolicy.ShouldAnnounce(currentTrack, null) &&
+          !MediaMetadataPolicy.ShouldAnnounce(currentTrack, currentTrack) &&
+          MediaMetadataPolicy.ShouldAnnounce(
+              currentTrack with { Title = "Next track" }, currentTrack),
+        "vibe reactions fire on track changes but not repeated polls");
+    Check(MediaMetadataPolicy.Clean("A\r\nB") == "AB" &&
+          MediaMetadataPolicy.Clean(new string('a', 150), 12).Length == 13,
+        "external media metadata is bounded and control characters removed");
+
     var pulses = new AudioPulseDetector();
     var audioClock = new DateTimeOffset(2026, 11, 6, 9, 0, 0, TimeSpan.Zero);
     Check(!pulses.Observe(0, audioClock).Active, "silent system playback is inactive");
