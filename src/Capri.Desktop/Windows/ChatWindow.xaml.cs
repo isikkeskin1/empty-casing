@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Controls;
+using Button = System.Windows.Controls.Button;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
