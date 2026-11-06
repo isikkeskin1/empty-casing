@@ -6,6 +6,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Color = System.Windows.Media.Color;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Button = System.Windows.Controls.Button;
 
 namespace Capri.Desktop.Windows;
 
