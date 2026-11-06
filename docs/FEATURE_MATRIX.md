@@ -26,6 +26,7 @@ The original fan project has a broad feature set. This file tracks our independe
 | File drop and reading | Not implemented | Parsers and explicit file selection |
 | Editable Personal Memory Vault | Implemented: 40 local notes, commands, UI CRUD/export/clear; opt-in contextual use and cloud-provider consent | Validate on Windows and consider DPAPI encryption/migration |
 | Game Coach overlay HUD | Implemented: click-through 30-second visual tips from explicit screenshot help | Borderless/fullscreen game testing, multi-monitor placement |
+| Screen Sketch / owner drawing | Implemented: InkCanvas overlay, neon pen colors, undo/clear/PNG, Esc/STOP ALL/3-minute expiry | Real Windows mouse/stylus, mixed-DPI and borderless-game QA |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |
 | Code/Husk integration | Read-only Codex/Claude Code lifecycle hooks and per-session local activity feed | Test with installed Codex/Claude versions; hook schemas can change; no per-file details |
 | Installer signing/updates | Not implemented | Safe release/update verification |
