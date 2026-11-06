@@ -1,0 +1,49 @@
+<Window x:Class="Capri.Desktop.Windows.GameCenterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Capri — Game Center" Width="590" Height="650"
+        MinWidth="475" MinHeight="480" Background="#0C1421"
+        Foreground="#E1F2FC" WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Background" Value="#27374A"/>
+      <Setter Property="Foreground" Value="#EAF2F7"/>
+      <Setter Property="BorderBrush" Value="#54768E"/>
+      <Setter Property="Padding" Value="11,7"/>
+      <Setter Property="Margin" Value="0,0,8,0"/>
+      <Setter Property="FontFamily" Value="Consolas"/>
+    </Style>
+  </Window.Resources>
+  <DockPanel Margin="22">
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <TextBlock Text="CAPRI // GAME CENTER" FontSize="23" FontFamily="Consolas"
+                 Foreground="#F88CB2" FontWeight="Bold"/>
+      <TextBlock Text="Read-only installed Steam catalog. Launch through Steam, never random EXEs."
+                 TextWrapping="Wrap" Margin="0,5,0,11" Foreground="#A0B8C8"/>
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="REFRESH" Click="Refresh_Click"
+                Margin="10,0,0,0"/>
+        <TextBox x:Name="SearchBox" Background="#172639" Foreground="White"
+                 BorderBrush="#4D7286" Padding="9,7"
+                 TextChanged="Search_Changed"/>
+      </DockPanel>
+    </StackPanel>
+    <StackPanel DockPanel.Dock="Bottom">
+      <TextBlock x:Name="StatusText" Foreground="#A2D2DB" FontSize="11"
+                 TextWrapping="Wrap" Margin="0,12,0,10"/>
+      <StackPanel Orientation="Horizontal">
+        <Button x:Name="LaunchButton" Content="LAUNCH SELECTED" Click="Launch_Click"
+                IsEnabled="False" Background="#245D57" BorderBrush="#7EE0BF"/>
+        <Button Content="GAME HELP (SCREEN)" Click="GameHelp_Click"
+                Background="#61364A" BorderBrush="#F59BB3"/>
+      </StackPanel>
+      <TextBlock Text="Launch requires desktop actions enabled (or HANDS-FREE). Cloud screenshot help asks separately before sharing. No cheat injection or game-memory access."
+                 Foreground="#839EB3" FontSize="11" TextWrapping="Wrap"
+                 Margin="0,12,0,0"/>
+    </StackPanel>
+    <ListBox x:Name="GamesList" SelectionChanged="Game_Changed" Margin="0,0,0,4"
+             DisplayMemberPath="Name"
+             Background="#111D2E" Foreground="#E8F4FE"
+             BorderBrush="#416174" Padding="8"/>
+  </DockPanel>
+</Window>

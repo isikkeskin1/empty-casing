@@ -98,6 +98,20 @@ public partial class ChatWindow : Window
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
     private void OpenUiInspector_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUiInspector();
+    private void OpenGames_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenGameCenter();
+
+    private void GameHelp_Click(object sender, RoutedEventArgs e) =>
+        StartGameHelp();
+
+    public void StartGameHelp()
+    {
+        if (_busy) return;
+        var text = PromptBox.Text.Trim();
+        _ = SendAsync(string.IsNullOrWhiteSpace(text)
+            ? "game help: What should I do next?" : "game help: " + text);
+    }
+
     private void OpenAutoTask_Click(object sender, RoutedEventArgs e)
     {
         App.Instance.OpenUiInspector();
@@ -345,6 +359,8 @@ public partial class ChatWindow : Window
                     "I don't have a recent screen observation. Turn on WATCH SCREEN or press LOOK NOW.";
             else if (!lookNow && reminder is not null)
                 answer = App.Instance.Reminders.Execute(reminder);
+            else if (!lookNow && GameHelpPolicy.IsGameHelpRequest(prompt))
+                answer = await App.Instance.AskGameHelpAsync(prompt);
             else if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
             {
                 if (!App.Instance.Brain.IsLocal && !App.Instance.Settings.WatchScreen && !lookNow)

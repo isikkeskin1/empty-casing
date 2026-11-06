@@ -66,6 +66,24 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Game Center — installed Steam games and screenshot help
+
+Open **GAMES** in Mainframe to search your installed Steam library and launch
+a title through the local `steam://rungameid/<appid>` protocol. Capri discovers
+Steam installations from Windows registry/default paths, then reads
+`steamapps/libraryfolders.vdf` and installed `appmanifest_*.acf` records.
+No web scraping, game downloads, code injection, arbitrary EXEs or hidden launch
+options. **DESKTOP ACTIONS** must be enabled; HANDS-FREE skips launch confirmation
+for matched installed games. You can also type/say "list games" or
+"play [unique installed game name]".
+
+Press **GAME HELP** while playing (or say "Capri, game help: ...") for a
+single-frame explanation and actionable advice. Screen analysis uses the
+selected vision model. **Cloud vision always asks before uploading a screenshot,**
+even with HANDS-FREE enabled; local Ollama processes it locally. Advice is
+based only on visible pixels, not game-memory reading, cheats, botting, or
+anti-cheat bypass. See [Game Center](docs/GAME_CENTER.md).
+
 ## Hands-free mode (no approval popups for supported desktop actions)
 
 Mainframe → **HANDS-FREE · NO POPUPS** is an opt-in setting. Turning it on

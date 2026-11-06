@@ -16,6 +16,8 @@ public partial class App : System.Windows.Application
     private InputSettingsWindow? _inputSettings;
     private UiInspectorWindow? _uiInspector;
     public UiAutomationNavigator UiNavigator { get; } = new();
+    public SteamGameService SteamGames { get; } = new();
+    private GameCenterWindow? _gameCenter;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
@@ -602,6 +604,67 @@ public partial class App : System.Windows.Application
 
     public void SetAutonomousTaskGoal(string goal) => _uiInspector?.SetGoal(goal);
 
+    public void OpenGameCenter()
+    {
+        if (_gameCenter is null)
+        {
+            _gameCenter = new GameCenterWindow();
+            _gameCenter.Closed += (_, _) => _gameCenter = null;
+        }
+        _gameCenter.Show();
+        _gameCenter.Activate();
+    }
+
+    public void RequestGameHelpFromChat() => _chat?.StartGameHelp();
+
+    public string TryLaunchSteamGame(SteamGame game)
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to launch games.";
+
+        // Re-resolve against current installed Steam metadata, never a user-supplied ID.
+        if (!SteamGames.GetInstalledGames().Any(g =>
+                g.AppId == game.AppId &&
+                g.Name.Equals(game.Name, StringComparison.Ordinal)))
+            return "Game is not in your current installed library. Refresh GAMES.";
+
+        var lease = _actionEpoch;
+        if (!Settings.SkipActionConfirmations)
+        {
+            var approved = System.Windows.MessageBox.Show(
+                "Launch installed Steam game?\n\n" + game.Name +
+                "\n\nSteam will be opened on your PC.",
+                "Capri — launch game",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No);
+            if (approved != MessageBoxResult.Yes) return "Game launch cancelled.";
+        }
+        if (!Settings.EnableDesktopActions || _actionEpoch != lease)
+            return "Stopped. No game launch was sent.";
+
+        return SteamGames.Launch(game);
+    }
+
+    /// <summary>
+    /// The user requested one screenshot. Cloud brain transfer requires its
+    /// own disclosure; HANDS-FREE never silently enables external screen upload.
+    /// </summary>
+    public async Task<string> AskGameHelpAsync(string question)
+    {
+        if (!Brain.IsLocal &&
+            System.Windows.MessageBox.Show(
+                "Send one screenshot to your selected cloud vision provider " +
+                "for in-game help?\n\nIt may contain chats, notifications, names, " +
+                "or other sensitive on-screen information.",
+                "Capri — one-frame game help",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Game help cancelled; no screenshot sent.";
+
+        var query = GameHelpPolicy.BuildVisionQuestion(question);
+        return await AskScreenAsync(query);
+    }
+
     public void OpenUiInspector()
     {
         if (_uiInspector is null)
@@ -615,6 +678,32 @@ public partial class App : System.Windows.Application
 
     public async Task<string?> TryHandleActionAsync(string request)
     {
+        if (request.Equals("list games", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("show my games", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("steam library", StringComparison.OrdinalIgnoreCase))
+        {
+            var games = await Task.Run(() => SteamGames.GetInstalledGames());
+            OpenGameCenter();
+            return games.Count == 0
+                ? "I couldn't find an installed Steam library on this PC."
+                : "Found " + games.Count + " installed Steam games. GAMES is open; " +
+                  "select one, or say 'play' followed by an unambiguous title.";
+        }
+
+        var requestedGame = SteamGameCatalog.ParseLaunchRequest(request);
+        if (requestedGame is not null)
+        {
+            var games = await Task.Run(() => SteamGames.GetInstalledGames());
+            var match = SteamGameCatalog.FindUnique(games, requestedGame);
+            if (match is not null) return TryLaunchSteamGame(match);
+            // Explicit game launcher requests get a direct response.
+            if (request.StartsWith("launch game ", StringComparison.OrdinalIgnoreCase) ||
+                request.StartsWith("play game ", StringComparison.OrdinalIgnoreCase) ||
+                request.StartsWith("open game ", StringComparison.OrdinalIgnoreCase))
+                return "No unique installed Steam match for '" + requestedGame +
+                    "'. Open GAMES to inspect your local catalog.";
+        }
+
         if (ActionPolicy.IsPurchaseRequest(request))
             return "Buying, payments and checkout are disabled.";
 
@@ -746,6 +835,7 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
+        context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Inspect window controls", null, (_, _) => Dispatcher.Invoke(OpenUiInspector));
         context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
         {

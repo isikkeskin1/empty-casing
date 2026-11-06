@@ -67,3 +67,10 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Hands-free no-confirmations setting | Implemented in source; saved preference; must arm desktop actions each session | Manual Windows permission UI QA |
 | Auto-approved supported desktop commands | Allowlisted apps/HTTPS/media and validated UIA navigation | Does not add arbitrary clicks, purchases, sending or destructive actions |
 | Emergency STOP ALL | Stops active microphone, watch, audio, desktop actions and queued AI task steps | Already-completed OS actions cannot be undone |
+
+
+| Installed Steam game discovery | Implemented in source: bounded manifest/VDF reading, searchable Game Center | Test multiple Steam library folders |
+| Open installed Steam games | Implemented in source using steam://rungameid/numeric ID | Local Steam protocol / UAC / launcher QA |
+| Game coaching | One-shot screenshot with local/cloud vision, cloud disclosure | In-game screenshot quality and accuracy QA |
+| Multiplayer voice-call participation | Not implemented; requires provider approval/audio routing | Discord Social SDK, device mixing, disclosure and consent |
+| Actual song metadata and synchronized dancing | Not implemented; RMS sound-reactive animation exists | System media metadata and audio timing |
