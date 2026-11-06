@@ -157,6 +157,12 @@ try
     Check(annotatedJournal[0].Text.Contains("RECENT SESSION ACTIVITY") &&
           annotatedJournal[0].Text.Contains("untrusted", StringComparison.OrdinalIgnoreCase),
         "recent activity is labeled untrusted before a user-triggered model reply");
+    var officialOnly = new CompanionPresenceJournal();
+    officialOnly.Observe(new AmbientContext("explorer", "", ""), stamp);
+    officialOnly.Observe(new AmbientContext("explorer", "Spotify API Song", "Artist"),
+        stamp.AddMinutes(1), allowMediaInModel: false);
+    Check(!officialOnly.DescribeRecent(stamp.AddMinutes(1)).Contains("Spotify API Song"),
+        "official Spotify API playback metadata stays local and out of model inputs");
     journal.Reset();
     Check(journal.DescribeRecent(stamp.AddMinutes(2)) == "" &&
           journal.Observe(new AmbientContext("RobloxPlayerBeta", "", ""),
