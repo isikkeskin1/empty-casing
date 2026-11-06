@@ -99,6 +99,8 @@
                     Checked="Speak_Changed" Unchecked="Speak_Changed"/>
           <CheckBox x:Name="ActionsCheck" Content="DESKTOP ACTIONS" Margin="0,0,0,8"
                     Checked="Actions_Changed" Unchecked="Actions_Changed"/>
+          <Button Content="WINDOW CONTROLS" Click="OpenUiInspector_Click"
+                  Margin="10,0,0,8" Padding="8,3"/>
         </WrapPanel>
         <DockPanel Margin="0,4,0,10">
           <TextBlock Text="WATCH MONITOR" VerticalAlignment="Center" Foreground="#92ACBA"

@@ -97,6 +97,7 @@ public partial class ChatWindow : Window
 
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
+    private void OpenUiInspector_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUiInspector();
     private void TalkOnce_Click(object sender, RoutedEventArgs e)
     {
         try

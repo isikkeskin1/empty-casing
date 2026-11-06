@@ -51,6 +51,21 @@ Select **LOOK NOW** to inspect the selected monitor once. Mainframe's monitor pi
 
 Read [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md) for exact supported behavior, limitations and privacy details.
 
+## Windows control inspector (UI Automation v1)
+
+Open **WINDOW CONTROLS** in Mainframe or **Inspect window controls** in the tray menu.
+Capri reads only accessible *tab names* from the topmost external application, not
+typed text, passwords or form values. After enabling DESKTOP ACTIONS for the current
+session, choose a safe tab and approve one selection. Alternatively type
+"inspect current window" or "switch to the Settings tab". The target is checked
+again immediately before selection and expires after 20 seconds.
+
+**This is not unrestricted computer use.** It cannot click arbitrary buttons,
+type text, send messages, manipulate files, interact with checkout or payments,
+or execute model-suggested commands from a webpage. App tabs without UIA
+accessibility metadata may not be discoverable. See
+[WINDOW_CONTROLS](docs/WINDOW_CONTROLS.md).
+
 ## Optional music and system-audio reactions
 
 In Mainframe, **DANCE TO AUDIO** lets Capri react to the sound level and beats
