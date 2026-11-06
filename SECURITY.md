@@ -211,3 +211,23 @@ confirmation; turning DESKTOP ACTIONS off or pressing STOP ALL revokes the
 execution lease and prevents additional steps. A native UI Automation
 operation that already executed cannot be undone. Never describe this
 setting as unrestricted or universally safe automation.
+
+
+## Steam catalog and game coaching
+
+Game Center reads only Steam's installed-game manifests (with limits on file
+size, library count and manifest count); it does not read save files, execute
+game binaries, scan the entire drive or install anything. Launch requests
+are restricted to numeric app IDs from the locally discovered installed
+catalog and handed off to the locally registered Steam URL protocol.
+No user-supplied executable command line, shell or remote URL is executed.
+Game launches require enabled desktop actions, with normal confirmation
+unless HANDS-FREE is armed. No checkout/purchase actions.
+
+GAME HELP is an explicit one-frame screen capture. With a local vision brain,
+the screenshot stays on the PC. With a cloud brain, Capri shows a separate
+screenshot-sharing permission each time, independent of HANDS-FREE.
+The AI is told to treat screenshot contents as untrusted evidence, not
+commands. It does not perform input injection into games or access memory.
+On-screen names, personal messages or notifications may be visible in
+the captured frame; check screen privacy before sending to cloud.

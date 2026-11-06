@@ -73,6 +73,50 @@ try
     }
     catch (InvalidOperationException) { /* Expected. */ }
 
+    var steamRoot = Path.Combine(directory, "FakeSteam");
+    var steamAppDir = Path.Combine(steamRoot, "steamapps");
+    Directory.CreateDirectory(steamAppDir);
+    File.WriteAllText(Path.Combine(steamAppDir, "appmanifest_1172470.acf"),
+        "\"AppState\"\n{\n\"appid\" \"1172470\"\n\"name\" \"Test Space Adventure\"\n}");
+    File.WriteAllText(Path.Combine(steamAppDir, "appmanifest_333.acf"),
+        "\"AppState\"\n{\n\"appid\" \"333\"\n\"name\" \"Test Space Adventure 2\"\n}");
+    File.WriteAllText(Path.Combine(steamAppDir, "appmanifest_222.acf"),
+        "\"AppState\"\n{\n\"appid\" \"999\"\n\"name\" \"Mismatched Fake Game\"\n}");
+    var testGames = SteamGameCatalog.Discover(steamRoot);
+    Check(testGames.Count == 2 &&
+          testGames.Any(g => g.Name == "Test Space Adventure"),
+        "Steam catalog discovers local installed game manifests without network");
+    Check(SteamGameCatalog.FindUnique(testGames, "Test Space Adventure")?.AppId == 1172470u &&
+          SteamGameCatalog.FindUnique(testGames, "Space Adventure") is null &&
+          SteamGameCatalog.FindUnique(testGames, "Test Space Adventure 2")?.AppId == 333u,
+        "exact Steam game lookup succeeds and ambiguous partial names fail");
+    Check(SteamGameCatalog.LaunchUri(new SteamGame(333, "Test")) ==
+          "steam://rungameid/333",
+        "game launch produces Steam protocol from validated numeric ID only");
+    Check(SteamGameCatalog.ParseManifest("\"appid\" \"1\"\n\"name\" \"Sample\"")?.AppId == 1u &&
+          SteamGameCatalog.ParseManifest("\"appid\" \"oops\"\n\"name\" \"Sample\"") is null &&
+          SteamGameCatalog.ParseManifest("\"appid\" \"1\"\n\"name\" \"\\n\"") is null,
+        "Steam manifest parser rejects invalid IDs and missing names");
+    Check(SteamGameCatalog.ParseLaunchRequest("play game Test Space Adventure") ==
+          "Test Space Adventure" &&
+          SteamGameCatalog.ParseLaunchRequest("launch Test Space Adventure") ==
+          "Test Space Adventure" &&
+          SteamGameCatalog.ParseLaunchRequest("purchase Test Space Adventure") is null,
+        "game launch intents are narrow and never purchase requests");
+    Check(SteamGameCatalog.ParseLibraryPaths("\"path\" \"C:\\\\\\\\Games\"").Count == 1 &&
+          SteamGameCatalog.ParseLibraryPaths("\"path\" \"\\\\\\\\\\\\\\\\server\\\\\\\\share\"")
+              .Count == 0,
+        "Steam library path parser accepts local roots, rejects UNC network shares");
+    Check(GameHelpPolicy.IsGameHelpRequest("game help: where am I?") &&
+          GameHelpPolicy.IsGameHelpRequest("How do I beat this boss?") &&
+          !GameHelpPolicy.IsGameHelpRequest("hey how are you"),
+        "game-coach requests route to explicit one-shot screen vision");
+    Check(GameHelpPolicy.BuildVisionQuestion("What should I do next?")
+              .Contains("untrusted") &&
+          GameHelpPolicy.BuildVisionQuestion("What should I do next?")
+              .Contains("what you can SEE", StringComparison.Ordinal),
+        "game helper tells vision model to ground advice and distrust screen instructions");
+
     var reminder = ReminderParser.Parse("remind me in 10 minutes to stretch");
     Check(reminder?.Kind == ReminderKind.Reminder &&
           reminder.Delay == TimeSpan.FromMinutes(10) &&

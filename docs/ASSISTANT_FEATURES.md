@@ -129,3 +129,17 @@ for the task; screenshots and form values aren't sent.
 
 This version does not click arbitrary buttons, fill text fields, send
 messages, alter files, execute shell commands or make purchases.
+
+
+## Game Center
+
+Lists locally installed Steam games using bounded read-only manifest discovery,
+including additional libraryfolders.vdf paths. Uses a verified numeric Steam
+app ID to launch via the registered steam://rungameid URI. Supports narrow
+"play [installed game]" commands and a searchable list in Mainframe.
+Does not download games, bypass DRM/anti-cheat or execute arbitrary paths.
+
+GAME HELP sends a one-frame screenshot to the configured vision model after
+the user requests it. Cloud screenshots always require separate approval,
+even when hands-free desktop actions are armed. Answers are grounded only in
+visible UI and make no claim of access to game internals.

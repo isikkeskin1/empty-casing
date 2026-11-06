@@ -109,6 +109,10 @@
                   Margin="10,0,0,8" Padding="8,3"/>
           <Button Content="AUTO TASK" Click="OpenAutoTask_Click"
                   Margin="10,0,0,8" Background="#24564D" Padding="8,3"/>
+          <Button Content="GAMES" Click="OpenGames_Click"
+                  Margin="10,0,0,8" Padding="8,3"/>
+          <Button Content="GAME HELP" Click="GameHelp_Click"
+                  Margin="10,0,0,8" Background="#364E67" Padding="8,3"/>
         </WrapPanel>
         <DockPanel Margin="0,4,0,10">
           <TextBlock Text="WATCH MONITOR" VerticalAlignment="Center" Foreground="#92ACBA"
