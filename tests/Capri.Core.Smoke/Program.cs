@@ -497,6 +497,7 @@ try
         "expired Talk Once permission cannot authorize new speech");
 
     Check(VoiceTurnRouter.IsInterruptPhrase("Capri stop talking") &&
+          VoiceTurnRouter.IsInterruptPhrase("Capri stop all") &&
           !VoiceTurnRouter.IsInterruptPhrase("Capri please purchase something") &&
           !VoiceTurnRouter.IsInterruptPhrase("stop talking"),
         "only a prefixed stop phrase is eligible for speech interruption");
@@ -506,6 +507,9 @@ try
           voice.Evaluate("Capri stop", clock.AddSeconds(1), false, true, true)
               .Intent == VoiceIntent.StopSpeech,
         "speaker barge-in is opt-in and permits only stopping output");
+    Check(voice.Evaluate("Capri stop all", clock.AddSeconds(2), false, true, true)
+              .Intent == VoiceIntent.StopInputs,
+        "explicit STOP ALL can interrupt output when opted in");
     Check(voice.Evaluate("Capri buy this", clock.AddSeconds(3), false, true, true)
               .Intent == VoiceIntent.Ignore,
         "speaker output cannot authorize other agent requests");
