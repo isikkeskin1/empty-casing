@@ -225,6 +225,38 @@ public partial class App : System.Windows.Application
         _chat?.SyncCapabilitySwitches();
     }
 
+    /// <summary>
+    /// The saved no-popup preference does not grant background permissions: every
+    /// launch still starts with desktop actions disabled. The owner must re-arm.
+    /// </summary>
+    public void SetHandsFreeMode(bool enabled)
+    {
+        if (!enabled)
+        {
+            StopAutonomousTask();
+            _actionEpoch++;
+        }
+        Settings.SkipActionConfirmations = enabled;
+        if (enabled) Settings.EnableDesktopActions = true;
+        Store.SaveSettings(Settings);
+        _chat?.SyncCapabilitySwitches();
+        _companion?.ShowReaction(enabled
+            ? "Hands-free ready. Supported desktop actions won't ask for individual approval. STOP INPUTS anytime."
+            : "Hands-free disabled. Normal confirmations restored.");
+    }
+
+    public void SetDesktopActionsEnabled(bool enabled)
+    {
+        if (!enabled)
+        {
+            StopAutonomousTask();
+            _actionEpoch++;
+        }
+        Settings.EnableDesktopActions = enabled;
+        Store.SaveSettings(Settings);
+        _chat?.SyncCapabilitySwitches();
+    }
+
     public void StopAllInputs()
     {
         StopAutonomousTask();
@@ -488,19 +520,26 @@ public partial class App : System.Windows.Application
         var dataDisclosure = Brain.IsLocal
             ? "Planning is local with Ollama."
             : "Your selected cloud AI will receive the goal, window title and eligible navigation labels.";
-        var permit = System.Windows.MessageBox.Show(
-            "Authorize ONE autonomous navigation task?\n\n" +
-            "Window: " + inspectedWindow.Title + "\nGoal: " + goal + "\n\n" +
-            "Capri may use up to FIVE safe navigation controls within 90 seconds, " +
-            "without asking after each selection.\n\n" +
-            "Only tabs, tree expansion and named navigation buttons (Back/Home/Help/Menu etc).\n" +
-            "No typing, Save/Send, purchases, account/security or destructive controls.\n" +
-            dataDisclosure +
-            "\n\nSTOP TASK or STOP INPUTS revokes this permission.\n\nStart task?",
-            "Capri — one-task autonomy permission",
-            MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-        if (permit != MessageBoxResult.Yes)
-            return "Task cancelled. No autonomous actions authorized.";
+        // Hands-free skips confirmation ONLY after explicit desktop-action arming.
+        // Model decisions are still checked against the same hard action allowlist.
+        var approval = ActionApprovalPolicy.Decide(Settings.EnableDesktopActions,
+            Settings.SkipActionConfirmations, locallyValidated: true, prohibited: false);
+        if (approval != ActionApproval.HandsFree)
+        {
+            var permit = System.Windows.MessageBox.Show(
+                "Authorize ONE autonomous navigation task?\n\n" +
+                "Window: " + inspectedWindow.Title + "\nGoal: " + goal + "\n\n" +
+                "Capri may use up to FIVE safe navigation controls within 90 seconds, " +
+                "without asking after each selection.\n\n" +
+                "Only tabs, tree expansion and named navigation buttons (Back/Home/Help/Menu etc).\n" +
+                "No typing, Save/Send, purchases, account/security or destructive controls.\n" +
+                dataDisclosure +
+                "\n\nSTOP TASK or STOP INPUTS revokes this permission.\n\nStart task?",
+                "Capri — one-task autonomy permission",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (permit != MessageBoxResult.Yes)
+                return "Task cancelled. No autonomous actions authorized.";
+        }
 
         var epoch = _actionEpoch;
         using var cts = new CancellationTokenSource();
@@ -536,13 +575,21 @@ public partial class App : System.Windows.Application
             return "Cannot select tab: " + reason;
 
         var epoch = _actionEpoch;
-        var answer = System.Windows.MessageBox.Show(
-            "Select exactly one accessibility tab?\n\nApplication: " + snapshot.Title +
-            "\nTab: " + tabName +
-            "\n\nNo arbitrary mouse clicks or keyboard text will be sent.",
-            "Capri — approve tab navigation", MessageBoxButton.YesNo,
-            MessageBoxImage.Question, MessageBoxResult.No);
-        if (answer != MessageBoxResult.Yes) return "Cancelled. No action taken.";
+        var approval = ActionApprovalPolicy.Decide(Settings.EnableDesktopActions,
+            Settings.SkipActionConfirmations, locallyValidated: true,
+            prohibited: !UiNavigationPolicy.IsSafeTabLabel(tabName));
+        if (approval == ActionApproval.Blocked)
+            return "This tab action is disabled or blocked by policy.";
+        if (approval == ActionApproval.ConfirmEachAction)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Select exactly one accessibility tab?\n\nApplication: " + snapshot.Title +
+                "\nTab: " + tabName +
+                "\n\nNo arbitrary mouse clicks or keyboard text will be sent.",
+                "Capri — approve tab navigation", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes) return "Cancelled. No action taken.";
+        }
         if (_actionEpoch != epoch || !Settings.EnableDesktopActions)
             return "Stopped. No tab action was performed.";
         try { return await UiNavigator.SelectTabAsync(snapshot, tabName); }
@@ -610,13 +657,21 @@ public partial class App : System.Windows.Application
         if (!ActionPolicy.TryValidate(action, out var reason))
             return "Blocked: " + reason;
 
-        var answer = System.Windows.MessageBox.Show(
-            "Capri would like to:\n\n" + action.Description + "\n\nAllow this one action?",
-            "Capri — approve desktop action",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No);
-        if (answer != MessageBoxResult.Yes) return "Cancelled. No action was taken.";
+        var approval = ActionApprovalPolicy.Decide(Settings.EnableDesktopActions,
+            Settings.SkipActionConfirmations, locallyValidated: true,
+            prohibited: ActionPolicy.IsPurchaseRequest(request));
+        if (approval == ActionApproval.Blocked)
+            return "Desktop actions are disabled, or the request is prohibited.";
+        if (approval == ActionApproval.ConfirmEachAction)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Capri would like to:\n\n" + action.Description + "\n\nAllow this one action?",
+                "Capri — approve desktop action",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes) return "Cancelled. No action was taken.";
+        }
         if (_actionEpoch != epoch || !Settings.EnableDesktopActions)
             return "Stopped. The action was not run.";
 

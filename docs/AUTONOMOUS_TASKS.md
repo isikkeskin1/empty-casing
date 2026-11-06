@@ -62,3 +62,25 @@ Because app-provided labels are not a guarantee of behavior, test only on
 trusted apps. No UIA action can be completely undone after execution;
 task interruption prevents *further* steps rather than rolling back a
 completed native click.
+
+
+## No popups preference
+
+For owners who want to issue commands without repeated modal approvals,
+enable HANDS-FREE · NO POPUPS in Mainframe. It arms desktop actions
+immediately for that session and stores the no-confirmations preference.
+Launches still start with desktop actions disarmed, so the checkbox
+alone cannot silently authorize automation after a restart.
+
+With HANDS-FREE plus DESKTOP ACTIONS enabled, ordinary allowlisted desktop
+commands and the bounded AUTO TASK runner do not display confirmation
+popups. The task is still explicitly started from the interface, limited
+to 5 actions / 90 seconds and an approved pinned app, and stays reversible
+only where Windows permits. STOP ALL revokes the task's lease.
+
+Hands-free does **not** expand the set of actions Capri knows how to perform:
+purchases, financial transfers, credentials, sending messages, destructive
+changes, arbitrary clicks and script execution are still excluded. File
+sharing/vision/audio capture keep their separate consent controls. If a
+cloud brain is selected, the task goal and allowed navigation metadata
+are sent to that model without a separate task approval popup.

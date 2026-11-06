@@ -99,6 +99,12 @@
                     Checked="Speak_Changed" Unchecked="Speak_Changed"/>
           <CheckBox x:Name="ActionsCheck" Content="DESKTOP ACTIONS" Margin="0,0,0,8"
                     Checked="Actions_Changed" Unchecked="Actions_Changed"/>
+          <CheckBox x:Name="HandsFreeCheck" Content="HANDS-FREE · NO POPUPS"
+                    Margin="12,0,0,8" Foreground="#86E7CD"
+                    Checked="HandsFree_Changed" Unchecked="HandsFree_Changed"/>
+          <Button Content="STOP ALL" Click="StopInputs_Click"
+                  Margin="10,0,0,8" Background="#78304A"
+                  BorderBrush="#DD6787" Padding="8,3"/>
           <Button Content="WINDOW CONTROLS" Click="OpenUiInspector_Click"
                   Margin="10,0,0,8" Padding="8,3"/>
           <Button Content="AUTO TASK" Click="OpenAutoTask_Click"
@@ -119,7 +125,7 @@
                     Background="#182334" Foreground="#121B29"/>
         </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="DANCE TO AUDIO monitors system playback levels (including calls) only while enabled and never stores audio. TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
+                   Text="DANCE TO AUDIO monitors system playback levels (including calls) only while enabled and never stores audio. TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. HANDS-FREE skips per-action warnings for currently supported commands and auto tasks; it arms DESKTOP ACTIONS when switched on. Startup and STOP ALL disarm execution. Purchases, credentials, sending and destructive actions stay blocked."/>
       </StackPanel>
     </Border>
 

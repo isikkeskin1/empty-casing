@@ -22,6 +22,9 @@ public sealed class AppSettings
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }
     public bool EnableDesktopActions { get; set; }
+    // Saved preference, NOT a startup permission grant. Desktop actions are re-armed
+    // explicitly each session; STOP INPUTS revokes all active execution permission.
+    public bool SkipActionConfirmations { get; set; }
     public bool DanceToSystemAudio { get; set; }
     public bool EnableVoiceFollowUps { get; set; }
     public bool AllowVoiceInterrupt { get; set; }
