@@ -1,0 +1,69 @@
+<Window x:Class="Capri.Desktop.Windows.CallCompanionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Capri — Voice Call Companion" Width="585" Height="630"
+        MinWidth="505" MinHeight="540"
+        Background="#0E1725" Foreground="#E4F2FC"
+        WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Background" Value="#26374C"/>
+      <Setter Property="Foreground" Value="#E8F4FA"/>
+      <Setter Property="BorderBrush" Value="#5A7B8D"/>
+      <Setter Property="Padding" Value="12,7"/>
+      <Setter Property="Margin" Value="0,0,9,0"/>
+      <Setter Property="FontFamily" Value="Consolas"/>
+    </Style>
+  </Window.Resources>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="24">
+      <TextBlock Text="CAPRI // CALL COMPANION" Foreground="#FD8DB2"
+                 FontWeight="Bold" FontFamily="Consolas" FontSize="24"/>
+      <TextBlock Text="Let Capri join the conversation through your configured virtual mic. Real call audio, not fake call buttons."
+                 TextWrapping="Wrap" Foreground="#A7C4D1" Margin="0,8,0,14"/>
+      <Border Background="#16263B" BorderBrush="#496F86"
+              BorderThickness="1" Padding="14" CornerRadius="5">
+        <StackPanel>
+          <TextBlock Text="AUDIO ROUTING" Foreground="#80E1D0"
+                     FontWeight="Bold" FontFamily="Consolas"/>
+          <TextBlock Text="INCOMING: Windows default speaker output (local Windows speech recognition)"
+                     Foreground="#B4CCDA" TextWrapping="Wrap" Margin="0,9,0,6"/>
+          <TextBlock x:Name="OutputDeviceText" Foreground="#B4CCDA"
+                     TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <TextBlock Text="In Discord or Zoom, route incoming call audio to the Windows default output. Set the call's microphone to the input side of your virtual audio cable; in Capri INPUTS choose its output side as the speaker. Fish Audio voice is required for independent output routing."
+                     Foreground="#92AEBF" TextWrapping="Wrap" FontSize="11"/>
+          <Button Content="OPEN INPUTS / DEVICES" Click="Inputs_Click"
+                  HorizontalAlignment="Left" Margin="0,12,0,0"/>
+        </StackPanel>
+      </Border>
+      <Border Margin="0,13,0,0" BorderBrush="#7D5160" BorderThickness="1"
+              Background="#291D2B" Padding="13" CornerRadius="5">
+        <StackPanel>
+          <TextBlock Text="CALL CONSENT" Foreground="#FFC8D5"
+                     FontWeight="Bold" FontFamily="Consolas"/>
+          <TextBlock Text="Call playback may contain voices, music and notifications. Only speech addressed to 'Capri' generates responses, and those replies are spoken as an identified AI companion. Raw audio is processed locally, never recorded. Addressed questions may reach your chosen cloud brain; responses sent to Fish Audio for voice synthesis."
+                     TextWrapping="Wrap" Margin="0,8,0,10" Foreground="#DBBDCC"/>
+          <CheckBox x:Name="InformedCheck"
+                    Content="I told call participants Capri is an AI and obtained permission to listen/respond."
+                    Foreground="#F3D4DF"
+                    Margin="0,0,0,2"/>
+        </StackPanel>
+      </Border>
+      <WrapPanel Margin="0,17,0,9">
+        <Button x:Name="StartButton" Content="START CALL MODE"
+                Click="Start_Click" Background="#235F57"
+                BorderBrush="#84DFBA"/>
+        <Button x:Name="StopButton" Content="STOP CALL MODE"
+                Click="Stop_Click" IsEnabled="False"
+                Background="#802F47" BorderBrush="#E57495"/>
+        <Button Content="OPEN DISCORD" Click="Discord_Click"/>
+      </WrapPanel>
+      <TextBlock x:Name="StatusText" Foreground="#9FE4CF"
+                 FontSize="12" TextWrapping="Wrap"
+                 Text="Call Mode OFF. Join the voice call in the call app, then enable this mode."/>
+      <TextBlock Text="Capri cannot join Discord voice channels automatically without the provider's authorized RPC/OAuth integration. Call Mode uses your existing Discord/Zoom session and routes sound via the selected virtual audio device. STOP ALL stops listening and speaking."
+                 Foreground="#8BA6B6" FontSize="11" TextWrapping="Wrap"
+                 Margin="0,16,0,0"/>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

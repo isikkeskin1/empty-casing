@@ -248,3 +248,30 @@ session every ten seconds and may show a short local title reaction
 when the playing track changes. Polling stops when DANCE TO AUDIO
 is disabled or STOP ALL is pressed. No audio transcription, metadata
 uploads, playlist edits or purchases.
+
+
+## Voice Call Companion
+
+The call companion is OFF by default, with no persistent listening flag.
+It requires explicitly confirming that everyone has been told an AI will
+listen and speak. It listens to default Windows speaker playback using
+WASAPI loopback and Windows Speech Recognition on the device (not a
+third-party transcription endpoint). No raw audio is persisted or uploaded.
+
+Only addressed "Capri ..." utterances are considered. The model receives
+a single untrusted text utterance without private conversation history,
+screen data or desktop-action tools. This input CANNOT invoke computer
+actions. The reply is synthesized with Fish Audio and played on an
+explicitly selected non-default output device. The user routes that output
+to an input of their call app using virtual audio-cable software.
+Transcribed addressed messages may go to a configured cloud brain and
+reply text to Fish Audio, even though the source audio stays local.
+
+Incoming audio may contain music, voices and unrelated notifications.
+Windows playback capture is not a reliable isolation of one call app.
+Call participants must be informed and consent; starting the mode does
+not establish legal consent on their behalf. Call Mode doesn't join
+voice channels or send chat messages by bot API and never impersonates
+the human account owner. STOP CALL MODE or STOP ALL cancels listening.
+Provider device routing and feedback-loop avoidance require real-machine
+testing before relying on this for calls.

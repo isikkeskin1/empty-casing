@@ -154,3 +154,13 @@ session. Natural commands like "what song is playing" or "pause music"
 use the same methods; HANDS-FREE only skips confirmation when DESKTOP ACTIONS
 is enabled. Under DANCE TO AUDIO, a local 10-second poll produces
 short track-change reactions without sending metadata to a cloud model.
+
+
+## Voice Call Companion (experimental)
+
+An explicit-activation voice call mode captures default Windows output
+with WASAPI loopback and recognizes addressed speech locally with Windows
+Speech Recognition. Capri answers with the selected AI brain and Fish voice
+through the user-selected virtual audio cable endpoint, after an audible
+AI introduction. Incoming caller speech is not allowed to operate the PC.
+There is no auto-join, account impersonation, or silent recording.
