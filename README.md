@@ -8,30 +8,28 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 
 - Transparent, always-on-top, draggable companion with window-edge snapping, follow-on-move, detach on minimize/close and bounded toss motion
 - Optional user-provided PNG sequences for idle, talk, glitch, sleep, toss, perch and music-perch; individual frame timing supported
-- Local chat powered by Ollama, with an editable model name
+- Local Ollama or optional NVIDIA, Gemini, OpenRouter and OpenAI cloud chat, with editable model IDs
 - Local JSON history and settings, including saved companion position
 - Tray menu, show/hide shortcut (Ctrl+Shift+Space), and opening the animation folder
 - Screen questions: **LOOK NOW** explicitly captures the primary display and sends a JPEG to a local Ollama vision model
 - Opt-in watch mode: capture every 45 seconds and show brief AI reactions as a temporary character bubble
 - Windows microphone recognition: toggle MIC ON, then start a request with **"Capri"**; native Windows text-to-speech output can be enabled separately
 - Approval-gated desktop actions: launch selected applications, open HTTPS pages and send media keys. No purchases, arbitrary clicks, command execution, typing, deletion or messaging
-- Windows CI which compiles, runs smoke checks and produces a downloadable Windows build artifact
+- Per-user Windows installer, first-run brain and voice wizard, cloud keys encrypted using Windows DPAPI
+- Windows CI builds a portable ZIP and installer executable
 
-**Not yet implemented:** seamless streamed voice conversation, character-specific voice, multi-monitor vision selection, game-event understanding, Discord call participation, general computer use, semantic memory or an installer. Current speech uses the Windows-installed recognizer and voice; current vision is a **single primary-monitor snapshot**, not a continuous video feed. The current action allowlist is deliberately limited and every action needs consent. See [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md).
+**Not yet implemented:** seamless streamed voice conversation, character-specific voice, multi-monitor vision selection, game-event understanding, Discord call participation, general computer use, semantic memory or an updater. Current speech uses the Windows-installed recognizer and voice; current vision is a **single primary-monitor snapshot**, not a continuous video feed. The current action allowlist is deliberately limited and every action needs consent. See [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md).
 
-## Get started (Windows 10/11)
+## Get started (Windows 10/11 x64)
 
-Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and [Ollama](https://ollama.com/download/windows). Then in PowerShell:
+1. Open [GitHub Actions](https://github.com/isikkeskin1/empty-casing/actions), choose a successful **Windows build and installer** run, download the **Capri-Setup** artifact, extract its ZIP and open Capri-Setup.exe. Verify the source and provenance before running unsigned software.
+2. The first-launch **CAPRI // SETUP** wizard opens. Choose LOCAL — Ollama or an optional cloud provider.
+3. **Local:** click DOWNLOAD OLLAMA to visit the official download page, install Ollama, then click DOWNLOAD LOCAL MODELS for the text and vision models (defaults qwen3:4b and qwen3-vl:4b).
+4. **Cloud:** open the selected provider's official API-key page, paste your key, select the exact model ID, and optionally set a vision-capable model. Providers can charge or impose rate limits.
+5. Choose a Windows voice and preview it. Click TEST CONNECTION and SAVE & OPEN MAINFRAME. Cloud test requests may use credits.
+6. In Mainframe, enable mic, screen watch, speech output or desktop actions separately if desired. Purchasing and checkout remain blocked.
 
-~~~powershell
-ollama pull qwen3:4b
-ollama pull qwen3-vl:4b
-dotnet run --project src/Capri.Desktop/Capri.Desktop.csproj
-~~~
-
-If Ollama is not running, start the Ollama Windows app. The text model and vision model in the mainframe must both match models installed locally in Ollama. Screen questions require a vision-capable model.
-
-Alternatively, use a successful run's artifact from **Actions > Windows build**, extract it and run Capri.Desktop.exe. The CI build is self-contained, but the local AI server and model are not bundled.
+The installer includes the .NET runtime, **not** Ollama, model weights, copyrighted animation assets, or cloud credits. Developer setup is described in [the guide](docs/SETUP.md).
 
 **Controls:** drag the floating character to move it; double-click to open chat; Ctrl+Shift+Space toggles chat. **Drop near another app's top edge** to perch on its window; she follows that window while it moves and detaches if it's minimized or closed. **Flick her quickly** to toss her around the screen with damped bouncing. Right-click her or use the tray to select **Perch on frontmost window**, **Detach from window**, or any manual animation preview. Music-perch is still a visual preview; beat synchronization isn't implemented.
 
@@ -41,7 +39,7 @@ The snap system only reads top-level window rectangles. It does not inspect your
 
 ## Screen, mic and desktop assistant
 
-Select **LOOK NOW** to inspect the primary monitor once. For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go only to local Ollama, are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
+Select **LOOK NOW** to inspect the primary monitor once. For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
 
 **MIC ON** uses Microsoft's installed Windows speech recognizer, not a cloud transcription endpoint provided by this app. Say "Capri, what's on my screen?" (while WATCH SCREEN is on) or "Capri, open notepad" (with DESKTOP ACTIONS enabled). Spoken recognition depends on the language pack you have installed. **SPEAK REPLIES** uses your system voice; it isn't an imitation of a voice actor.
 

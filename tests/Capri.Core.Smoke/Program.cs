@@ -85,6 +85,43 @@ try
         "assistant generates an allowlisted plan without executing anything");
     Check(await brain.PlanActionAsync("please buy this") is null,
         "purchase prompt cannot reach the action planner");
+    Check(ProviderCatalog.IsLocal("local") && !ProviderCatalog.IsLocal("nvidia"),
+        "provider selection distinguishes local from cloud");
+    Check(ProviderCatalog.Get("nvidia").ApiBase == "https://integrate.api.nvidia.com/v1/",
+        "NVIDIA API endpoint is pinned");
+    Check(ProviderCatalog.Get("gemini").ApiBase == "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "Gemini compatible API endpoint is pinned");
+
+    if (OperatingSystem.IsWindows())
+    {
+        var vault = new SecretStore(directory);
+        vault.Save("nvidia", "test-key-only-for-smoke");
+        Check(vault.HasKey("nvidia") && vault.Read("nvidia") == "test-key-only-for-smoke",
+            "DPAPI secret roundtrips for current Windows user");
+        var encrypted = File.ReadAllBytes(Path.Combine(directory, "credentials", "nvidia.dpapi"));
+        Check(!System.Text.Encoding.UTF8.GetString(encrypted).Contains("test-key-only-for-smoke"),
+            "API key not stored in plaintext");
+
+        var cloudSettings = new AppSettings
+        {
+            BrainProvider = "nvidia", CloudTextModel = "test-chat", CloudVisionModel = "test-vision"
+        };
+        var cloudFake = new CloudFakeHandler();
+        using var cloudClient = new HttpClient(cloudFake);
+        using var cloud = new CloudBrain(cloudSettings, vault, cloudClient);
+        Check(await cloud.TestAsync() == "ready", "cloud API returns chat completion");
+        Check(cloudFake.Authenticated && cloudFake.CorrectHost &&
+              cloudFake.CorrectTextModel, "cloud API uses fixed HTTPS endpoint and bearer key");
+        Check(await cloud.SeeScreenAsync(new byte[] { 1, 2, 3 }, "look") == "ready" &&
+              cloudFake.SawVision, "vision request sends an image only to selected provider");
+        Check((await cloud.PlanActionAsync("open notepad"))?.Kind == "open_app",
+            "cloud planner returns an allowlisted proposal");
+        Check(await cloud.PlanActionAsync("buy something") is null,
+            "cloud action planner blocks buying before network call");
+        vault.Delete("nvidia");
+        Check(!vault.HasKey("nvidia"), "stored provider key can be deleted");
+    }
+
     Console.WriteLine("All Capri.Core smoke checks passed.");
 }
 finally
@@ -148,5 +185,41 @@ sealed class FakeHandler : HttpMessageHandler
         });
         return new HttpResponseMessage(HttpStatusCode.OK)
             { Content = new StringContent(json) };
+    }
+}
+
+
+sealed class CloudFakeHandler : HttpMessageHandler
+{
+    public bool Authenticated { get; private set; }
+    public bool CorrectHost { get; private set; }
+    public bool CorrectTextModel { get; private set; }
+    public bool SawVision { get; private set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        CorrectHost = request.RequestUri?.Scheme == "https" &&
+            request.RequestUri.Host == "integrate.api.nvidia.com" &&
+            request.RequestUri.AbsolutePath == "/v1/chat/completions";
+        Authenticated = request.Headers.Authorization?.Scheme == "Bearer" &&
+            request.Headers.Authorization.Parameter == "test-key-only-for-smoke";
+        if (!Authenticated || !CorrectHost) throw new Exception("Cloud destination or authentication invalid.");
+
+        var json = await request.Content!.ReadAsStringAsync(cancellationToken);
+        CorrectTextModel |= json.Contains("\"model\":\"test-chat\"", StringComparison.Ordinal);
+        SawVision |= json.Contains("\"model\":\"test-vision\"", StringComparison.Ordinal) &&
+            json.Contains("data:image/jpeg;base64,AQID", StringComparison.Ordinal);
+        var content = json.Contains("\"kind\"", StringComparison.Ordinal) ||
+                      json.Contains("open notepad", StringComparison.Ordinal)
+            ? "{\"kind\":\"open_app\",\"argument\":\"notepad\"}" : "ready";
+        var response = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            choices = new[] { new { message = new { role = "assistant", content } } }
+        });
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(response)
+        };
     }
 }

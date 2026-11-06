@@ -16,8 +16,7 @@ public partial class ChatWindow : Window
     {
         InitializeComponent();
         DataContext = this;
-        ModelBox.Text = App.Instance.Settings.OllamaModel;
-        VisionModelBox.Text = App.Instance.Settings.VisionModel;
+        RefreshBrainConfiguration();
         SyncCapabilitySwitches();
 
         foreach (var turn in App.Instance.Store.LoadHistory())
@@ -30,6 +29,16 @@ public partial class ChatWindow : Window
 
         Loaded += async (_, _) => await CheckBrainAsync();
     }
+
+    public void RefreshBrainConfiguration()
+    {
+        var settings = App.Instance.Settings;
+        ModelBox.Text = App.Instance.Brain.IsLocal ? settings.OllamaModel : settings.CloudTextModel;
+        VisionModelBox.Text = App.Instance.Brain.IsLocal ? settings.VisionModel : settings.CloudVisionModel;
+        _ = CheckBrainAsync();
+    }
+
+    private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
 
     public void SyncCapabilitySwitches()
     {
@@ -63,7 +72,9 @@ public partial class ChatWindow : Window
     private async Task CheckBrainAsync()
     {
         var available = await App.Instance.Brain.IsAvailableAsync();
-        UpdateStatus(available ? "LOCAL BRAIN ONLINE" : "OLLAMA OFFLINE",
+        UpdateStatus(available
+            ? (App.Instance.Brain.IsLocal ? "LOCAL BRAIN ONLINE" : "CLOUD KEY READY")
+            : (App.Instance.Brain.IsLocal ? "OLLAMA OFFLINE" : "CLOUD KEY MISSING"),
             available ? Colors.LightGreen : Colors.Orange);
     }
 
@@ -77,13 +88,22 @@ public partial class ChatWindow : Window
     {
         var selected = ModelBox.Text.Trim();
         var vision = VisionModelBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(selected) || string.IsNullOrWhiteSpace(vision))
+        if (string.IsNullOrWhiteSpace(selected) ||
+            (App.Instance.Brain.IsLocal && string.IsNullOrWhiteSpace(vision)))
         {
-            UpdateStatus("SET BOTH MODEL NAMES", Colors.Orange);
+            UpdateStatus("SET REQUIRED MODEL NAMES", Colors.Orange);
             return;
         }
-        App.Instance.Settings.OllamaModel = selected;
-        App.Instance.Settings.VisionModel = vision;
+        if (App.Instance.Brain.IsLocal)
+        {
+            App.Instance.Settings.OllamaModel = selected;
+            App.Instance.Settings.VisionModel = vision;
+        }
+        else
+        {
+            App.Instance.Settings.CloudTextModel = selected;
+            App.Instance.Settings.CloudVisionModel = vision;
+        }
         App.Instance.Store.SaveSettings(App.Instance.Settings);
         UpdateStatus("MODELS SAVED", Colors.LightSkyBlue);
     }
@@ -91,6 +111,15 @@ public partial class ChatWindow : Window
     private void Watch_Changed(object sender, RoutedEventArgs e)
     {
         if (_syncing) return;
+        if (WatchCheck.IsChecked == true && !App.Instance.Brain.IsLocal &&
+            System.Windows.MessageBox.Show(
+                "WATCH SCREEN will send repeated screenshots to your selected cloud AI provider. Allow this session?",
+                "Capri — cloud screenshot permission", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            SyncCapabilitySwitches();
+            return;
+        }
         App.Instance.SetWatchingEnabled(WatchCheck.IsChecked == true);
     }
 
@@ -137,8 +166,17 @@ public partial class ChatWindow : Window
     }
 
     private void Send_Click(object sender, RoutedEventArgs e) => _ = SendAsync();
-    private void Look_Click(object sender, RoutedEventArgs e) => _ = SendAsync(
-        string.IsNullOrWhiteSpace(PromptBox.Text) ? "What's happening on my screen?" : null, true);
+    private void Look_Click(object sender, RoutedEventArgs e)
+    {
+        if (!App.Instance.Brain.IsLocal &&
+            System.Windows.MessageBox.Show(
+                "Send one screenshot to your selected cloud AI provider?",
+                "Capri — share screenshot", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        _ = SendAsync(
+            string.IsNullOrWhiteSpace(PromptBox.Text) ? "What's happening on my screen?" : null, true);
+    }
 
     private static bool RefersToScreen(string text)
     {
@@ -165,7 +203,11 @@ public partial class ChatWindow : Window
         {
             string answer;
             if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
+            {
+                if (!App.Instance.Brain.IsLocal && !App.Instance.Settings.WatchScreen && !lookNow)
+                    throw new InvalidOperationException("Enable WATCH SCREEN to use cloud vision.");
                 answer = await App.Instance.AskScreenAsync(prompt);
+            }
             else
                 answer = await App.Instance.TryHandleActionAsync(prompt)
                          ?? await App.Instance.Brain.ReplyAsync(Messages.ToArray());
@@ -179,7 +221,7 @@ public partial class ChatWindow : Window
         {
             App.Instance.SetMood(CompanionMood.Error);
             Add("system", "Request failed: " + exception.Message +
-                "\nMake sure Ollama is running and the selected text/vision model is installed.");
+                "\nCheck your selected model, local Ollama status, or cloud key and quota.");
             UpdateStatus("REQUEST ERROR", Colors.OrangeRed);
         }
         finally
