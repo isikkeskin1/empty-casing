@@ -62,3 +62,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Task-scoped tree expansion | Implemented in source (UIA ExpandCollapsePattern) | App-specific accessibility/provider QA |
 | Task-scoped navigation-button clicks | Implemented for exact Back/Home/Help/Menu/etc labels, no per-click prompts | Effect verification on trusted apps |
 | Generic buttons (Save/Submit/Send/Delete/Checkout) | Always excluded from autonomous navigation | Requires separate higher-risk task policy |
+
+
+| Hands-free no-confirmations setting | Implemented in source; saved preference; must arm desktop actions each session | Manual Windows permission UI QA |
+| Auto-approved supported desktop commands | Allowlisted apps/HTTPS/media and validated UIA navigation | Does not add arbitrary clicks, purchases, sending or destructive actions |
+| Emergency STOP ALL | Stops active microphone, watch, audio, desktop actions and queued AI task steps | Already-completed OS actions cannot be undone |

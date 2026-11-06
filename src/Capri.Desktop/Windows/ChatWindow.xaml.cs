@@ -134,6 +134,10 @@ public partial class ChatWindow : Window
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         DanceCheck.IsChecked = App.Instance.Settings.DanceToSystemAudio;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
+        HandsFreeCheck.IsChecked = App.Instance.Settings.SkipActionConfirmations;
+        HandsFreeCheck.Content = App.Instance.Settings.SkipActionConfirmations &&
+            !App.Instance.Settings.EnableDesktopActions
+                ? "HANDS-FREE · DISARMED" : "HANDS-FREE · NO POPUPS";
         _syncing = false;
     }
 
@@ -269,8 +273,22 @@ public partial class ChatWindow : Window
     private void Actions_Changed(object sender, RoutedEventArgs e)
     {
         if (_syncing) return;
-        App.Instance.Settings.EnableDesktopActions = ActionsCheck.IsChecked == true;
-        App.Instance.Store.SaveSettings(App.Instance.Settings);
+        App.Instance.SetDesktopActionsEnabled(ActionsCheck.IsChecked == true);
+    }
+
+    private void HandsFree_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetHandsFreeMode(HandsFreeCheck.IsChecked == true);
+        UpdateStatus(HandsFreeCheck.IsChecked == true
+            ? "HANDS-FREE ARMED — STOP ALL TO DISARM"
+            : "MANUAL APPROVALS", Colors.LightGreen);
+    }
+
+    private void StopInputs_Click(object sender, RoutedEventArgs e)
+    {
+        App.Instance.StopAllInputs();
+        UpdateStatus("ALL INPUTS STOPPED", Colors.OrangeRed);
     }
 
     private void Prompt_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

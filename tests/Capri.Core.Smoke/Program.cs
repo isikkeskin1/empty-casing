@@ -389,6 +389,28 @@ try
 
     Check(!new AppSettings().WatchScreen && !new AppSettings().ListenToMicrophone &&
           !new AppSettings().EnableDesktopActions, "perception and actions are off by default");
+    Check(!new AppSettings().SkipActionConfirmations,
+        "hands-free no-warning preference defaults OFF");
+    Check(ActionApprovalPolicy.Decide(false, true, true, false) ==
+            ActionApproval.Blocked,
+        "stored hands-free preference alone never arms desktop actions");
+    Check(ActionApprovalPolicy.Decide(true, false, true, false) ==
+            ActionApproval.ConfirmEachAction,
+        "normal desktop actions retain per-action confirmation");
+    Check(ActionApprovalPolicy.Decide(true, true, true, false) ==
+            ActionApproval.HandsFree,
+        "explicitly armed hands-free mode skips individual confirmation");
+    Check(ActionApprovalPolicy.Decide(true, true, false, false) ==
+            ActionApproval.Blocked &&
+          ActionApprovalPolicy.Decide(true, true, true, true) ==
+            ActionApproval.Blocked,
+        "hands-free cannot override unsafe actions or missing local validation");
+    var modeSettings = new AppSettings { SkipActionConfirmations = true };
+    store.SaveSettings(modeSettings);
+    Check(store.LoadSettings().SkipActionConfirmations,
+        "saved no-warning preference can persist without storing permission");
+    store.SaveSettings(settings);
+
     Check(ActionPolicy.IsPurchaseRequest("please buy this for me") &&
           ActionPolicy.IsPurchaseRequest("check out my cart"),
           "purchases and checkout are explicitly refused");

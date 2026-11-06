@@ -187,3 +187,27 @@ navigation. Thus this remains experimental and must be tested on trusted
 apps. A single task is capped at five actions and 90 seconds, and STOP TASK
 halts subsequent steps. This does not enable arbitrary click coordinates,
 editing, typing, messaging, purchases or security/account changes.
+
+
+## Hands-free / no-warning setting
+
+The owner can opt into a persistent **SkipActionConfirmations** preference
+using Mainframe → HANDS-FREE. It automatically arms desktop actions for the
+current session when toggled on. The app STILL resets EnableDesktopActions
+to false at startup; the persisted preference alone does not execute any
+actions until desktop actions are explicitly re-armed.
+
+When both toggles are active, only already-supported and locally validated
+actions skip individual modal dialogs: allowlisted desktop app launch,
+ordinary HTTPS URL opening, media keys, approved UI Automation tab selection
+and bounded AUTO TASK navigation. There is no bypass of local validation,
+purchase denial, UIA target checks, sensitive action restrictions, time/step
+budgets or screen/mic/file consent. Cloud-task goals/window/tab names can
+be sent to the configured cloud model without an additional per-task
+dialog when this setting is enabled; the Mainframe provides that disclosure.
+
+Turning HANDS-FREE off revokes running autonomous tasks and restores per-step
+confirmation; turning DESKTOP ACTIONS off or pressing STOP ALL revokes the
+execution lease and prevents additional steps. A native UI Automation
+operation that already executed cannot be undone. Never describe this
+setting as unrestricted or universally safe automation.

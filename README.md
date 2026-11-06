@@ -66,6 +66,27 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Hands-free mode (no approval popups for supported desktop actions)
+
+Mainframe → **HANDS-FREE · NO POPUPS** is an opt-in setting. Turning it on
+also arms **DESKTOP ACTIONS** in the current session. Capri will immediately
+execute *supported and locally validated* desktop requests such as opening
+allowlisted apps/HTTPS links, sending media controls, selecting verified tabs,
+and navigating accessible controls in an approved AUTO TASK **without**
+per-click or per-task approval dialogs.
+
+The preference is saved. However **DESKTOP ACTIONS always starts disarmed**
+after a restart, so re-arm it to resume hands-free commands. The prominent
+**STOP ALL** button (or global STOP INPUTS hotkey) disables active actions and
+ends any running autonomous task. Turning HANDS-FREE off restores confirmations.
+
+**Not a permission to do literally anything:** no checkout, purchases, money
+transfers, credential/account operations, arbitrary shell commands, Send/Save/
+Delete buttons, mass file changes, or any unsupported actions. External file
+sharing and screen/audio recording permissions keep their separate consent
+controls. Hands-free cloud tasks automatically share only the task goal,
+window title and eligible navigation labels with the configured brain.
+
 ## Autonomous desktop task sessions
 
 The **AUTO TASK** button in Mainframe launches a scoped AI navigation task using
@@ -91,7 +112,8 @@ loop but not yet an unrestricted desktop agent. See
 Open **WINDOW CONTROLS** in Mainframe or **Inspect window controls** in the tray menu.
 Capri reads only accessible *tab names* from the topmost external application, not
 typed text, passwords or form values. After enabling DESKTOP ACTIONS for the current
-session, choose a safe tab and approve one selection. Alternatively type
+session, choose a safe tab. Normally it needs one confirmation, but the
+HANDS-FREE toggle skips that confirmation. Alternatively type
 "inspect current window" or "switch to the Settings tab". The target is checked
 again immediately before selection and expires after 20 seconds.
 

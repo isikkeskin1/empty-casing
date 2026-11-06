@@ -42,6 +42,9 @@ public partial class UiInspectorWindow : Window
             snapshot.CapturedAt.ToLocalTime().ToString("HH:mm:ss");
         TabsList.ItemsSource = snapshot.Tabs;
         SelectButton.IsEnabled = false;
+        StartTaskButton.Content = App.Instance.Settings.SkipActionConfirmations &&
+            App.Instance.Settings.EnableDesktopActions
+            ? "RUN — NO PROMPTS" : "APPROVE TASK AND RUN";
         StatusText.Text = snapshot.Tabs.Count == 0 && snapshot.NavigationControls.Count == 0
             ? "This app exposes no supported navigation controls. No action."
             : "Manually select an accessible tab or run a scoped AI task below.";

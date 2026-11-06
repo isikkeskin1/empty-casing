@@ -71,7 +71,7 @@
                    BorderBrush="#446177" Foreground="#F1F6FC"
                    Padding="9,6" Text="Find the Display tab"/>
           <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
-            <Button x:Name="StartTaskButton" Content="APPROVE TASK AND RUN"
+            <Button x:Name="StartTaskButton" Content="RUN AUTO TASK"
                     Click="StartTask_Click" Background="#1D665E"
                     BorderBrush="#62C5BC"/>
             <Button x:Name="StopTaskButton" Content="STOP TASK"
