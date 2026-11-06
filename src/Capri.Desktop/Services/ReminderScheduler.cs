@@ -40,11 +40,11 @@ public sealed class ReminderScheduler : IDisposable
                 if (_entries.Count(x => !x.Completed) >= 100)
                     return "Too many pending reminders (maximum 100).";
                 var next = _entries.Count == 0 ? 1 : _entries.Max(x => x.Id) + 1;
-                var due = DateTimeOffset.Now + command.Delay;
+                var due = command.DueAt ?? DateTimeOffset.Now + command.Delay;
                 _entries.Add(new ReminderEntry { Id = next, Message = command.Message, DueAt = due });
                 Save();
                 return (command.Kind == ReminderKind.Timer ? "Timer" : "Reminder") +
-                    " #" + next + " set for " + due.ToLocalTime().ToString("ddd HH:mm:ss") + ".";
+                    " #" + next + " set for " + due.ToLocalTime().ToString("ddd d MMM yyyy HH:mm") + ".";
             default:
                 return "That reminder command is not supported.";
         }
@@ -55,7 +55,7 @@ public sealed class ReminderScheduler : IDisposable
         var pending = _entries.Where(x => !x.Completed).OrderBy(x => x.DueAt).Take(20).ToArray();
         if (pending.Length == 0) return "No pending timers or reminders.";
         return string.Join("\n", pending.Select(x => "#" + x.Id + "  " +
-            x.DueAt.ToLocalTime().ToString("ddd HH:mm") + "  " + x.Message));
+            x.DueAt.ToLocalTime().ToString("ddd d MMM yyyy HH:mm") + "  " + x.Message));
     }
 
     private void Evaluate()
