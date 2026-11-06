@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
 
     private CompanionWindow? _companion;
     private ChatWindow? _chat;
+    private SetupWindow? _setup;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private bool _registeredHotkey;
@@ -36,14 +37,16 @@ public partial class App : System.Windows.Application
     public static App Instance => (App)Current;
     public AppSettings Settings { get; private set; } = new();
     public LocalDataStore Store { get; private set; } = null!;
-    public OllamaBrain Brain { get; private set; } = null!;
+    public BrainRouter Brain { get; private set; } = null!;
+    public SecretStore Secrets { get; private set; } = null!;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         Store = new LocalDataStore();
         Settings = Store.LoadSettings();
-        Brain = new OllamaBrain(Settings);
+        Secrets = new SecretStore();
+        Brain = new BrainRouter(Settings, Secrets);
         _speech = new SpeechService(text =>
             Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
 
@@ -55,10 +58,13 @@ public partial class App : System.Windows.Application
         // until the owner explicitly enables the feature in the current app session.
         Settings.WatchScreen = false;
         Settings.ListenToMicrophone = false;
+        Settings.EnableDesktopActions = false;
 
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
+        if (!Settings.SetupCompleted)
+            Dispatcher.BeginInvoke(OpenSetup);
     }
 
     private void ReceiveRecognizedSpeech(string recognized)
@@ -112,10 +118,29 @@ public partial class App : System.Windows.Application
         }
     }
 
+    public void PreviewVoice(string voice)
+    {
+        if (_speech is null) return;
+        _speech.Speak("Hey, choom. Capri's online.", voice);
+    }
+
+    public void RefreshChatConfiguration() => _chat?.RefreshBrainConfiguration();
+
+    public void OpenSetup()
+    {
+        if (_setup is null)
+        {
+            _setup = new SetupWindow();
+            _setup.Closed += (_, _) => _setup = null;
+        }
+        _setup.Show();
+        _setup.Activate();
+    }
+
     public void SpeakIfEnabled(string text)
     {
         if (!Settings.SpeakReplies || _speech is null) return;
-        try { _speech.Speak(text); }
+        try { _speech.Speak(text, Settings.SpeechVoice); }
         catch (Exception ex) { Debug.WriteLine("Speech output failed: " + ex.Message); }
     }
 
@@ -207,6 +232,7 @@ public partial class App : System.Windows.Application
     {
         var context = new System.Windows.Forms.ContextMenuStrip();
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
+        context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
         context.Items.Add("Reload character art", null, (_, _) => Dispatcher.Invoke(() => _companion?.ReloadArt()));

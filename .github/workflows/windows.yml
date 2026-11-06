@@ -1,4 +1,4 @@
-name: Windows build
+name: Windows build and installer
 
 on:
   push:
@@ -27,9 +27,28 @@ jobs:
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
-      - name: Upload build artifact
+      - name: Upload portable build
         uses: actions/upload-artifact@v4
         with:
           name: CapriDesktop-win-x64
           path: CapriDesktop-win-x64.zip
+          retention-days: 14
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed: $LASTEXITCODE" }
+      - name: Build Capri-Setup.exe
+        shell: pwsh
+        run: |
+          $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $compiler)) { throw "Inno Setup compiler was not installed." }
+          & $compiler "/Q" "installer\CapriDesktop.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
+          if (!(Test-Path "installer-output\Capri-Setup.exe")) { throw "Capri installer output missing." }
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Capri-Setup
+          path: installer-output/Capri-Setup.exe
           retention-days: 14

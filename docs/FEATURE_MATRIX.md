@@ -1,0 +1,28 @@
+# Feature matrix
+
+The original fan project has a broad feature set. This file tracks our independent implementation, without claiming parity.
+
+| Feature | Source status | Remaining work |
+| --- | --- | --- |
+| Installer and first-launch setup | Implemented | Clean Windows manual QA, signing |
+| Local Ollama model downloads | Implemented | Large download and error testing |
+| Cloud brain providers (4) | Implemented | Real-key and model compatibility QA |
+| Encrypted API keys | Implemented | Recovery/migration QA |
+| Windows TTS voice picker | Implemented | Voice/language pack testing |
+| Animated desktop companion | Implemented | Mixed-DPI transparent hit testing |
+| Screen vision/reactions | Implemented, periodic | Multi-screen, sensitive-area masking, game events |
+| Mic recognition | Implemented | Selected mic, interruption, VAD, robust wake word |
+| App/URL/media actions | Limited, approval-gated | UI Automation, action history, hard stop |
+| Call mode, Discord/Zoom | Not implemented | Consent and speaker isolation |
+| Cloud custom TTS (Fish/ElevenLabs) | Not implemented | Provider security and licensing |
+| Song selection, music mini-player | Not implemented | Media session integration |
+| Reminders and timers | Not implemented | Persistence/notifications |
+| Game clips/live reactions | Not implemented | Event and capture pipeline |
+| File drop and reading | Not implemented | Parsers and explicit file selection |
+| Mini-games, skins and clones | Not implemented | UI/rendering and assets |
+| Code/Husk integration | Not implemented | Read-only hooks with secret redaction |
+| Installer signing/updates | Not implemented | Safe release/update verification |
+
+Suggested order: clean setup → voice and mic selection → multi-monitor and media context → UIA computer use with per-step approvals, hard cancellation and permanently prohibited purchases → reminders/files/call integrations.
+
+All major additions should have a real feature PR, Windows CI and manual device testing.

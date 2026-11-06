@@ -58,11 +58,20 @@ public sealed class SpeechService : IDisposable
         _recognizer?.RecognizeAsyncCancel();
     }
 
-    public void Speak(string text)
+    public static string[] AvailableVoices()
+    {
+        using var synth = new SpeechSynthesizer();
+        return synth.GetInstalledVoices().Where(x => x.Enabled)
+            .Select(x => x.VoiceInfo.Name).ToArray();
+    }
+
+    public void Speak(string text, string? voice = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _speaker ??= new SpeechSynthesizer();
         _speaker.SpeakAsyncCancelAll();
+        if (!string.IsNullOrWhiteSpace(voice))
+            _speaker.SelectVoice(voice);
         var line = text.Length > 450 ? text[..450] : text;
         _speaker.SpeakAsync(line);
     }

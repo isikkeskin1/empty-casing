@@ -59,11 +59,14 @@
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Text="LOCAL MODEL" Foreground="#92AABE" FontFamily="Consolas"
+        <TextBlock Text="CHAT MODEL" Foreground="#92AABE" FontFamily="Consolas"
                    FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center"/>
         <TextBox x:Name="ModelBox" Grid.Column="1" MinWidth="100" Padding="6,5"/>
         <Button Grid.Column="2" Content="SAVE" Click="SaveModel_Click"
+                Margin="8,0,0,0" Padding="10,5"/>
+        <Button Grid.Column="3" Content="SET UP BRAIN" Click="SetupBrain_Click"
                 Margin="8,0,0,0" Padding="10,5"/>
       </Grid>
     </Border>
