@@ -43,6 +43,18 @@ public static partial class UiNavigationPolicy
             ? new UiNavigationRequest(UiNavigationKind.SelectTab, label) : null;
     }
 
+    private static readonly HashSet<string> SafeNavigationButtons =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Back", "Home", "Help", "Menu", "Navigation",
+            "Open navigation", "Show navigation", "More", "Show more",
+            "Overview", "Sidebar", "Show sidebar"
+        };
+
+    public static bool IsSafeNavigationButton(string? label) =>
+        !string.IsNullOrWhiteSpace(label) &&
+        SafeNavigationButtons.Contains(label.Trim());
+
     public static bool IsSafeTabLabel(string? label)
     {
         if (string.IsNullOrWhiteSpace(label) || label.Length > 72 ||
@@ -62,6 +74,38 @@ public static partial class UiNavigationPolicy
             if (!term.Contains(' ')) return false;
             return phrase.Contains(" " + term + " ", StringComparison.Ordinal);
         });
+    }
+
+    public static bool CanOperateNavigation(
+        string? expectedLabel, string? observedLabel, string action,
+        bool enabled, bool offscreen, DateTimeOffset captured,
+        DateTimeOffset now, bool sameWindow, out string reason)
+    {
+        var age = now - captured;
+        if (!sameWindow || age < TimeSpan.Zero || age > TimeSpan.FromSeconds(20))
+        {
+            reason = "Approved window or observation expired.";
+            return false;
+        }
+        if (!enabled || offscreen)
+        {
+            reason = "Control is not visible and enabled.";
+            return false;
+        }
+        if (!string.Equals(expectedLabel, observedLabel,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            reason = "Observed control label changed.";
+            return false;
+        }
+        if (action == "expand_tree" && IsSafeTabLabel(expectedLabel) ||
+            action == "press_navigation" && IsSafeNavigationButton(expectedLabel))
+        {
+            reason = "";
+            return true;
+        }
+        reason = "This action or label is not in the navigation allowlist.";
+        return false;
     }
 
     public static bool CanSelectTab(

@@ -44,3 +44,21 @@ in a supported app, stops on stale or changed UI, rejects unsafe
 goals/labels and invalid model decisions, and honors STOP INPUTS.
 Test with both local Ollama and the chosen cloud model (only after
 authorizing transmission of window/tab names).
+
+
+## Broader low-impact navigation controls
+
+Within a single approved task the AI can now propose three action types:
+select_tab (UIA SelectionItemPattern.Select), expand_tree (UIA
+ExpandCollapsePattern.Expand on a collapsed TreeItem), and press_navigation
+(UIA InvokePattern.Invoke on an exact navigation-button allowlist). Button
+names include Back, Home, Help, Menu, Overview, More and Sidebar.
+Even if the model requests it, Save, Next, Submit, Send, Delete, payment,
+checkout and other high-impact buttons never appear in the eligible list.
+The same revalidation, task-step budget, window pinning and stop controls
+apply. This is a limited "click" capability rather than generic click-anywhere.
+
+Because app-provided labels are not a guarantee of behavior, test only on
+trusted apps. No UIA action can be completely undone after execution;
+task interruption prevents *further* steps rather than rolling back a
+completed native click.

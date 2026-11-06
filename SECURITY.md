@@ -165,3 +165,25 @@ payment, checkout or purchasing.
 This approach reduces repetitive approval prompts but **cannot guarantee**
 that every third-party accessibility provider has no side effects. Test
 initially in trusted local apps.
+
+
+## Navigation-tree and button actions within a task
+
+The same single-task permission now also allows UI Automation
+ExpandCollapsePattern.Expand for eligible collapsed TreeItems and
+InvokePattern.Invoke for navigation Buttons with EXACT allowlisted names:
+Back, Home, Help, Menu, Navigation, Open navigation, Show navigation,
+More, Show more, Overview, Sidebar, and Show sidebar.
+
+The model sees only these approved controls' names, actions and state.
+Local policy validates selected index, action kind, label, enabled/visible
+state and pinned application identity before executing. A fresh UIA runtime
+ID, automation ID and name are required after model inference. Labels
+such as Next, Save, Submit, Send, Delete, Buy, Checkout and Payment are
+never eligible for automatic button invocation.
+
+An accessibility provider can mislabel a button or attach side effects to
+navigation. Thus this remains experimental and must be tested on trusted
+apps. A single task is capped at five actions and 90 seconds, and STOP TASK
+halts subsequent steps. This does not enable arbitrary click coordinates,
+editing, typing, messaging, purchases or security/account changes.

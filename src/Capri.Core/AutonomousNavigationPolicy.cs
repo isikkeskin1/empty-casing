@@ -35,6 +35,39 @@ public static class AutonomousNavigationPolicy
         enabled && steps >= 0 && steps < MaxSteps &&
         now >= start && now - start <= MaxDuration;
 
+    public sealed record Candidate(string Action, string Label, bool Enabled, bool Offscreen);
+
+    public static bool CanExecuteNavigationChoice(
+        UiNavigationStep? choice, IReadOnlyList<Candidate> candidates,
+        int executedSteps, out string reason)
+    {
+        if (choice is null || choice.Action == "done" || choice.Index is null ||
+            choice.Index.Value < 0 || choice.Index.Value >= candidates.Count)
+        {
+            reason = "No valid action index supplied by the model.";
+            return false;
+        }
+        if (executedSteps >= MaxSteps)
+        {
+            reason = "The task step budget is exhausted.";
+            return false;
+        }
+        var item = candidates[choice.Index.Value];
+        if (!item.Enabled || item.Offscreen || item.Action != choice.Action)
+        {
+            reason = "Action or role does not match an eligible observed control.";
+            return false;
+        }
+        var safe = choice.Action switch
+        {
+            "select_tab" or "expand_tree" => UiNavigationPolicy.IsSafeTabLabel(item.Label),
+            "press_navigation" => UiNavigationPolicy.IsSafeNavigationButton(item.Label),
+            _ => false
+        };
+        reason = safe ? "" : "The proposed target is not a safe navigation control.";
+        return safe;
+    }
+
     public static bool CanExecuteModelChoice(
         UiNavigationStep? choice, IReadOnlyList<string> eligibleTabNames, int executed,
         out string reason)
@@ -71,7 +104,7 @@ public sealed record UiNavigationStep(string Action, int? Index, string Note)
             var root = json.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return null;
             var action = root.GetProperty("action").GetString();
-            if (action is not ("select_tab" or "done")) return null;
+            if (action is not ("select_tab" or "expand_tree" or "press_navigation" or "done")) return null;
             int? index = null;
             if (root.TryGetProperty("index", out var value))
             {
@@ -79,7 +112,7 @@ public sealed record UiNavigationStep(string Action, int? Index, string Note)
                     return null;
                 index = number;
             }
-            if (action == "select_tab" && index is null) return null;
+            if (action != "done" && index is null) return null;
             if (action == "done" && index is not null) return null;
             var note = root.TryGetProperty("note", out var text) &&
                 text.ValueKind == JsonValueKind.String ? text.GetString() ?? "" : "";

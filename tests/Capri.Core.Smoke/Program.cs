@@ -274,6 +274,55 @@ try
           !AutonomousNavigationPolicy.IsSafeGoal(new string('a', 221)),
         "high-impact tasks and oversized goals never enter autonomous mode");
 
+    Check(UiNavigationPolicy.IsSafeNavigationButton("Back") &&
+          UiNavigationPolicy.IsSafeNavigationButton("Open navigation") &&
+          !UiNavigationPolicy.IsSafeNavigationButton("Next") &&
+          !UiNavigationPolicy.IsSafeNavigationButton("Save") &&
+          !UiNavigationPolicy.IsSafeNavigationButton("Send") &&
+          !UiNavigationPolicy.IsSafeNavigationButton("Buy now"),
+        "autonomous button invocation limited to exact navigation-only labels");
+    Check(UiNavigationPolicy.CanOperateNavigation(
+              "Back", "Back", "press_navigation", true, false,
+              new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero),
+              new DateTimeOffset(2026, 11, 6, 10, 0, 3, TimeSpan.Zero),
+              true, out _) &&
+          !UiNavigationPolicy.CanOperateNavigation(
+              "Save", "Save", "press_navigation", true, false,
+              new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero),
+              new DateTimeOffset(2026, 11, 6, 10, 0, 3, TimeSpan.Zero),
+              true, out _),
+        "navigation control revalidation rejects write buttons");
+    Check(UiNavigationStep.Parse(
+              "{\"action\":\"expand_tree\",\"index\":2}") is
+          { Action: "expand_tree", Index: 2 } &&
+          UiNavigationStep.Parse(
+              "{\"action\":\"press_navigation\",\"index\":1}") is
+          { Action: "press_navigation", Index: 1 },
+        "AI can propose bounded tree expansion and navigation-button actions");
+    var observedControls = new[]
+    {
+        new AutonomousNavigationPolicy.Candidate("select_tab", "Home", true, false),
+        new AutonomousNavigationPolicy.Candidate("expand_tree", "Projects", true, false),
+        new AutonomousNavigationPolicy.Candidate("press_navigation", "Back", true, false),
+        new AutonomousNavigationPolicy.Candidate("press_navigation", "Save", true, false)
+    };
+    Check(AutonomousNavigationPolicy.CanExecuteNavigationChoice(
+              UiNavigationStep.Parse("{\"action\":\"expand_tree\",\"index\":1}"),
+              observedControls, 0, out _) &&
+          AutonomousNavigationPolicy.CanExecuteNavigationChoice(
+              UiNavigationStep.Parse("{\"action\":\"press_navigation\",\"index\":2}"),
+              observedControls, 0, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteNavigationChoice(
+              UiNavigationStep.Parse("{\"action\":\"press_navigation\",\"index\":3}"),
+              observedControls, 0, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteNavigationChoice(
+              UiNavigationStep.Parse("{\"action\":\"expand_tree\",\"index\":2}"),
+              observedControls, 0, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteNavigationChoice(
+              UiNavigationStep.Parse("{\"action\":\"select_tab\",\"index\":0}"),
+              observedControls, 5, out _),
+        "AI can't exceed step limit, click Save, or mismatch role/action index");
+
     var navStart = new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero);
     Check(AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(20), 2, true) &&
           !AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(91), 0, true) &&

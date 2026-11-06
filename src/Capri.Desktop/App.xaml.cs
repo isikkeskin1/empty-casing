@@ -487,13 +487,14 @@ public partial class App : System.Windows.Application
 
         var dataDisclosure = Brain.IsLocal
             ? "Planning is local with Ollama."
-            : "Your selected cloud AI will receive the goal, window title and accessible tab names.";
+            : "Your selected cloud AI will receive the goal, window title and eligible navigation labels.";
         var permit = System.Windows.MessageBox.Show(
             "Authorize ONE autonomous navigation task?\n\n" +
             "Window: " + inspectedWindow.Title + "\nGoal: " + goal + "\n\n" +
-            "Capri may choose and select up to FIVE safe tabs within 90 seconds, " +
+            "Capri may use up to FIVE safe navigation controls within 90 seconds, " +
             "without asking after each selection.\n\n" +
-            "No typing, messages, purchases, account/security or destructive controls.\n" +
+            "Only tabs, tree expansion and named navigation buttons (Back/Home/Help/Menu etc).\n" +
+            "No typing, Save/Send, purchases, account/security or destructive controls.\n" +
             dataDisclosure +
             "\n\nSTOP TASK or STOP INPUTS revokes this permission.\n\nStart task?",
             "Capri — one-task autonomy permission",

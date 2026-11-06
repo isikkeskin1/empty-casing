@@ -57,3 +57,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Autonomous task-level UIA navigation | Implemented in source: one approval, model-chosen exact tabs, max 5 steps / 90s | Windows real-app QA |
 | Live stop / revoke task permission | STOP TASK and STOP INPUTS cancel pending future steps | In-flight UIA provider calls cannot always be interrupted |
 | Unrestricted AI clicking/typing | Not built | Stronger effect classification, per-app scopes and recovery |
+
+
+| Task-scoped tree expansion | Implemented in source (UIA ExpandCollapsePattern) | App-specific accessibility/provider QA |
+| Task-scoped navigation-button clicks | Implemented for exact Back/Home/Help/Menu/etc labels, no per-click prompts | Effect verification on trusted apps |
+| Generic buttons (Save/Submit/Send/Delete/Checkout) | Always excluded from autonomous navigation | Requires separate higher-risk task policy |
