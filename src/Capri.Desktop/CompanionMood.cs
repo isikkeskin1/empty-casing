@@ -5,5 +5,11 @@ public enum CompanionMood
     Idle,
     Thinking,
     Reply,
-    Error
+    Error,
+    Talking,
+    Glitching,
+    Tossed,
+    Sleeping,
+    Perching,
+    MusicPerch
 }

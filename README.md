@@ -7,7 +7,7 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 ## Current milestone: desktop foundation
 
 - Transparent, always-on-top, draggable companion window with an animated placeholder
-- Optional PNG frame sequences for idle, think, reply and error states
+- Optional user-provided PNG sequences for idle, talk, glitch, sleep, toss, perch and music-perch; individual frame timing supported
 - Local chat powered by Ollama, with an editable model name
 - Local JSON history and settings, including saved companion position
 - Tray menu, show/hide shortcut (Ctrl+Shift+Space), and opening the animation folder
@@ -28,7 +28,9 @@ If Ollama is not running, start the Ollama Windows app. The model name in the ch
 
 Alternatively, use a successful run's artifact from **Actions > Windows build**, extract it and run Capri.Desktop.exe. The CI build is self-contained, but the local AI server and model are not bundled.
 
-**Controls:** drag the floating hologram to move it; double-click to open chat; Ctrl+Shift+Space toggles chat; right-click or use the tray for more actions. To replace the hologram with your own frames, use the tray's **Open character art folder** and see [assets/README.md](assets/README.md).
+**Controls:** drag the floating character to move it; double-click to open chat; Ctrl+Shift+Space toggles chat. Right-click the character or choose **Preview animation** from the tray menu to play a sleep, talk, glitch, toss or perch sequence. The perch states are **visual previews only** — automatic window anchoring and music synchronization are not implemented yet.
+
+**Importing the seven animated WebP files:** Run `python -m pip install Pillow`, then `python tools/import_webp_animations.py --input "C:\path\to\webp-folder"`. This creates PNG frame folders and `timing.json` files in `%LOCALAPPDATA%\CapriDesktop\character`. Alternatively, extract the locally supplied converted test ZIP directly into that character folder. Select **Reload character art** in the app. See [assets/README.md](assets/README.md) and [docs/ASSET_RIGHTS.md](docs/ASSET_RIGHTS.md).
 
 ## Build and verify
 
@@ -42,7 +44,7 @@ dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --se
 
 v0.1 does **not** capture your screen, listen to the microphone, inspect apps, control your keyboard/mouse or launch commands on behalf of AI. There is no telemetry. Text entered in chat is sent to your **local Ollama endpoint (127.0.0.1:11434)**. Settings and transcript are plain JSON in %LOCALAPPDATA%\CapriDesktop. Do not paste credentials or sensitive data into chat. The app doesn't expose model controls to other computers.
 
-For architecture and realistic delivery stages, see [docs/ROADMAP.md](docs/ROADMAP.md). For scope and contribution practices, see [CONTRIBUTING.md](CONTRIBUTING.md).
+For third-party artwork restrictions see [docs/ASSET_RIGHTS.md](docs/ASSET_RIGHTS.md). For architecture and realistic delivery stages, see [docs/ROADMAP.md](docs/ROADMAP.md). For scope and contribution practices, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Rights
 

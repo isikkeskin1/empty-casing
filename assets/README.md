@@ -1,16 +1,38 @@
 # Character animation frames
 
-The app intentionally ships **without Capri character artwork**. Add frames you created or are authorized to use in:
+**No Capri character art is committed to this public codebase.** User-supplied animations stay on the user's PC. For third-party artwork restrictions, read [docs/ASSET_RIGHTS.md](../docs/ASSET_RIGHTS.md).
 
-%LOCALAPPDATA%\CapriDesktop\character\
+## Import WebP animations
 
-Use subfolders named:
+The converter supports seven files with these exact names:
 
-- idle
-- think
-- reply
-- error
+| Animated WebP | Output folder | Where it appears |
+| --- | --- | --- |
+| idle.webp | idle/ | Normal idle loop |
+| talk.webp | talk/ | Brief reply or talk preview |
+| glitch.webp | glitch/ | Glitch preview and error state |
+| tossed.webp | tossed/ | One-shot toss preview |
+| sleep.webp | sleep/ | Sleep until manually woken or chat starts |
+| perch.webp | perch/ | Manual perch visual preview |
+| perch-music.webp | perch-music/ | Manual music-perch visual preview |
 
-Put sequential transparent PNG frames in each folder, for example idle/0001.png, idle/0002.png and so on. Frames are sorted by filename; use zero-padded numbering. They are shown at a fixed preview rate for now. Missing states fall back to idle, and if no frames exist a placeholder hologram is displayed.
+Use Python 3 and Pillow on Windows:
 
-In the app tray menu choose **Open character art folder** to open the directory, then choose **Reload character art** after changes. Keep similar frame dimensions and consistent alignment so animations do not jump. Do not commit assets you lack the right to redistribute.
+~~~powershell
+py -m pip install Pillow
+py tools/import_webp_animations.py --input "C:\path\to\source-webps"
+~~~
+
+The default destination is %LOCALAPPDATA%\CapriDesktop\character. You can choose another destination with --output, then copy the seven folders into the character directory opened by the app's tray menu. The program also accepts a prepared animation ZIP; extract its **contents** directly into that folder.
+
+Each state consists of sequential transparent PNG frames (0000.png, 0001.png, ...) and timing.json, e.g.:
+
+~~~json
+{"frameDurationsMs":[83,83,83]}
+~~~
+
+The frame list is sorted by file name and played at its encoded delays; if a manifest is missing, the app plays frames at 100ms each. Empty states fall back to idle. For correct rendering, keep the source's full transparent canvas and consistent frame dimensions.
+
+**Preview controls:** right-click Capri or use the tray's Preview animation menu; choose Reload character art after importing frames. Sleep and perch stay active until you wake or change state. Toss, glitch and talk run as short temporary previews. Window-edge tracking, game awareness, music beat synchronization, and voice are not implemented yet.
+
+Do not commit externally sourced files without checking their redistribution and commercial-use terms.

@@ -1,35 +1,43 @@
 <Window x:Class="Capri.Desktop.Windows.CompanionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="244" Height="296" ResizeMode="NoResize" WindowStyle="None"
+        Width="270" Height="480" ResizeMode="NoResize" WindowStyle="None"
         AllowsTransparency="True" Background="Transparent" Topmost="True"
         ShowInTaskbar="False" Title="Capri Desktop">
   <Window.ContextMenu>
     <ContextMenu>
       <MenuItem Header="Open chat" Click="OpenChat_Click"/>
+      <Separator/>
+      <MenuItem Header="Wake / idle" Click="Idle_Click"/>
+      <MenuItem Header="Talk animation" Click="Talk_Click"/>
+      <MenuItem Header="Glitch animation" Click="Glitch_Click"/>
+      <MenuItem Header="Toss animation" Click="Toss_Click"/>
+      <MenuItem Header="Sleep" Click="Sleep_Click"/>
+      <MenuItem Header="Perch (preview)" Click="Perch_Click"/>
+      <MenuItem Header="Music perch (preview)" Click="MusicPerch_Click"/>
+      <Separator/>
       <MenuItem Header="Open character art folder" Click="OpenArt_Click"/>
       <MenuItem Header="Reload character art" Click="ReloadArt_Click"/>
       <MenuItem Header="Hide Capri" Click="Hide_Click"/>
-      <Separator/>
       <MenuItem Header="Quit Capri" Click="Quit_Click"/>
     </ContextMenu>
   </Window.ContextMenu>
   <Grid>
-    <Canvas Width="244" Height="296">
-      <Canvas x:Name="CharacterSurface" Width="244" Height="233" Canvas.Top="5"
+    <Canvas Width="270" Height="480">
+      <Canvas x:Name="CharacterSurface" Width="270" Height="400" Canvas.Top="5"
               Background="Transparent" MouseLeftButtonDown="Character_MouseDown" Cursor="Hand">
         <Canvas.RenderTransform>
           <TranslateTransform x:Name="FloatOffset"/>
         </Canvas.RenderTransform>
-        <Grid x:Name="Placeholder" Width="210" Height="223" Canvas.Left="17" Canvas.Top="5">
-          <Ellipse Width="175" Height="175" Stroke="#8966E8F4" StrokeThickness="1"
+        <Grid x:Name="Placeholder" Width="224" Height="255" Canvas.Left="23" Canvas.Top="60">
+          <Ellipse Width="192" Height="192" Stroke="#8966E8F4" StrokeThickness="1"
                    StrokeDashArray="3,8" Opacity="0.8"/>
-          <Ellipse Width="144" Height="144" Stroke="#62DCEB" StrokeThickness="1.5">
+          <Ellipse Width="154" Height="154" Stroke="#62DCEB" StrokeThickness="1.5">
             <Ellipse.Effect>
               <DropShadowEffect Color="#00D9E8" BlurRadius="28" ShadowDepth="0" Opacity="0.7"/>
             </Ellipse.Effect>
           </Ellipse>
-          <Border Width="126" Height="126" CornerRadius="63" Background="#EF101829"
+          <Border Width="132" Height="132" CornerRadius="66" Background="#EF101829"
                   BorderBrush="#7569B3C8" BorderThickness="1">
             <Grid>
               <TextBlock Text="C" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -41,10 +49,10 @@
           <TextBlock Text="ADD CHARACTER FRAMES" VerticalAlignment="Top" HorizontalAlignment="Center"
                      Foreground="#A0D7E6" FontFamily="Consolas" FontSize="9" Margin="0,7,0,0"/>
         </Grid>
-        <Image x:Name="CharacterImage" Canvas.Left="10" Canvas.Top="0" Width="224" Height="229"
+        <Image x:Name="CharacterImage" Canvas.Left="15" Canvas.Top="8" Width="240" Height="384"
                Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality"/>
       </Canvas>
-      <Border Canvas.Left="23" Canvas.Top="240" Width="198" Height="30"
+      <Border Canvas.Left="35" Canvas.Top="409" Width="200" Height="30"
               Background="#F0111827" BorderBrush="#6854B0C7" BorderThickness="1" CornerRadius="6">
         <DockPanel VerticalAlignment="Center" Margin="12,0">
           <Ellipse x:Name="StatusLight" DockPanel.Dock="Left" Width="7" Height="7"
@@ -54,8 +62,8 @@
                      VerticalAlignment="Center"/>
         </DockPanel>
       </Border>
-      <Button Canvas.Left="67" Canvas.Top="274" Width="110" Height="20"
-              Content="OPEN CHAT ↗" ToolTip="Ctrl+Shift+Space" Click="OpenChat_Click"
+      <Button Canvas.Left="80" Canvas.Top="447" Width="110" Height="22"
+              Content="OPEN CHAT" ToolTip="Ctrl+Shift+Space" Click="OpenChat_Click"
               FontFamily="Consolas" FontSize="10" Foreground="#C2F6FF"
               Background="#C6142538" BorderBrush="#6481A5B7" BorderThickness="1"
               Cursor="Hand"/>

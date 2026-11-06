@@ -72,6 +72,22 @@ public partial class App : System.Windows.Application
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
         context.Items.Add("Reload character art", null, (_, _) => Dispatcher.Invoke(() => _companion?.ReloadArt()));
+        var animationMenu = new System.Windows.Forms.ToolStripMenuItem("Preview animation");
+        foreach (var (title, mood) in new (string, CompanionMood)[]
+        {
+            ("Wake / idle", CompanionMood.Idle),
+            ("Talk", CompanionMood.Talking),
+            ("Glitch", CompanionMood.Glitching),
+            ("Tossed", CompanionMood.Tossed),
+            ("Sleep", CompanionMood.Sleeping),
+            ("Perch (preview)", CompanionMood.Perching),
+            ("Music perch (preview)", CompanionMood.MusicPerch)
+        })
+        {
+            animationMenu.DropDownItems.Add(title, null,
+                (_, _) => Dispatcher.Invoke(() => _companion?.SetMood(mood)));
+        }
+        context.Items.Add(animationMenu);
         context.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         context.Items.Add("Quit Capri", null, (_, _) => Dispatcher.Invoke(Shutdown));
 
