@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Capri.Core;
 
 /// <summary>
@@ -55,8 +57,45 @@ public sealed record CompanionRoutine(string Name, IReadOnlyList<AssistantAction
                     new AssistantAction("open_app", "notepad"),
                     new AssistantAction("open_app", "spotify")
                 }),
-            _ => null
+            _ => ParseMultiAppRequest(phrase)
         };
+    }
+
+    /// <summary>
+    /// Also support one explicit, local compositional intent such as
+    /// "open Discord, Steam and Spotify". Every token must be an exact known
+    /// app alias; unknown components reject the entire request.
+    /// </summary>
+    private static CompanionRoutine? ParseMultiAppRequest(string phrase)
+    {
+        var body = phrase.StartsWith("open ", StringComparison.Ordinal) ? phrase[5..] :
+                   phrase.StartsWith("launch ", StringComparison.Ordinal) ? phrase[7..] :
+                   phrase.StartsWith("start ", StringComparison.Ordinal) ? phrase[6..] : "";
+        if (body.Length == 0) return null;
+        var names = Regex.Split(body, @",\s*(?:and\s+)?|\s+and\s+");
+        if (names.Length is < 2 or > MaximumSteps) return null;
+        var steps = new List<AssistantAction>();
+        foreach (var raw in names)
+        {
+            var alias = raw.Trim();
+            var app = alias switch
+            {
+                "discord" => "discord",
+                "steam" => "steam",
+                "spotify" => "spotify",
+                "notepad" => "notepad",
+                "calculator" or "calc" => "calculator",
+                "explorer" or "file explorer" => "explorer",
+                "chrome" or "google chrome" => "chrome",
+                "edge" or "microsoft edge" => "edge",
+                "vs code" or "vscode" or "visual studio code" => "vscode",
+                _ => ""
+            };
+            if (app.Length == 0) return null;
+            steps.Add(new AssistantAction("open_app", app));
+        }
+        var result = new CompanionRoutine("Custom app session", steps);
+        return TryValidate(result, out _) ? result : null;
     }
 
     public static bool TryValidate(CompanionRoutine? routine, out string reason)
