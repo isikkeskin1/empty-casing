@@ -12,6 +12,8 @@ public partial class ChatWindow : Window
 {
     public ObservableCollection<ChatTurn> Messages { get; } = new();
     private bool _busy;
+    private CancellationTokenSource? _activeReplyCts;
+    private string? _queuedVoicePrompt;
     private bool _syncing;
     private string _activePage = "CHAT";
 
@@ -453,8 +455,37 @@ public partial class ChatWindow : Window
 
     public void SubmitVoiceText(string recognized)
     {
-        if (_busy) return;
+        if (_busy)
+        {
+            // A fresh voice request replaces an in-flight AI reply. Keep only
+            // the latest recognized utterance; never build an unbounded queue.
+            if (_activeReplyCts is null)
+            {
+                AppendNotification("A separate operation is still running. Try again shortly.");
+                return;
+            }
+            _queuedVoicePrompt = recognized;
+            CancelActiveReply(discardQueuedPrompt: false);
+            UpdateStatus("REPHRASING…", Colors.LightSkyBlue);
+            return;
+        }
         _ = SendAsync(recognized);
+    }
+
+    /// <summary>
+    /// STOP REPLY, Talk Once, and STOP ALL can abandon an in-flight model
+    /// response. External tool actions already started cannot be undone.
+    /// </summary>
+    public void CancelActiveReply(bool discardQueuedPrompt = true)
+    {
+        if (discardQueuedPrompt) _queuedVoicePrompt = null;
+        _activeReplyCts?.Cancel();
+    }
+
+    private void CancelReply_Click(object sender, RoutedEventArgs e)
+    {
+        App.Instance.CancelCurrentReply();
+        UpdateStatus("REPLY INTERRUPTED", Colors.LightSkyBlue);
     }
 
     private void Add(string role, string text)
@@ -645,6 +676,9 @@ public partial class ChatWindow : Window
         if (prompt.Length == 0) return;
         SelectPage("CHAT");
 
+        using var replyCts = new CancellationTokenSource();
+        _activeReplyCts = replyCts;
+        var token = replyCts.Token;
         _busy = true;
         SendButton.IsEnabled = false;
         PromptBox.IsEnabled = false;
@@ -665,21 +699,36 @@ public partial class ChatWindow : Window
             else if (!lookNow && reminder is not null)
                 answer = App.Instance.Reminders.Execute(reminder);
             else if (!lookNow && GameHelpPolicy.IsGameHelpRequest(prompt))
-                answer = await App.Instance.AskGameHelpAsync(prompt);
+                answer = await App.Instance.AskGameHelpAsync(prompt, token);
             else if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
             {
                 if (!App.Instance.Brain.IsLocal && !App.Instance.Settings.WatchScreen && !lookNow)
                     throw new InvalidOperationException("Enable WATCH SCREEN to use cloud vision.");
-                answer = await App.Instance.AskScreenAsync(prompt);
+                answer = await App.Instance.AskScreenAsync(prompt, token);
             }
             else
                 answer = await App.Instance.TryHandleActionAsync(prompt)
-                         ?? await App.Instance.ReplyWithAmbientContextAsync(Messages.ToArray());
+                         ?? await App.Instance.ReplyWithAmbientContextAsync(Messages.ToArray(), token);
 
+            // Model cancellation also prevents stale answers from being saved or
+            // spoken. It cannot roll back an external tool action already sent.
+            token.ThrowIfCancellationRequested();
             Add("assistant", answer);
             App.Instance.SetMood(CompanionMood.Reply);
             App.Instance.SpeakIfEnabled(answer);
             UpdateStatus("READY", Colors.LightGreen);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            App.Instance.SetMood(CompanionMood.Idle);
+            Add("system", "Reply interrupted. Any external action already initiated may still complete.");
+            UpdateStatus("REPLY INTERRUPTED", Colors.LightSkyBlue);
+        }
+        catch (Exception exception) when (token.IsCancellationRequested)
+        {
+            // Providers can return a transport error while cancellation races.
+            App.Instance.SetMood(CompanionMood.Idle);
+            UpdateStatus("REPLY INTERRUPTED", Colors.LightSkyBlue);
         }
         catch (Exception exception)
         {
@@ -690,10 +739,17 @@ public partial class ChatWindow : Window
         }
         finally
         {
+            if (ReferenceEquals(_activeReplyCts, replyCts))
+                _activeReplyCts = null;
             _busy = false;
             SendButton.IsEnabled = true;
             PromptBox.IsEnabled = true;
             PromptBox.Focus();
+            if (_queuedVoicePrompt is { Length: > 0 } next)
+            {
+                _queuedVoicePrompt = null;
+                _ = SendAsync(next);
+            }
         }
     }
 
@@ -711,6 +767,9 @@ public partial class ChatWindow : Window
         if (picker.ShowDialog(this) != true) return;
         SelectPage("CHAT");
 
+        using var fileCts = new CancellationTokenSource();
+        _activeReplyCts = fileCts;
+        var fileToken = fileCts.Token;
         _busy = true;
         SendButton.IsEnabled = false;
         PromptBox.IsEnabled = false;
@@ -719,7 +778,8 @@ public partial class ChatWindow : Window
         try
         {
             var excerpt = await Task.Run(() =>
-                LocalFileContextReader.ReadExplicitFile(picker.FileName));
+                LocalFileContextReader.ReadExplicitFile(picker.FileName), fileToken);
+            fileToken.ThrowIfCancellationRequested();
 
             var task = PromptBox.Text.Trim();
             var provider = App.Instance.Brain.IsLocal
@@ -742,18 +802,31 @@ public partial class ChatWindow : Window
 
             // This instruction is sent only as a chat question. It is never treated
             // as an action plan, and the local file path or full content is not saved.
+            fileToken.ThrowIfCancellationRequested();
             var question = LocalFileContextReader.BuildAnalysisPrompt(excerpt, task);
             Add("user", "Review selected file: " + excerpt.FileName +
                 (string.IsNullOrWhiteSpace(task) ? "" : "\nQuestion: " + task) +
                 (excerpt.Truncated ? "\n(First 12,000 characters)" : ""));
             PromptBox.Clear();
             var answer = await App.Instance.Brain.ReplyAsync(
-                new[] { new ChatTurn { Role = "user", Text = question } });
+                new[] { new ChatTurn { Role = "user", Text = question } }, fileToken);
+            fileToken.ThrowIfCancellationRequested();
             Add("file_result", answer);
             App.Instance.SetMood(CompanionMood.Reply);
             // File-derived answers are not auto-spoken: cloud TTS would transmit
             // those excerpts to an additional third-party provider.
             UpdateStatus("FILE REVIEW READY", Colors.LightGreen);
+        }
+        catch (OperationCanceledException) when (fileToken.IsCancellationRequested)
+        {
+            App.Instance.SetMood(CompanionMood.Idle);
+            Add("system", "File review interrupted before a reply was saved.");
+            UpdateStatus("FILE REVIEW INTERRUPTED", Colors.LightSkyBlue);
+        }
+        catch (Exception ex) when (fileToken.IsCancellationRequested)
+        {
+            App.Instance.SetMood(CompanionMood.Idle);
+            UpdateStatus("FILE REVIEW INTERRUPTED", Colors.LightSkyBlue);
         }
         catch (Exception ex)
         {
@@ -763,10 +836,17 @@ public partial class ChatWindow : Window
         }
         finally
         {
+            if (ReferenceEquals(_activeReplyCts, fileCts))
+                _activeReplyCts = null;
             _busy = false;
             SendButton.IsEnabled = true;
             PromptBox.IsEnabled = true;
             PromptBox.Focus();
+            if (_queuedVoicePrompt is { Length: > 0 } next)
+            {
+                _queuedVoicePrompt = null;
+                _ = SendAsync(next);
+            }
         }
     }
 
