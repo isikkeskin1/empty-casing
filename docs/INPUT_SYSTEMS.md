@@ -1,0 +1,83 @@
+# Capri Desktop input architecture
+
+The original project at https://github.com/lachydotmcg/capri-desktop provides an extensive
+feature guide; its code is PolyForm Noncommercial 1.0.0 and requires attribution. Our
+implementation is independent so we can release our own code without copying the restricted
+implementation. Character art rights are a separate question.
+
+## Input channels and status
+
+| Channel | Our implementation | Future work |
+| --- | --- | --- |
+| Typed prompts | Mainframe and user-confirmed desktop actions | More reliable app-aware text drafting |
+| Global keyboard controls | Seven configurable RegisterHotKey combinations | Hotkey conflict diagnostics on more systems |
+| Microphone | Selected WinMM/NAudio capture device streamed as bounded PCM into local Windows Speech Recognition | Better STT engine, language/device flexibility, low-latency VAD |
+| Microphone test | Five-second live level meter, transient capture | Echo/error diagnosis |
+| Microphone mute | Stops device capture, retains session setting | Push-to-talk |
+| Recognized commands | Prefix Capri / Hey Capri before commands | Independent on-device wake word and audio interruption |
+| Speaker | Selected device for Fish Audio in-memory MP3 playback | Selected output for Windows TTS and all sounds |
+| Voice | Windows system TTS or opted-in Fish cloud TTS | Offline neural voice, sound style layers |
+| Screen | Explicit snapshots or consented periodic watching of chosen monitor | Foreground app follow, unchanged-frame filtering, multi-screen context |
+| Windows geometry | Track app rectangle and sit on its top edge | DPI and transparent hit-testing polish |
+| Mouse | Drag, drop and toss Capri | Patting, cursor ride, window icon interactions |
+| Stop inputs | One click disables screen, mic, desktop-action permission and spoken replies | Cancel all model requests/actions |
+| Game input | Not built | Per-game user-taught controls, per-app opt-in and global stop |
+| Call input | Not built | Opt-in loopback, speaker separation, caller cannot authorize actions |
+| Music/audio loopback | Not built | Consent-based beat extraction and dance reactions |
+| Files | Not built | Explicit file picker, read-only parsers, no unsolicited indexing |
+| General computer use | Limited app/URL/media actions with per-action approval | UIA-targeted click/type and audit trail; no purchases |
+
+## Input Control Center
+
+Open Mainframe > INPUTS, the Setup wizard's CONFIGURE INPUTS button, or the tray menu.
+Choose the capture device, inspect its five-second level meter and choose a playback
+device for Fish Audio. Windows built-in speech still uses Windows default playback.
+
+Click a shortcut field and press Ctrl+Alt or Ctrl+Shift with a letter, function key
+(F1–F12) or Space. A shortcut must include Ctrl and at least Alt or Shift.
+Duplicates are rejected; conflicts reported by Windows are shown to the user. This
+uses RegisterHotKey and never installs a global keyboard logger.
+
+| Action | Default shortcut |
+| --- | --- |
+| Chat panel | Ctrl+Shift+Space |
+| Listening on/off | Ctrl+Alt+V |
+| Mic mute/unmute | Ctrl+Alt+N |
+| Focus typing | Ctrl+Alt+T |
+| Hide/show companion | Ctrl+Alt+H |
+| Bring near pointer | Ctrl+Alt+C |
+| Stop all inputs | Ctrl+Alt+X |
+
+STOP INPUTS disables microphone capture, screen watching and desktop-action
+permission, and interrupts voice playback. It does not cancel unrelated OS
+transactions or forcibly dismiss action-confirmation dialogues.
+
+## Security and implementation
+
+The microphone stream is 16kHz mono PCM, held only in memory. A bounded stream
+feeds Windows System.Speech; overflow drops older samples rather than keeping
+an unbounded backlog. The microphone is off at launch. Mute closes recording,
+not merely ignores recognized words. The five-second diagnostic discards audio.
+No raw microphone audio is transmitted by our speech-recognition service.
+
+Device indexes can change when audio hardware is unplugged or drivers update.
+Missing devices are rejected. Windows privacy settings may block access.
+Screen observations and call audio must not be treated as owner commands.
+Desktop actions still require approval, with payments and purchases prohibited.
+
+## Manual QA before release
+
+1. Open the Input Control Center on fresh Windows 10 and Windows 11 installs.
+2. Select an alternate USB or Bluetooth microphone; run the 5-second meter.
+3. Turn on microphone recognition, say Capri and a valid reminder, mute and unmute.
+4. Unplug the active microphone; verify the app remains responsive and errors visibly.
+5. Test every shortcut from browser, game and text editor; verify duplicates are rejected.
+6. Move Capri near the cursor with Ctrl+Alt+C and focus typing with Ctrl+Alt+T.
+7. Test Fish MP3 output on a nondefault speaker; Windows speech follows the system default.
+8. Confirm STOP INPUTS stops mic capture, screen watching and speech output.
+9. Inspect that local data contains no raw PCM or global-key event logs.
+10. Test privacy rules with adversarial text on screen and simulated remote-call speech.
+
+Windows CI and deterministic shortcut tests do not replace physical audio-device tests.
+This update does not claim full-duplex calls, general keyboard/mouse automation or
+feature parity with the original project.

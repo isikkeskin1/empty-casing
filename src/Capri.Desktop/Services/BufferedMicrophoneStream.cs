@@ -1,0 +1,72 @@
+using System.IO;
+using System.Collections.Concurrent;
+
+namespace Capri.Desktop.Services;
+
+/// <summary>
+/// Thread-safe bounded PCM stream for Windows Speech Recognition. Capture callbacks never block;
+/// if the speech engine lags, old audio is dropped rather than unbounded buffering.
+/// </summary>
+internal sealed class BufferedMicrophoneStream : Stream
+{
+    private readonly BlockingCollection<byte[]> _queue = new(40);
+    private byte[]? _current;
+    private int _offset;
+    private bool _closed;
+
+    public void Push(byte[] bytes, int count)
+    {
+        if (_closed || count <= 0) return;
+        var copy = new byte[count];
+        Buffer.BlockCopy(bytes, 0, copy, 0, count);
+        if (_queue.TryAdd(copy)) return;
+        _queue.TryTake(out _);
+        try { _queue.TryAdd(copy); }
+        catch (InvalidOperationException) { }
+    }
+
+    public void Complete()
+    {
+        _closed = true;
+        if (!_queue.IsAddingCompleted) _queue.CompleteAdding();
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        ArgumentNullException.ThrowIfNull(buffer);
+        if (offset < 0 || count < 0 || offset > buffer.Length - count)
+            throw new ArgumentOutOfRangeException(nameof(offset));
+        if (count == 0) return 0;
+        try
+        {
+            if (_current is null || _offset >= _current.Length)
+            {
+                if (!_queue.TryTake(out _current, Timeout.Infinite)) return 0;
+                _offset = 0;
+            }
+            if (_current is null) return 0;
+            var copied = Math.Min(count, _current.Length - _offset);
+            Buffer.BlockCopy(_current, _offset, buffer, offset, copied);
+            _offset += copied;
+            return copied;
+        }
+        catch (InvalidOperationException) { return 0; }
+    }
+
+    public override bool CanRead => !_closed;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override void Flush() { }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+    protected override void Dispose(bool disposing)
+    {
+        Complete();
+        if (disposing) _queue.Dispose();
+        base.Dispose(disposing);
+    }
+}

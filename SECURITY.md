@@ -34,3 +34,8 @@ When Fish Audio is selected with SPEAK REPLIES on, Capri sends reply, reminder o
 The Fish key is encrypted with the Windows user's DPAPI in the credentials folder as fish.dpapi, never in source files or plain settings. The Voice Setup DELETE SAVED FISH KEY button deletes the local copy; it does not revoke the key at Fish. Revoke any previously disclosed key on the Fish website.
 
 The endpoint is pinned and the app accepts only the s2.1-pro-free or s2.1-pro model headers. Input text, audio size and network duration are bounded. Voice reference IDs must refer to voices whose use is authorized.
+
+
+## Configurable desktop input
+
+Input Control Center uses Windows RegisterHotKey, not a global keylogger. The selected NAudio recording device feeds a bounded in-memory PCM stream to the Windows speech engine only after MIC ON. Mic mute and STOP INPUTS close recording. The five-second mic test saves or uploads no audio. Selected speaker routing currently applies to Fish Audio, while Windows TTS uses the default device. The stop control does not terminate unrelated OS jobs. See docs/INPUT_SYSTEMS.md.

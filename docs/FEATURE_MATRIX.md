@@ -27,3 +27,6 @@ The original fan project has a broad feature set. This file tracks our independe
 Suggested order: clean setup → voice and mic selection → multi-monitor and media context → UIA computer use with per-step approvals, hard cancellation and permanently prohibited purchases → reminders/files/call integrations.
 
 All major additions should have a real feature PR, Windows CI and manual device testing.
+
+
+The Input Control Center now has a selectable microphone, five-second meter, mute that closes capture, configurable global hotkeys, chosen Fish Audio playback device, and STOP INPUTS. Real-device Windows testing is still required. Gamepad control, voice-call loopback, full-duplex audio, background hotword and UI Automation actions are not yet implemented.

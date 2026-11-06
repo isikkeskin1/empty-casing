@@ -11,6 +11,9 @@ public sealed class AppSettings
     public int ScreenIndex { get; set; } = -1;
     public string SpeechVoice { get; set; } = "";
     public string VoiceProvider { get; set; } = "windows";
+    public int MicrophoneDeviceIndex { get; set; } = -1;
+    public int SpeakerDeviceIndex { get; set; } = -1;
+    public InputShortcuts Shortcuts { get; set; } = new();
     public string FishModel { get; set; } = "s2.1-pro-free";
     public string FishReferenceId { get; set; } = "";
     public bool WatchScreen { get; set; }

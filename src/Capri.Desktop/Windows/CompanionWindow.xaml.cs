@@ -174,6 +174,23 @@ public partial class CompanionWindow : Window
         Attach(target.Value, target.Value.Rect.Left + target.Value.Rect.Width * 0.72);
     }
 
+    public void BringNearPointer()
+    {
+        if (!IsVisible) Show();
+        _flight.Stop();
+        DetachWindow();
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var point = ToDip(cursor.X, cursor.Y);
+        Left = Math.Clamp(point.X - Width / 2,
+            SystemParameters.VirtualScreenLeft,
+            SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width);
+        Top = Math.Clamp(point.Y - Height / 2,
+            SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height);
+        SetMood(CompanionMood.Glitching);
+        App.Instance.SavePosition(Left, Top);
+    }
+
     public void DetachWindow()
     {
         _attached = null;

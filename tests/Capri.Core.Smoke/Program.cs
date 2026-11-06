@@ -75,6 +75,26 @@ try
     }
     Check(motion.Stopped, "toss decelerates and settles on the screen floor");
 
+    var defaultKeys = new InputShortcuts();
+    Check(InputShortcuts.TryValidate(defaultKeys, out _),
+        "all seven default global shortcuts are valid and distinct");
+    Check(GlobalShortcut.TryParse("Ctrl+Alt+V", out var toggleKey) &&
+          toggleKey.Modifiers == (GlobalShortcut.Ctrl | GlobalShortcut.Alt) &&
+          toggleKey.VirtualKey == (uint)'V',
+        "shortcut parser normalizes Ctrl/Alt and virtual keys");
+    Check(GlobalShortcut.TryParse("ctrl+SHIFT+space", out var chatKey) &&
+          chatKey.VirtualKey == 0x20, "shortcut parser accepts case-insensitive Space");
+    Check(GlobalShortcut.TryParse("Ctrl+Alt+F12", out var functionKey) &&
+          functionKey.VirtualKey == 0x7B, "shortcut parser supports function keys");
+    Check(!GlobalShortcut.TryParse("Alt+F4", out _) &&
+          !GlobalShortcut.TryParse("Ctrl+C", out _) &&
+          !GlobalShortcut.TryParse("Ctrl+Alt+Delete", out _) &&
+          !GlobalShortcut.TryParse("Ctrl+Ctrl+Alt+V", out _),
+        "unsafe OS shortcuts, unmodified keys and unsupported tokens rejected");
+    defaultKeys.MuteMic = defaultKeys.ToggleMic;
+    Check(!InputShortcuts.TryValidate(defaultKeys, out _),
+        "duplicate global shortcut bindings cannot be saved");
+
     Check(!new AppSettings().WatchScreen && !new AppSettings().ListenToMicrophone &&
           !new AppSettings().EnableDesktopActions, "perception and actions are off by default");
     Check(ActionPolicy.IsPurchaseRequest("please buy this for me") &&

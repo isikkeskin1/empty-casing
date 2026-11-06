@@ -12,6 +12,8 @@ public sealed class VoicePlaybackService : IDisposable
     private Mp3FileReader? _reader;
     private MemoryStream? _stream;
     private bool _disposed;
+    public int SpeakerDeviceIndex { get; set; } = -1;
+    public bool IsPlaying => _output?.PlaybackState == PlaybackState.Playing;
 
     public VoicePlaybackService(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
@@ -26,7 +28,9 @@ public sealed class VoicePlaybackService : IDisposable
         try
         {
             reader = new Mp3FileReader(stream);
-            output = new WaveOutEvent();
+            if (!AudioInputDevices.SpeakerExists(SpeakerDeviceIndex))
+                throw new InvalidOperationException("Selected speaker is unavailable.");
+            output = new WaveOutEvent { DeviceNumber = SpeakerDeviceIndex };
             output.Init(reader);
             var currentOutput = output;
             output.PlaybackStopped += (_, _) => _dispatcher.BeginInvoke(() =>
