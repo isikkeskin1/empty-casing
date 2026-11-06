@@ -97,7 +97,13 @@ public sealed class VoiceTurnRouter
         _lastAcceptedAt = now;
         if (wasOneShot) OneShotArmed = false;
 
-        if (allowFollowUps && wake && kind is VoiceIntent.Wake or VoiceIntent.Prompt)
+        // Conversation mode is a sliding, opt-in window: every accepted follow-up
+        // refreshes the 20-second period. Voice output still blocks arbitrary
+        // recognition, and mute/stop commands end the conversation lease.
+        if (kind is VoiceIntent.StopSpeech or VoiceIntent.StopInputs or VoiceIntent.MuteMicrophone)
+            _followUpUntil = default;
+        else if (allowFollowUps && (wake || now < _followUpUntil) &&
+                 kind is VoiceIntent.Wake or VoiceIntent.Prompt)
             _followUpUntil = now.AddSeconds(20);
         else if (!allowFollowUps) _followUpUntil = default;
 
@@ -130,6 +136,8 @@ public sealed class VoiceTurnRouter
 
     private static bool IsStopInputs(string text) =>
         text.Equals("stop inputs", StringComparison.OrdinalIgnoreCase) ||
+        text.Equals("stop all", StringComparison.OrdinalIgnoreCase) ||
+        text.Equals("stop everything", StringComparison.OrdinalIgnoreCase) ||
         text.Equals("stop listening and watching", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsMuteMicrophone(string text) =>
