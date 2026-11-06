@@ -87,6 +87,10 @@
         <WrapPanel Margin="0,10,0,0">
           <CheckBox x:Name="WatchCheck" Content="WATCH SCREEN" Margin="0,0,18,8"
                     Checked="Watch_Changed" Unchecked="Watch_Changed"/>
+          <CheckBox x:Name="ContextCheck" Content="CONTEXT SENSE · APP + MUSIC"
+                    Margin="0,0,18,8" Foreground="#86DDD5"
+                    ToolTip="Opt-in: include the active app process and Windows Now Playing title in regular chat-model requests, even with a cloud brain."
+                    Checked="Context_Changed" Unchecked="Context_Changed"/>
           <Button x:Name="TalkOnceButton" Content="TALK ONCE" Click="TalkOnce_Click"
                   Margin="0,0,12,8" Padding="8,3"/>
           <Button Content="STOP VOICE" Click="StopVoice_Click"

@@ -93,3 +93,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Roblox experience launch | Numeric validated place ID to documented game-start link | Roblox now recommends share links for promotion |
 | Spotify/Roblox credentials | Windows DPAPI, no secrets in source or chat context | Windows profile / logout QA |
 | Unrestricted Roblox player-game control | Not supported by Roblox Open Cloud OAuth | Game-specific APIs, approved integrations and screen guidance |
+
+
+| Context Sense app + song awareness | Implemented as opt-in, read-on-demand per model reply | Test foreground process and Windows SMTC on real desktop |
+| Context privacy | Process name + current track/artist only, ephemeral model context, no local history | Cloud model sees these hints only when opted in |
+| Literal BCI / reading thoughts | Not implemented | Requires separate medical hardware and consent |

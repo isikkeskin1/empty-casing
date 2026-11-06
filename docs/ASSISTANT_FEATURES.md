@@ -176,3 +176,13 @@ launches. Hands-free mode removes action confirmation dialogs for
 already-supported, locally validated playback/launch controls, but never
 bypasses spending or account-safety limits. No provider API tokens are
 given to the chat model.
+
+
+## Context Sense (opt-in device awareness)
+
+While enabled, each ordinary text/voice chat response gets a short,
+ephemeral hint of the external active app process and the current
+Windows media-session title and artist, without screenshots or an
+always-on file scan. Context is passed to the chosen brain (including
+cloud providers) and is never persisted as history. STOP ALL revokes
+this opt-in.

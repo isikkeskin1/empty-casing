@@ -310,3 +310,25 @@ A one-time local OAuth receiver only accepts matching random-state
 responses and times out; it is NOT exposed on a LAN interface. Users
 must never send client secrets, refresh tokens or cookie values to
 ChatGPT, Capri's chat model or public GitHub commits.
+
+
+## Context Sense — per-reply device hints
+
+SITUATIONAL CONTEXT is off by default. When the owner enables it,
+Capri reads a process name from the first visible foreground-like
+external window and Windows' current SMTC title/artist once for each
+ordinary AI response. It never reads private window titles, chat text,
+game memory, audio samples, contacts, files, passwords, raw screen
+pixels or arbitrary accessibility trees. The process/media metadata
+are clipped and stripped of control characters.
+
+The hint is appended only to an ephemeral copy of the latest user
+message; it is not stored in local chat history. If the configured
+brain is cloud-based, those limited app/media details go to the
+chosen text model as part of the owner's message. No background media
+polling is added by Context Sense. The owner may disable it at any
+time; STOP ALL disables it and saves the off state.
+
+All external names are marked untrusted, can't grant computer-use
+permissions, and never enter the desktop-action executor. App identity
+is approximate and can be wrong with overlays/virtual desktops.

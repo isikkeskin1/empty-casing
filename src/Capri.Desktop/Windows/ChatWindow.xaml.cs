@@ -148,6 +148,7 @@ public partial class ChatWindow : Window
     {
         _syncing = true;
         WatchCheck.IsChecked = App.Instance.Settings.WatchScreen;
+        ContextCheck.IsChecked = App.Instance.Settings.EnableSituationalContext;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
         TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
@@ -224,6 +225,12 @@ public partial class ChatWindow : Window
         }
         App.Instance.Store.SaveSettings(App.Instance.Settings);
         UpdateStatus("MODELS SAVED", Colors.LightSkyBlue);
+    }
+
+    private void Context_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetSituationalContextEnabled(ContextCheck.IsChecked == true);
     }
 
     private void Watch_Changed(object sender, RoutedEventArgs e)
@@ -375,7 +382,7 @@ public partial class ChatWindow : Window
             }
             else
                 answer = await App.Instance.TryHandleActionAsync(prompt)
-                         ?? await App.Instance.Brain.ReplyAsync(Messages.ToArray());
+                         ?? await App.Instance.ReplyWithAmbientContextAsync(Messages.ToArray());
 
             Add("assistant", answer);
             App.Instance.SetMood(CompanionMood.Reply);
