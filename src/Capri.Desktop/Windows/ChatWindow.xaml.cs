@@ -216,6 +216,7 @@ public partial class ChatWindow : Window
         TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         QuietCheck.IsChecked = App.Instance.QuietModeEnabled;
+        HuskWatchCheck.IsChecked = App.Instance.CodeHusk.Enabled;
         DanceCheck.IsChecked = App.Instance.Settings.DanceToSystemAudio;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         HandsFreeCheck.IsChecked = App.Instance.Settings.SkipActionConfirmations;
@@ -232,6 +233,92 @@ public partial class ChatWindow : Window
             "ACTIONS  /  HANDS-FREE" : "ACTIONS  /  CONFIRM";
         _syncing = false;
         UpdateLookoutStatus();
+        RefreshHuskStatus();
+    }
+
+    public void RefreshHuskStatus()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshHuskStatus);
+            return;
+        }
+        HuskStatusText.Text = App.Instance.CodeHusk.Status;
+        var recent = App.Instance.CodeHusk.Recent;
+        HuskRecentText.Text = recent.Count == 0
+            ? "No coding milestones in this session."
+            : string.Join("\n", recent.TakeLast(8).Reverse().Select(evt =>
+                evt.At.ToLocalTime().ToString("HH:mm:ss") + "   " + evt.FriendlyDescription));
+    }
+
+    private void HuskWatch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        try
+        {
+            App.Instance.SetCodeHuskEnabled(HuskWatchCheck.IsChecked == true);
+        }
+        catch (Exception ex)
+        {
+            _syncing = true;
+            HuskWatchCheck.IsChecked = false;
+            _syncing = false;
+            System.Windows.MessageBox.Show("Could not start Code/Husk: " + ex.GetType().Name,
+                "Capri — Code/Husk", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        RefreshHuskStatus();
+    }
+
+    private void HuskInstall_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string agent }) return;
+        var config = App.Instance.HuskHooks.ConfigPath(agent);
+        var answer = System.Windows.MessageBox.Show(
+            "Install Capri's read-only " + agent + " hooks?\n\n" +
+            "This edits:\n" + config + "\n\n" +
+            "A timestamped backup is created first. The hooks run a small, local " +
+            "PowerShell relay when the coding assistant reaches milestones. " +
+            "The relay discards prompts, code, outputs and paths. It writes " +
+            "event names only while Code/Husk is enabled in Capri.\n\n" +
+            "No approvals or commands are executed by Capri. You can remove " +
+            "only Capri's hooks using the adjacent button.\n\nContinue?",
+            "Capri — review coding hooks", MessageBoxButton.YesNo,
+            MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes) return;
+        try
+        {
+            var result = App.Instance.HuskHooks.Install(agent);
+            SelectPage("CHAT");
+            AppendNotification(result);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show("Hook install failed: " + ex.Message +
+                "\nNo existing config is intentionally deleted.",
+                "Capri — Code/Husk", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void HuskRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string agent }) return;
+        if (System.Windows.MessageBox.Show(
+                "Remove only Capri's " + agent + " hook entries? " +
+                "Other hooks and settings remain unchanged. A backup is saved.",
+                "Capri — remove coding hooks", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        try
+        {
+            var result = App.Instance.HuskHooks.Uninstall(agent);
+            SelectPage("CHAT");
+            AppendNotification(result);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show("Hook removal failed: " + ex.Message,
+                "Capri — Code/Husk", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     public void UpdateLookoutStatus()
