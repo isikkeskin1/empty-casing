@@ -801,8 +801,8 @@ public partial class App : System.Windows.Application
     /// </summary>
     public bool BeginLiveSpeech()
     {
-        if (_quietMode || !Settings.SpeakReplies || _speech is null ||
-            Settings.VoiceProvider == "fish" || CallCompanionActive)
+        if (_quietMode || !Settings.SpeakReplies || !Settings.SpeakWhileGenerating ||
+            _speech is null || Settings.VoiceProvider == "fish" || CallCompanionActive)
             return false;
         CancelVoiceOutput();
         _liveSpeechBuffer = new VoiceSentenceBuffer();
