@@ -887,12 +887,49 @@ try
     Check(ActionPolicy.ParsePlannerResponse("{\"kind\":\"buy\",\"argument\":\"anything\"}") is null,
           "untrusted planner actions are rejected");
 
+    var ollamaToken = StreamingReplyDecoder.ReadOllamaLine(
+        "{\"message\":{\"content\":\"Hello\"},\"done\":false}");
+    var ollamaDone = StreamingReplyDecoder.ReadOllamaLine(
+        "{\"message\":{\"content\":\"\"},\"done\":true}");
+    Check(ollamaToken == ("Hello", false) && ollamaDone == ("", true) &&
+          StreamingReplyDecoder.ReadOllamaLine("").Text == "",
+        "Ollama NDJSON exposes only assistant text and explicit completion");
+    var cloudToken = StreamingReplyDecoder.ReadCloudLine(
+        "data: {\"choices\":[{\"delta\":{\"content\":\"there\"}}]}");
+    Check(cloudToken == ("there", false) &&
+          StreamingReplyDecoder.ReadCloudLine("data: [DONE]").Done &&
+          StreamingReplyDecoder.ReadCloudLine("event: completion").Text == "" &&
+          StreamingReplyDecoder.ReadCloudLine("data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}").Text == "" &&
+          StreamingReplyDecoder.ReadCloudLine("data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"x\"}]}}]}").Text == "",
+        "OpenAI-style SSE drops roles, tool calls and non-text metadata");
+    var sentenceBuffer = new VoiceSentenceBuffer();
+    Check(sentenceBuffer.Push("Capri has found a useful answer, right").Count == 0 &&
+          sentenceBuffer.Push(" here. Let's get started with the next task. ")
+              .SequenceEqual(new[] { "Capri has found a useful answer, right here. Let's get started with the next task." }) &&
+          sentenceBuffer.Finish() == "",
+        "Windows TTS waits for a complete sentence before speaking a streamed chunk");
+    var remainingSpeech = new VoiceSentenceBuffer();
+    remainingSpeech.Push("Short text without punctuation");
+    Check(remainingSpeech.Finish() == "Short text without punctuation" &&
+          remainingSpeech.Pending == "",
+        "sentence buffer flushes short trailing speech only at final model completion");
+
     var fakeHandler = new FakeHandler();
     using var client = new HttpClient(fakeHandler);
     using var brain = new OllamaBrain(settings, client);
     Check(await brain.IsAvailableAsync(), "local Ollama health check");
     var reply = await brain.ReplyAsync(turns);
     Check(reply == "ready", "local Ollama reply decoded");
+    var streamedLocalChunks = new List<string>();
+    var localStreamed = await brain.StreamReplyAsync(turns, chunk =>
+    {
+        streamedLocalChunks.Add(chunk);
+        return Task.CompletedTask;
+    });
+    Check(localStreamed == "Hello there, choom." &&
+          streamedLocalChunks.SequenceEqual(new[] { "Hello ", "there, choom." }) &&
+          fakeHandler.SawStreaming,
+        "Ollama stream returns ordered text before completion through fixed localhost API");
     Check(fakeHandler.SawUserMessage && fakeHandler.SawCorrectModel, "Ollama request includes conversation and selected model");
     settings.VisionModel = "vision-test";
     var observation = await brain.SeeScreenAsync(new byte[] { 1, 2, 3 }, "describe this");
@@ -928,6 +965,16 @@ try
         using var cloudClient = new HttpClient(cloudFake);
         using var cloud = new CloudBrain(cloudSettings, vault, cloudClient);
         Check(await cloud.TestAsync() == "ready", "cloud API returns chat completion");
+        var streamedCloudChunks = new List<string>();
+        var cloudStreamed = await cloud.StreamReplyAsync(turns, chunk =>
+        {
+            streamedCloudChunks.Add(chunk);
+            return Task.CompletedTask;
+        });
+        Check(cloudStreamed == "Hey from cloud." &&
+              streamedCloudChunks.SequenceEqual(new[] { "Hey ", "from cloud." }) &&
+              cloudFake.SawStreaming,
+            "cloud stream reads SSE delta content without changing fixed host or Bearer security");
         Check(cloudFake.Authenticated && cloudFake.CorrectHost &&
               cloudFake.CorrectTextModel, "cloud API uses fixed HTTPS endpoint and bearer key");
         Check(await cloud.SeeScreenAsync(new byte[] { 1, 2, 3 }, "look") == "ready" &&
@@ -992,6 +1039,7 @@ sealed class FakeHandler : HttpMessageHandler
     public bool SawCorrectModel { get; private set; }
     public bool SawVisionImage { get; private set; }
     public bool SawJsonPlan { get; private set; }
+    public bool SawStreaming { get; private set; }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -1005,6 +1053,18 @@ sealed class FakeHandler : HttpMessageHandler
         var json = await request.Content!.ReadAsStringAsync(cancellationToken);
         SawUserMessage |= json.Contains("\"content\":\"hello\"", StringComparison.Ordinal);
         SawCorrectModel |= json.Contains("\"model\":\"test-model\"", StringComparison.Ordinal);
+        if (json.Contains("\"stream\":true", StringComparison.Ordinal))
+        {
+            SawStreaming = true;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    ("{\"message\":{\"content\":\"Hello \"},\"done\":false}\\n" +
+                    "{\"message\":{\"content\":\"there, choom.\"},\"done\":false}\\n" +
+                    "{\"message\":{\"content\":\"\"},\"done\":true}\\n"
+                    ).Replace("\\n", "\n"))
+            };
+        }
 
         if (json.Contains("\"images\":", StringComparison.Ordinal))
         {
@@ -1040,6 +1100,7 @@ sealed class CloudFakeHandler : HttpMessageHandler
     public bool CorrectHost { get; private set; }
     public bool CorrectTextModel { get; private set; }
     public bool SawVision { get; private set; }
+    public bool SawStreaming { get; private set; }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -1053,6 +1114,18 @@ sealed class CloudFakeHandler : HttpMessageHandler
 
         var json = await request.Content!.ReadAsStringAsync(cancellationToken);
         CorrectTextModel |= json.Contains("\"model\":\"test-chat\"", StringComparison.Ordinal);
+        if (json.Contains("\"stream\":true", StringComparison.Ordinal))
+        {
+            SawStreaming = true;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    ("data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\\n\\n" +
+                    "data: {\"choices\":[{\"delta\":{\"content\":\"Hey \"}}]}\\n\\n" +
+                    "data: {\"choices\":[{\"delta\":{\"content\":\"from cloud.\"}}]}\\n\\n" +
+                    "data: [DONE]\\n\\n").Replace("\\n", "\n"))
+            };
+        }
         SawVision |= json.Contains("\"model\":\"test-vision\"", StringComparison.Ordinal) &&
             json.Contains("data:image/jpeg;base64,AQID", StringComparison.Ordinal);
         var content = json.Contains("\"kind\"", StringComparison.Ordinal) ||

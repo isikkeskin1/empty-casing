@@ -40,6 +40,64 @@ public sealed class CloudBrain : IDisposable
         return RequestAsync(_settings.CloudTextModel, messages, ct);
     }
 
+    /// <summary>
+    /// OpenAI-compatible Chat Completions SSE, independent of any UI or action
+    /// planner. Only choices[0].delta.content becomes visible to the owner.
+    /// </summary>
+    public async Task<string> StreamReplyAsync(
+        IReadOnlyList<ChatTurn> turns, Func<string, Task> onDelta,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(onDelta);
+        var model = _settings.CloudTextModel;
+        if (string.IsNullOrWhiteSpace(model) || model.Length > 150)
+            throw new InvalidOperationException("Enter a valid cloud model ID.");
+        var provider = ProviderCatalog.Get(_settings.BrainProvider);
+        var key = _secrets.Read(provider.Id);
+        if (string.IsNullOrWhiteSpace(key))
+            throw new InvalidOperationException("Connect your API key in Voice Setup first.");
+        var messages = new List<object> { new { role = "system", content = Persona } };
+        messages.AddRange(turns.Where(x => x.Role is "user" or "assistant")
+            .TakeLast(20).Select(x => (object)new { role = x.Role, content = x.Text }));
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            new Uri(new Uri(provider.ApiBase), "chat/completions"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        request.Headers.Accept.ParseAdd("text/event-stream");
+        request.Content = JsonContent.Create(new { model, messages, stream = true });
+        using var response = await _client.SendAsync(request,
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(provider.Name + " streaming HTTP " +
+                (int)response.StatusCode + ". Verify model support and provider quota.");
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+        var text = new System.Text.StringBuilder();
+        var done = false;
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) is not null)
+        {
+            ct.ThrowIfCancellationRequested();
+            var (delta, complete) = StreamingReplyDecoder.ReadCloudLine(line);
+            if (delta.Length > 0)
+            {
+                if (text.Length + delta.Length > StreamingReplyDecoder.MaxReplyCharacters)
+                    throw new InvalidOperationException("Streaming answer exceeded the safety limit.");
+                text.Append(delta);
+                await onDelta(delta);
+            }
+            if (complete)
+            {
+                done = true;
+                break;
+            }
+        }
+        ct.ThrowIfCancellationRequested();
+        if (!done)
+            throw new InvalidOperationException("Cloud stream closed before completion.");
+        return text.ToString().Trim() is { Length: > 0 } result
+            ? result : "(No response from the cloud model.)";
+    }
+
     public Task<string> SeeScreenAsync(byte[] jpeg, string question, CancellationToken ct = default)
     {
         if (jpeg.Length == 0 || jpeg.Length > 5_000_000)

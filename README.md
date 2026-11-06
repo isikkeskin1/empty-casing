@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Live model replies — incremental text and early Windows voice
+
+Capri now displays **streaming chat tokens** as the model generates them. Local Ollama uses newline-delimited chat chunks; supported OpenAI-compatible cloud brains use Chat Completions server-sent events. This applies to normal assistant conversations, not action plans or screen screenshots. Partial text is an ephemeral UI preview: only successfully completed answers are saved to history.
+
+For Windows TTS, Capri can **begin speaking complete sentences** before the full model reply has finished; the next sentence plays after the previous one. Toggle this under **INPUTS → Speak Windows voice sentences while the AI is still replying** (on by default). Fish Audio still uses complete MP3 synthesis and remains interruptible, but is not streaming voice. STOP REPLY / Talk Once / STOP ALL discard pending text and queued sentence audio; external operations already dispatched are not rolled back.
+
+See [Voice conversation guide](docs/VOICE_CONVERSATION.md). This is streamed **model text** with early Windows TTS, not continuous full-duplex audio or streaming microphone recognition.
+
 ## Voice Conversation v2 — interrupt, rephrase, stay in-game
 
 Capri's existing Windows speech recognizer and optional Fish Audio voice can now be controlled more naturally. **STOP REPLY** in Control Deck or **Ctrl+Alt+R** cancels the current chat/vision generation and audio playback *without* disarming desktop inputs. With separately opted-in spoken interruptions, **"Capri, cancel that"** does the same. **TALK ONCE** now interrupts an old answer before starting one new capture; if you rephrase while the model is thinking, only the newest recognized question is retained.

@@ -63,6 +63,10 @@ public partial class App : System.Windows.Application
     private VoicePlaybackService? _voicePlayback;
     private SystemAudioActivityService? _audioReactions;
     private CancellationTokenSource? _voiceCts;
+    private readonly Queue<string> _liveSpeechQueue = new();
+    private VoiceSentenceBuffer? _liveSpeechBuffer;
+    private bool _liveSpeechSpeaking;
+    private bool _liveSpeechCompleted;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromSeconds(45) };
     private bool _watchBusy;
     private string _lastReaction = "";
@@ -390,21 +394,25 @@ public partial class App : System.Windows.Application
     }
 
     public async Task<string> ReplyWithAmbientContextAsync(
-        IReadOnlyList<ChatTurn> turns, CancellationToken token = default)
+        IReadOnlyList<ChatTurn> turns, CancellationToken token = default,
+        Func<string, Task>? onDelta = null)
     {
+        Task<string> ReplyCore(IReadOnlyList<ChatTurn> source) =>
+            onDelta is null ? Brain.ReplyAsync(source, token) :
+                Brain.StreamReplyAsync(source, onDelta, token);
         if (!Settings.EnableSituationalContext)
-            return await Brain.ReplyAsync(turns, token);
+            return await ReplyCore(turns);
 
         var epoch = _actionEpoch;
         AmbientContext context;
         try { context = await AmbientSense.ReadOnceAsync(token); }
         catch (Exception ex) when (ex is InvalidOperationException or
             System.Runtime.InteropServices.COMException or TimeoutException)
-        { return await Brain.ReplyAsync(turns, token); }
+        { return await ReplyCore(turns); }
 
         // STOP ALL or toggling sense off during observation revokes metadata sharing.
         if (!Settings.EnableSituationalContext || _actionEpoch != epoch)
-            return await Brain.ReplyAsync(turns, token);
+            return await ReplyCore(turns);
 
         if (_livePresenceEnabled)
             _presenceJournal.Observe(context, DateTimeOffset.UtcNow);
@@ -412,7 +420,7 @@ public partial class App : System.Windows.Application
             AmbientContextPolicy.AnnotateLastUserTurn(turns, context);
         if (_livePresenceEnabled)
             annotated = _presenceJournal.AnnotateLastUserTurn(annotated, DateTimeOffset.UtcNow);
-        return await Brain.ReplyAsync(annotated, token);
+        return await ReplyCore(annotated);
     }
 
     public void SetHandsFreeMode(bool enabled)
@@ -753,6 +761,11 @@ public partial class App : System.Windows.Application
 
     private void CancelVoiceOutput()
     {
+        _liveSpeechBuffer?.Clear();
+        _liveSpeechBuffer = null;
+        _liveSpeechQueue.Clear();
+        _liveSpeechCompleted = false;
+        _liveSpeechSpeaking = false;
         _voiceCts?.Cancel();
         _voiceCts?.Dispose();
         _voiceCts = null;
@@ -782,6 +795,77 @@ public partial class App : System.Windows.Application
     }
 
     /// <summary>
+    /// Start speaking complete sentences as soon as the chat model produces
+    /// them. Windows TTS can enqueue short sentences; Fish Audio still speaks
+    /// its finished MP3 because its existing API is not a validated stream.
+    /// </summary>
+    public bool BeginLiveSpeech()
+    {
+        if (_quietMode || !Settings.SpeakReplies || !Settings.SpeakWhileGenerating ||
+            _speech is null || Settings.VoiceProvider == "fish" || CallCompanionActive)
+            return false;
+        CancelVoiceOutput();
+        _liveSpeechBuffer = new VoiceSentenceBuffer();
+        _liveSpeechCompleted = false;
+        _liveSpeechSpeaking = false;
+        return true;
+    }
+
+    public void PushLiveSpeechDelta(string delta)
+    {
+        if (_liveSpeechBuffer is null) return;
+        foreach (var sentence in _liveSpeechBuffer.Push(delta))
+        {
+            if (_liveSpeechQueue.Count >= 60)
+            {
+                CancelVoiceOutput();
+                Debug.WriteLine("Streamed speech queue exceeded cap.");
+                return;
+            }
+            _liveSpeechQueue.Enqueue(sentence);
+        }
+        PumpLiveSpeech();
+    }
+
+    public void CompleteLiveSpeech()
+    {
+        if (_liveSpeechBuffer is null) return;
+        var last = _liveSpeechBuffer.Finish();
+        if (last.Length > 0)
+            _liveSpeechQueue.Enqueue(last);
+        _liveSpeechCompleted = true;
+        PumpLiveSpeech();
+    }
+
+    private void PumpLiveSpeech()
+    {
+        if (_liveSpeechBuffer is null || _liveSpeechSpeaking) return;
+        if (_liveSpeechQueue.Count > 0)
+        {
+            var sentence = _liveSpeechQueue.Dequeue();
+            try
+            {
+                _liveSpeechSpeaking = true;
+                _companion?.SetMood(CompanionMood.Talking);
+                _speech?.Speak(sentence, Settings.SpeechVoice);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Live voice chunk failed: " + ex.GetType().Name);
+                CancelVoiceOutput();
+                OnVoicePlaybackFinished();
+            }
+            return;
+        }
+        if (_liveSpeechCompleted)
+        {
+            _liveSpeechBuffer = null;
+            _liveSpeechCompleted = false;
+            OnVoicePlaybackFinished();
+        }
+    }
+
+    /// <summary>
     /// Stops the current chat generation and audible output. Action effects
     /// already committed by a tool or external API are not reversible.
     /// </summary>
@@ -798,6 +882,12 @@ public partial class App : System.Windows.Application
         if (!Dispatcher.CheckAccess())
         {
             Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+            return;
+        }
+        if (_liveSpeechBuffer is not null)
+        {
+            _liveSpeechSpeaking = false;
+            PumpLiveSpeech();
             return;
         }
         _voiceRouter.ReplyPlaybackFinished(DateTimeOffset.UtcNow,

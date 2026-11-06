@@ -140,6 +140,11 @@
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>
             <TextBlock Text="Voice interruption is OFF by default because speaker audio can echo into microphones. When enabled, 'Capri, cancel that' can stop a reply, but ordinary overheard speech cannot issue commands. The INTERRUPT REPLY shortcut always works."
                        Margin="21,3,0,0" Foreground="#8FA7B8" TextWrapping="Wrap" FontSize="11"/>
+            <CheckBox x:Name="SpeakWhileGeneratingCheck"
+                      Content="Speak Windows voice sentences while the AI is still replying"
+                      Margin="0,12,0,0" Foreground="#C7E2E9"/>
+            <TextBlock Text="ON by default for Windows TTS: Capri can start speaking after a complete sentence, instead of waiting for the entire AI response. Fish Audio still uses a complete MP3. Disable if you prefer uninterrupted whole-answer playback."
+                       Margin="21,3,0,0" Foreground="#8FA7B8" TextWrapping="Wrap" FontSize="11"/>
             <CheckBox x:Name="OpenChatForVoiceCheck"
                       Content="Open the full chat window for spoken requests"
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>

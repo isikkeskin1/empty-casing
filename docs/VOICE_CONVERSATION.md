@@ -26,6 +26,14 @@ A pure, deterministic VoiceTurnRouter handles prefix boundaries (so "caprice"
 does not awaken Capri), local stop/mute commands, duplicate suppression and
 temporary follow-up permission. The AI planner is never needed for stop/mute.
 
+## Streaming model replies — Live Text + Early Windows Speech
+
+**Now implemented:** normal chat replies are streamed from Ollama NDJSON or OpenAI-compatible cloud Chat Completions SSE. Only assistant text deltas are accepted; model tool-call metadata never becomes executable desktop instructions. Long streams are bounded to 32,000 characters, and truncated/incomplete streams are treated as errors. The UI shows a temporary live reply, replacing it with a saved complete message only after the provider signals completion. Canceling a turn removes unfinished text and stops streamed sentence playback.
+
+If enabled under **INPUTS → Speak Windows voice sentences while the AI is still replying**, local Windows TTS can start speaking once at least one complete, reasonably sized clause arrives. The voice queue plays sentences sequentially, not simultaneously; the follow-up timer renews after the **last** utterance. The option is on by default for Windows TTS and ignored for Fish Audio. Fish still downloads a complete MP3 before playing. Turn it off if you prefer a single continuous synthesized answer.
+
+**This is not** bidirectional live voice streaming. Microphone input still uses complete utterances from Windows recognition; there is no neural acoustic echo cancellation or low-latency audio streaming to Fish. Cloud providers implementing the documented SSE protocol work; provider-specific extensions, content filters, rate limits and connection resets may require per-provider acceptance testing. Interrupted provider responses do not persist partial history.
+
 ## Voice Conversation v2 — interrupt, rephrase and stay in-game
 
 The main speech pipeline now distinguishes **STOP REPLY** from the emergency **STOP ALL** command. This is built on the existing local Windows speech recognizer and the selected Windows/Fish voice, not an always-streaming audio model.
