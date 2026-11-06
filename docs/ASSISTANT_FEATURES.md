@@ -78,3 +78,13 @@ separately opt into short 20-second follow-up turns and interruptible speech;
 both are off by default. Local stop/mute/shutdown phrases bypass the AI brain.
 Voice turns are de-duplicated. This still uses Windows speech-recognition
 language packs, not streaming, echo-cancelled full-duplex chat.
+
+
+## Audio-responsive animation
+
+An optional DANCE TO AUDIO switch listens to Windows *output* playback energy,
+including music and games, using WASAPI loopback. No raw sound is stored,
+transcribed or uploaded by Capri. The detector reports simple activity and
+timing pulses to the companion's music-perch animation; it returns to idle
+after playback stops. Consent is renewed every app session. No song title
+recognition or call-speaker separation is implemented.

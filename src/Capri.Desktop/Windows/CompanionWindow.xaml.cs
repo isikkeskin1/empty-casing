@@ -254,6 +254,27 @@ public partial class CompanionWindow : Window
         App.Instance.SavePosition(Left, Top);
     }
 
+    public void SetMusicActivity(bool active)
+    {
+        if (!active)
+        {
+            if (_mood == CompanionMood.MusicPerch)
+                SetMood(_attached.HasValue ? CompanionMood.Perching : CompanionMood.Idle);
+            return;
+        }
+        if (_mood is CompanionMood.Idle or CompanionMood.Perching)
+            SetMood(CompanionMood.MusicPerch);
+    }
+
+    public void OnMusicPulse()
+    {
+        if (!App.Instance.Settings.DanceToSystemAudio) return;
+        SetMusicActivity(true);
+        if (_mood != CompanionMood.MusicPerch) return;
+        var pulse = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(180));
+        CharacterImage.BeginAnimation(OpacityProperty, pulse);
+    }
+
     public void ShowReaction(string reaction)
     {
         if (string.IsNullOrWhiteSpace(reaction)) return;

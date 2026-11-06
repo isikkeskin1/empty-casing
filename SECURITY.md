@@ -76,3 +76,17 @@ listening and spoken interruption are both off by default. Windows recognition
 can be affected by speaker leakage, recognition errors and device drivers.
 No recognized text is sent to cloud speech services by this routing layer;
 normal user requests can still be sent to the configured AI brain.
+
+
+## System audio energy monitoring (optional)
+
+DANCE TO AUDIO uses Windows WASAPI loopback to observe audio played by the
+default output device. It may include calls, games, media and notifications.
+It is OFF at launch and requires fresh per-session consent. The service
+calculates only RMS levels and short-lived pulse/activity estimates in RAM;
+it never writes sound frames to disk, transcribes them, sends them to AI
+services, or associates them with a caller. It pauses dance reactions when
+Capri is speaking. STOP INPUTS disables the loopback capture immediately.
+
+The audio detector is approximate, not musical beat tracking or song
+identification, and only works on compatible Windows audio outputs.

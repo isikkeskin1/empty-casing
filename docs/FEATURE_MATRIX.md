@@ -38,3 +38,7 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Optional short voice follow-ups | Implemented in source, OFF by default | Noise/echo and background speech QA |
 | "Capri stop" speech interruption | Implemented with owner opt-in | Headset/echo safety and reliability QA |
 | Acoustic echo cancellation, streaming VAD, full-duplex chat | Not built | Separate DSP/STT architecture |
+
+
+| System-audio-reactive dance | Implemented in source: opt-in WASAPI RMS/pulses and music-perch animation | Multi-device, game and speaker QA |
+| Audio transcription/song identification | Not implemented | Separate consent and model/provider plan |

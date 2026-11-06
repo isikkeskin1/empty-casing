@@ -51,6 +51,16 @@ Select **LOOK NOW** to inspect the selected monitor once. Mainframe's monitor pi
 
 Read [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md) for exact supported behavior, limitations and privacy details.
 
+## Optional music and system-audio reactions
+
+In Mainframe, **DANCE TO AUDIO** lets Capri react to the sound level and beats
+of Windows playback. This is a separate opt-in each time the app launches:
+system output can include calls, videos and games. Audio is reduced immediately
+to numeric energy/pulse estimates, with no files saved or audio uploaded.
+Capri temporarily uses her music-perch animation while playback is audible;
+she stops once sound has been quiet for two seconds. This is not song
+identification or microphone recording.
+
 ## Voice conversation controls
 
 **TALK ONCE** in Mainframe or Ctrl+Alt+Space opens the selected microphone for one

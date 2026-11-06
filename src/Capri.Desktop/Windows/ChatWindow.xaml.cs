@@ -126,6 +126,7 @@ public partial class ChatWindow : Window
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
         TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
+        DanceCheck.IsChecked = App.Instance.Settings.DanceToSystemAudio;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         _syncing = false;
     }
@@ -224,6 +225,29 @@ public partial class ChatWindow : Window
             UpdateStatus("MIC UNAVAILABLE", Colors.OrangeRed);
             System.Windows.MessageBox.Show(exception.Message,
                 "Windows microphone recognition", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void Dance_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        if (DanceCheck.IsChecked == true &&
+            System.Windows.MessageBox.Show(
+                "DANCE TO AUDIO reads output volume levels from your Windows sound device, including calls or videos, while enabled. It does not save or upload audio. Enable for this session?",
+                "Capri — system audio permission", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            SyncCapabilitySwitches();
+            return;
+        }
+        try { App.Instance.SetDanceToSystemAudio(DanceCheck.IsChecked == true); }
+        catch (Exception ex)
+        {
+            App.Instance.SetDanceToSystemAudio(false);
+            SyncCapabilitySwitches();
+            UpdateStatus("AUDIO DEVICE ERROR", Colors.OrangeRed);
+            System.Windows.MessageBox.Show(ex.Message, "Capri system audio",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
