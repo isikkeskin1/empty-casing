@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Capri Desktop — Input Control Center" Width="675" Height="760"
         MinWidth="580" MinHeight="590" WindowStartupLocation="CenterOwner"
-        Background="#0D121E" Foreground="#EBF4FA">
+        Background="{StaticResource CapriBaseBrush}" Foreground="#EBF4FA">
   <Window.Resources>
-    <Style TargetType="Button">
+    <Style TargetType="Button" BasedOn="{StaticResource CapriButton}">
       <Setter Property="Foreground" Value="#EBF4FA"/>
       <Setter Property="Background" Value="#253349"/>
       <Setter Property="BorderBrush" Value="#62768C"/>
@@ -13,7 +13,7 @@
       <Setter Property="FontFamily" Value="Consolas"/>
       <Setter Property="Cursor" Value="Hand"/>
     </Style>
-    <Style TargetType="TextBox">
+    <Style TargetType="TextBox" BasedOn="{StaticResource CapriInput}">
       <Setter Property="Foreground" Value="#F4F8FA"/>
       <Setter Property="Background" Value="#172437"/>
       <Setter Property="BorderBrush" Value="#526176"/>
@@ -29,7 +29,7 @@
   <DockPanel Margin="23">
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
       <TextBlock Text="CAPRI // INPUT CONTROL" FontSize="27" FontWeight="Bold"
-                 FontFamily="Consolas" Foreground="#FF579A"/>
+                 FontFamily="Consolas" Foreground="{StaticResource CapriYellowBrush}"/>
       <TextBlock Text="Choose devices and shortcuts. Microphone monitoring is opt-in."
                  Foreground="#9DB8CD" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
     </StackPanel>
@@ -52,7 +52,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
         <Border Padding="14" Margin="0,0,0,12" Background="#131D2D"
-                BorderThickness="1" BorderBrush="#30465E" CornerRadius="8">
+                BorderThickness="1" BorderBrush="#30465E" CornerRadius="0,8,0,0">
           <StackPanel>
             <TextBlock Text="01  MICROPHONE INPUT" Foreground="#7FE2EF"
                        FontFamily="Consolas" FontWeight="Bold" Margin="0,0,0,10"/>
@@ -69,7 +69,7 @@
         </Border>
 
         <Border Padding="14" Margin="0,0,0,12" Background="#131D2D"
-                BorderThickness="1" BorderBrush="#30465E" CornerRadius="8">
+                BorderThickness="1" BorderBrush="#30465E" CornerRadius="0,8,0,0">
           <StackPanel>
             <TextBlock Text="02  SPEAKER OUTPUT" Foreground="#7FE2EF"
                        FontFamily="Consolas" FontWeight="Bold" Margin="0,0,0,10"/>
@@ -80,7 +80,7 @@
         </Border>
 
         <Border Padding="14" Margin="0,0,0,12" Background="#131D2D"
-                BorderThickness="1" BorderBrush="#30465E" CornerRadius="8">
+                BorderThickness="1" BorderBrush="#30465E" CornerRadius="0,8,0,0">
           <StackPanel>
             <TextBlock Text="03  GLOBAL KEYBOARD SHORTCUTS" Foreground="#7FE2EF"
                        FontFamily="Consolas" FontWeight="Bold" Margin="0,0,0,8"/>
