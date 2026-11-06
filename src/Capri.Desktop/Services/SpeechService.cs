@@ -116,8 +116,11 @@ public sealed class SpeechService : IDisposable
         var speaker = new SpeechSynthesizer();
         speaker.SpeakCompleted += (_, args) =>
         {
+            // A cancelled old utterance may finish after a newer one begins.
+            // Never mark the new playback as idle from that cancellation.
+            if (args.Cancelled) return;
             _speaking = false;
-            if (!args.Cancelled && !_disposed) SpeechFinished?.Invoke();
+            if (!_disposed) SpeechFinished?.Invoke();
         };
         return speaker;
     }
