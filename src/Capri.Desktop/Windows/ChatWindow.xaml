@@ -88,6 +88,8 @@
             <Button x:Name="NavConnect" Content="04   Apps &amp; tools"
                     Tag="CONNECT" Click="Navigate_Click"
                     Style="{StaticResource CapriNavButton}"/>
+            <Button x:Name="NavMemory" Content="05   My memory" Tag="MEMORY"
+                    Click="Navigate_Click" Style="{StaticResource CapriNavButton}"/>
             <TextBlock Text="TIP  •  Double-click Capri on your desktop to return to chat."
                        Margin="5,22,4,0" Style="{StaticResource CapriSubtext}"
                        FontSize="11"/>
@@ -551,6 +553,70 @@
                   <Button Content="ROUTINE COMMANDS" Click="ListRoutines_Click"
                           Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
                 </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Local Memory Vault, separate from chat history and screen sensing. -->
+        <ScrollViewer x:Name="MemoryPage" Grid.Row="1" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,0">
+            <Border Style="{StaticResource CapriPanel}" Padding="17" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// MY MEMORY VAULT" Style="{StaticResource CapriLabel}"
+                           Foreground="{StaticResource CapriYellowBrush}" FontSize="15"/>
+                <TextBlock Text="Only facts you explicitly save appear here. Capri never mines chat history, screens, files or contacts to create memories."
+                           Style="{StaticResource CapriSubtext}" Margin="0,9,0,16"/>
+                <CheckBox x:Name="UseMemoryCheck" Content="Use my saved notes in AI replies"
+                          Style="{StaticResource CapriToggle}"
+                          Checked="UseMemory_Changed" Unchecked="UseMemory_Changed"/>
+                <TextBlock Text="OFF by default. Notes stay on this Windows PC unless enabled. Cloud AI requires separate approval per provider; switching providers cannot silently share them."
+                           Style="{StaticResource CapriSubtext}" Margin="0,0,0,11"
+                           FontSize="11"/>
+                <TextBlock x:Name="MemorySharingStatus"
+                           Foreground="{StaticResource CapriCyanBrush}"
+                           Text="Memory context disabled"
+                           TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Padding="17" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// SAVED NOTES" Style="{StaticResource CapriLabel}"
+                           Margin="0,0,0,9"/>
+                <TextBlock x:Name="MemoryCountText" Text="0 / 40 saved facts"
+                           Style="{StaticResource CapriSubtext}" Margin="0,0,0,8"/>
+                <ListBox x:Name="MemoryList" Height="170"
+                         Background="#101F2A" Foreground="{StaticResource CapriTextBrush}"
+                         BorderBrush="#3D7181" BorderThickness="1"
+                         DisplayMemberPath="Text"
+                         SelectionChanged="MemorySelected_Changed"
+                         Padding="9" Margin="0,0,0,10"/>
+                <TextBlock Text="ADD OR EDIT A NOTE" Style="{StaticResource CapriLabel}"
+                           Margin="0,0,0,6"/>
+                <TextBox x:Name="MemoryNoteBox" MaxLength="240"
+                         Style="{StaticResource CapriInput}"
+                         MinHeight="39" TextWrapping="Wrap"
+                         ToolTip="An ordinary short fact. Don't store passwords or API keys."
+                         Margin="0,0,0,11"/>
+                <WrapPanel Margin="0,0,0,4">
+                  <Button Content="SAVE NEW NOTE" Click="MemoryAdd_Click"
+                          Style="{StaticResource CapriPrimaryButton}" Margin="0,0,8,8"/>
+                  <Button Content="UPDATE SELECTED" Click="MemoryEdit_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,8,8"/>
+                  <Button Content="FORGET SELECTED" Click="MemoryDelete_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,8,8"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="EXPORT NOTES" Click="MemoryExport_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,8,8"/>
+                  <Button Content="FORGET EVERYTHING" Click="MemoryClear_Click"
+                          Style="{StaticResource CapriDangerButton}" Margin="0,0,8,8"/>
+                </WrapPanel>
+                <TextBlock x:Name="MemoryFeedbackText"
+                           Text="Try: remember that I prefer short answers."
+                           TextWrapping="Wrap" Foreground="{StaticResource CapriCyanBrush}"
+                           Margin="0,9,0,0" FontSize="11"/>
               </StackPanel>
             </Border>
           </StackPanel>
