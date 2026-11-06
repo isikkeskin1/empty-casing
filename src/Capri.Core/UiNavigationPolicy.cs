@@ -69,7 +69,8 @@ public static partial class UiNavigationPolicy
         bool enabled, bool offscreen, DateTimeOffset captured, DateTimeOffset now,
         bool sameWindow, out string reason)
     {
-        if (!sameWindow || now - captured is < TimeSpan.Zero or > TimeSpan.FromSeconds(20))
+        var age = now - captured;
+        if (!sameWindow || age < TimeSpan.Zero || age > TimeSpan.FromSeconds(20))
         {
             reason = "Window snapshot expired or no longer matches. Inspect it again.";
             return false;
