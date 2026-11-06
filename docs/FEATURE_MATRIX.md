@@ -12,7 +12,8 @@ The original fan project has a broad feature set. This file tracks our independe
 | Fish Audio TTS (free/pro model choice, optional voice ID) | In source | Playback and real-key device QA |
 | Animated desktop companion | Implemented | Mixed-DPI transparent hit testing |
 | Screen vision/reactions | Selected or frontmost-app monitor with change suppression | Sensitive-area masking, multi-screen context, game events |
-| Mic recognition + global toggle | Implemented | Selected mic, interruption, VAD, robust wake word |
+| Mic recognition + global toggle | Implemented: per-session opt-in, selected mic, voice commands and hotkeys | Hardware, wake-word and noise testing |
+| Voice Conversation v2 | Implemented: cancel network reply, spoken rephrase, STOP REPLY hotkey, lease refresh after playback, no-focus chat option | Real Windows/Fish headset QA; no streaming ASR or echo cancellation |
 | App/URL/media actions | Limited, approval-gated | UI Automation, action history, hard stop |
 | Call mode, Discord/Zoom | Not implemented | Consent and speaker isolation |
 | Additional cloud TTS (ElevenLabs/OpenAI) | Not implemented | Provider security and licensing |
