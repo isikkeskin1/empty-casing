@@ -9,11 +9,11 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 - Transparent, always-on-top, draggable companion with window-edge snapping, follow-on-move, detach on minimize/close and bounded toss motion
 - Optional user-provided PNG sequences for idle, talk, glitch, sleep, toss, perch and music-perch; individual frame timing supported
 - Local Ollama or optional NVIDIA, Gemini, OpenRouter and OpenAI cloud chat, with editable model IDs
-- Local JSON history and settings, including saved companion position
+- Local JSON history, settings and persistent reminders/timers with notification bubbles
 - Tray menu, show/hide shortcut (Ctrl+Shift+Space), and opening the animation folder
-- Screen questions: **LOOK NOW** explicitly captures the primary display and sends a JPEG to a local Ollama vision model
+- Screen questions: **LOOK NOW** captures the chosen monitor and sends a JPEG to the selected local or cloud vision model with permission
 - Opt-in watch mode: capture every 45 seconds and show brief AI reactions as a temporary character bubble
-- Windows microphone recognition: toggle MIC ON, then start a request with **"Capri"**; native Windows text-to-speech output can be enabled separately
+- Windows microphone recognition: toggle MIC ON or use Ctrl+Alt+V, then start a request with **"Capri"**; native Windows text-to-speech output can be enabled separately
 - Approval-gated desktop actions: launch selected applications, open HTTPS pages and send media keys. No purchases, arbitrary clicks, command execution, typing, deletion or messaging
 - Per-user Windows installer, first-run brain and voice wizard, cloud keys encrypted using Windows DPAPI
 - Windows CI builds a portable ZIP and installer executable
@@ -31,6 +31,8 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 
 The installer includes the .NET runtime, **not** Ollama, model weights, copyrighted animation assets, or cloud credits. Developer setup is described in [the guide](docs/SETUP.md).
 
+**Reminders and timers:** Try "remind me in 10 minutes to stretch", "set a timer for 30 seconds", "show reminders" or "cancel reminder #1" in the Mainframe or by voice. Reminders are stored locally and fire while Capri is running (or upon reopening if overdue). They are not cloud calendar events.
+
 **Controls:** drag the floating character to move it; double-click to open chat; Ctrl+Shift+Space toggles chat. **Drop near another app's top edge** to perch on its window; she follows that window while it moves and detaches if it's minimized or closed. **Flick her quickly** to toss her around the screen with damped bouncing. Right-click her or use the tray to select **Perch on frontmost window**, **Detach from window**, or any manual animation preview. Music-perch is still a visual preview; beat synchronization isn't implemented.
 
 The snap system only reads top-level window rectangles. It does not inspect your app contents or take control of other windows. High-DPI multi-monitor placement and fullscreen game behavior need manual Windows testing.
@@ -39,7 +41,7 @@ The snap system only reads top-level window rectangles. It does not inspect your
 
 ## Screen, mic and desktop assistant
 
-Select **LOOK NOW** to inspect the primary monitor once. For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
+Select **LOOK NOW** to inspect the selected monitor once (choose from the monitor selector in Mainframe). For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
 
 **MIC ON** uses Microsoft's installed Windows speech recognizer, not a cloud transcription endpoint provided by this app. Say "Capri, what's on my screen?" (while WATCH SCREEN is on) or "Capri, open notepad" (with DESKTOP ACTIONS enabled). Spoken recognition depends on the language pack you have installed. **SPEAK REPLIES** uses your system voice; it isn't an imitation of a voice actor.
 

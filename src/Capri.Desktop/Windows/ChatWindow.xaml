@@ -91,8 +91,15 @@
           <CheckBox x:Name="ActionsCheck" Content="DESKTOP ACTIONS" Margin="0,0,0,8"
                     Checked="Actions_Changed" Unchecked="Actions_Changed"/>
         </WrapPanel>
+        <DockPanel Margin="0,4,0,10">
+          <TextBlock Text="WATCH MONITOR" VerticalAlignment="Center" Foreground="#92ACBA"
+                     FontSize="10" FontFamily="Consolas" Margin="0,0,10,0"/>
+          <ComboBox x:Name="ScreenCombo" SelectionChanged="Screen_Changed"
+                    MinWidth="190" MaxWidth="350" Padding="6,4"
+                    Background="#182334" Foreground="#121B29"/>
+        </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="Screen: snapshots to local Ollama every 45s when enabled. Mic: Windows speech recognition, say 'Capri' before a request. Actions: only approved apps, HTTPS links and media keys; each requires confirmation. No purchases."/>
+                   Text="Vision: chosen monitor, every 45s while watching. Ctrl+Alt+V toggles mic; say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
       </StackPanel>
     </Border>
 
@@ -149,6 +156,8 @@
     <DockPanel Grid.Row="5">
       <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="CLEAR CHAT"
               Click="Clear_Click" FontSize="10" Padding="7,4"/>
+      <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="REMINDERS"
+              Click="ShowReminders_Click" Margin="0,0,8,0" FontSize="10" Padding="7,4"/>
       <TextBlock Text="ENTER SENDS   /   SHIFT+ENTER NEW LINE"
                  VerticalAlignment="Center" Foreground="#8293A6"
                  FontFamily="Consolas" FontSize="10"/>

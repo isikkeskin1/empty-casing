@@ -12,9 +12,13 @@ namespace Capri.Desktop.Services;
 /// </summary>
 public static class ScreenCaptureService
 {
-    public static byte[] CapturePrimaryScreenJpeg()
+    public static byte[] CapturePrimaryScreenJpeg() => CaptureScreenJpeg(-1);
+
+    public static byte[] CaptureScreenJpeg(int index)
     {
-        var screen = Screen.PrimaryScreen ?? throw new InvalidOperationException("No primary display available.");
+        var screens = Screen.AllScreens;
+        var screen = index >= 0 && index < screens.Length ? screens[index] :
+            Screen.PrimaryScreen ?? throw new InvalidOperationException("No primary display available.");
         var bounds = screen.Bounds;
         if (bounds.Width <= 0 || bounds.Height <= 0)
             throw new InvalidOperationException("No valid display bounds.");

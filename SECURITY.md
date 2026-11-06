@@ -20,3 +20,8 @@ API keys are stored under %LOCALAPPDATA%\CapriDesktop\credentials, encrypted usi
 Screen watching and microphone recognition start OFF on each launch, and screen images are not saved by the app. Cloud screenshot sharing requires explicit confirmation. Desktop actions start OFF and require per-action approval. Only opening allowlisted apps, HTTPS sites and media controls is supported. No arbitrary click/type, command execution, file deletion, purchases or checkout. Screenshots and third-party pages are untrusted data, never commands.
 
 The installer is not signed. A warning is not proof of malware, but it is not proof of a false positive either. Use source and provenance checks, and report potential vulnerabilities without posting secrets to public issues. See [asset rights](docs/ASSET_RIGHTS.md).
+
+
+## Reminder information
+
+Reminder text and due dates are stored unencrypted in %LOCALAPPDATA%\CapriDesktop\reminders.json (the same local directory used for ordinary chat history). Notifications can appear on the desktop or lock screen depending on Windows settings, so avoid writing highly sensitive secrets into reminders. No reminder text is transmitted to a cloud AI provider by the deterministic reminder engine.

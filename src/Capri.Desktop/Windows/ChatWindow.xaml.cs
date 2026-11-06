@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -16,6 +17,7 @@ public partial class ChatWindow : Window
     {
         InitializeComponent();
         DataContext = this;
+        InitializeScreenOptions();
         RefreshBrainConfiguration();
         SyncCapabilitySwitches();
 
@@ -28,6 +30,34 @@ public partial class ChatWindow : Window
                 "Nothing buys, deletes or sends messages through my desktop controls.");
 
         Loaded += async (_, _) => await CheckBrainAsync();
+    }
+
+    private void InitializeScreenOptions()
+    {
+        _syncing = true;
+        ScreenCombo.Items.Add(new ComboBoxItem { Content = "Primary display", Tag = -1 });
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        for (var i = 0; i < screens.Length; i++)
+        {
+            var monitor = screens[i];
+            ScreenCombo.Items.Add(new ComboBoxItem
+            {
+                Tag = i,
+                Content = "Monitor " + (i + 1) + " — " + monitor.DeviceName +
+                          " (" + monitor.Bounds.Width + "x" + monitor.Bounds.Height + ")"
+            });
+        }
+        var wanted = App.Instance.Settings.ScreenIndex;
+        ScreenCombo.SelectedIndex = wanted >= 0 && wanted < screens.Length ? wanted + 1 : 0;
+        _syncing = false;
+    }
+
+    private void Screen_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncing) return;
+        if ((ScreenCombo.SelectedItem as ComboBoxItem)?.Tag is not int index) return;
+        App.Instance.Settings.ScreenIndex = index;
+        App.Instance.Store.SaveSettings(App.Instance.Settings);
     }
 
     public void RefreshBrainConfiguration()
@@ -49,6 +79,11 @@ public partial class ChatWindow : Window
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         _syncing = false;
     }
+
+    public void AppendNotification(string text) => Add("system", text);
+
+    private void ShowReminders_Click(object sender, RoutedEventArgs e) =>
+        AppendNotification(App.Instance.Reminders.Describe());
 
     public void SubmitVoiceText(string recognized)
     {
@@ -202,7 +237,10 @@ public partial class ChatWindow : Window
         try
         {
             string answer;
-            if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
+            var reminder = ReminderParser.Parse(prompt);
+            if (!lookNow && reminder is not null)
+                answer = App.Instance.Reminders.Execute(reminder);
+            else if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
             {
                 if (!App.Instance.Brain.IsLocal && !App.Instance.Settings.WatchScreen && !lookNow)
                     throw new InvalidOperationException("Enable WATCH SCREEN to use cloud vision.");
