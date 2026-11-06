@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
