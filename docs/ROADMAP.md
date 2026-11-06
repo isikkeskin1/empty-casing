@@ -2,7 +2,7 @@
 
 ## Phase 1 — functional base (implemented in source)
 
-Transparent movable Windows overlay, state-driven animation host with drop-in PNG frame sequences, local Ollama chat, persistent history/settings, global shortcut, tray controls, smoke tests, Windows build pipeline.
+Transparent movable Windows overlay, state-driven animation host with seven timed PNG animation states, one-shot previews and drop-in frame sequences, local Ollama chat, persistent history/settings, global shortcut, tray controls, smoke tests, Windows build pipeline.
 
 **Release gate:** successful Windows CI run and manual keyboard/mouse tests on a Windows 10/11 desktop.
 

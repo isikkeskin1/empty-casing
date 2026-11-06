@@ -18,6 +18,18 @@ try
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
 
+    var timingPath = Path.Combine(directory, "timing.json");
+    File.WriteAllText(timingPath, "{\"frameDurationsMs\":[42,83,8,5000]}");
+    var timing = AnimationTiming.Load(timingPath);
+    Check(timing.DurationAt(0) == 42 && timing.DurationAt(1) == 83,
+        "animation timing loads individual frame durations");
+    Check(timing.DurationAt(2) == 20 && timing.DurationAt(3) == 2000,
+        "animation timing bounds pathological frame durations");
+    Check(timing.DurationAt(99) == 100, "missing frame duration uses 100ms fallback");
+    File.WriteAllText(timingPath, "{invalid");
+    Check(AnimationTiming.Load(timingPath).DurationAt(0) == 100,
+        "invalid animation manifest falls back safely");
+
     var fakeHandler = new FakeHandler();
     using var client = new HttpClient(fakeHandler);
     using var brain = new OllamaBrain(settings, client);
