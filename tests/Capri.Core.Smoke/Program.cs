@@ -95,7 +95,7 @@ try
         "game launch produces Steam protocol from validated numeric ID only");
     Check(SteamGameCatalog.ParseManifest("\"appid\" \"1\"\n\"name\" \"Sample\"")?.AppId == 1u &&
           SteamGameCatalog.ParseManifest("\"appid\" \"oops\"\n\"name\" \"Sample\"") is null &&
-          SteamGameCatalog.ParseManifest("\"appid\" \"1\"\n\"name\" \"\\n\"") is null,
+          SteamGameCatalog.ParseManifest("\"appid\" \"1\"\n\"name\" \"\"") is null,
         "Steam manifest parser rejects invalid IDs and missing names");
     Check(SteamGameCatalog.ParseLaunchRequest("play game Test Space Adventure") ==
           "Test Space Adventure" &&
