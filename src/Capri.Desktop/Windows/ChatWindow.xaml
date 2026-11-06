@@ -115,10 +115,16 @@
                        Text="Ask a question, launch a task or just talk. Capri is here."
                        Foreground="{StaticResource CapriMutedBrush}" FontSize="11"/>
           </StackPanel>
-          <Button Grid.Column="1" Content="TALK ONCE" Click="TalkOnce_Click"
-                  x:Name="TalkOnceButton" Style="{StaticResource CapriPrimaryButton}"
-                  VerticalAlignment="Center" Margin="12,0,0,0"
-                  ToolTip="Listen for one request; no wake word needed."/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="STOP REPLY" Click="CancelReply_Click"
+                    Style="{StaticResource CapriDangerButton}"
+                    VerticalAlignment="Center" MinHeight="36"
+                    ToolTip="Cancel an in-flight AI answer and speech, keeping the mic and desktop permissions unchanged. Ctrl+Alt+R."/>
+            <Button Content="TALK ONCE" Click="TalkOnce_Click"
+                    x:Name="TalkOnceButton" Style="{StaticResource CapriPrimaryButton}"
+                    VerticalAlignment="Center" Margin="10,0,0,0"
+                    ToolTip="Interrupt the current reply and listen for one new request without the wake word."/>
+          </StackPanel>
         </Grid>
 
         <!-- The chat transcript is never recreated when switching modules. -->
