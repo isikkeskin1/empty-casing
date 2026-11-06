@@ -14,6 +14,8 @@ Say `Capri, study mode`, `coding mode` or `focus mode` to open VS Code, Notepad 
 
 Say `Capri, list routines` for the available presets.
 
+Or say `Capri, open Discord, Steam and Spotify`. Exact named combinations of **two to four** known local applications can be launched as a custom batch with the same approval and safety checks. Unknown components reject the entire batch, rather than falling back to one unreviewed partial action.
+
 These phrases are intentionally matched as **explicit, complete intents**. Unrelated or combined requests cannot silently add actions. The actions are stored as a fixed allowlisted plan in `CompanionRoutine.cs`, not generated from free-form model responses.
 
 ## Execution and consent
