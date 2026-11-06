@@ -278,8 +278,14 @@ public partial class CompanionWindow : Window
     public void ShowReaction(string reaction)
     {
         if (string.IsNullOrWhiteSpace(reaction)) return;
-        ReactionText.Text = reaction.Length > 220 ? reaction[..220] + "…" : reaction;
+        ReactionText.Text = reaction.Length > 150 ? reaction[..150] + "…" : reaction;
         ReactionBubble.Visibility = Visibility.Visible;
+        // A short entrance makes the card feel alive without endless flickering.
+        ReactionBubble.BeginAnimation(OpacityProperty, new DoubleAnimation(
+            0, 1, TimeSpan.FromMilliseconds(200))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        });
         _reactionTimer.Stop();
         _reactionTimer.Start();
         SetMood(CompanionMood.Talking);
@@ -322,6 +328,28 @@ public partial class CompanionWindow : Window
     {
         _frames?.Reload();
         SetMood(_mood);
+    }
+
+    private void DismissReaction_Click(object sender, RoutedEventArgs e)
+    {
+        _reactionTimer.Stop();
+        ReactionBubble.Visibility = Visibility.Collapsed;
+    }
+
+    private void ReactionTalk_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            App.Instance.StartTalkOnce();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            System.ComponentModel.Win32Exception)
+        {
+            // The CTA always gives the owner an interaction route, even when
+            // Windows Speech or a selected microphone isn't configured.
+            App.Instance.ShowChat();
+            ShowReaction("Microphone unavailable. Type to me in the Control Deck.");
+        }
     }
 
     private void OpenChat_Click(object sender, RoutedEventArgs e) => App.Instance.ShowChat();
