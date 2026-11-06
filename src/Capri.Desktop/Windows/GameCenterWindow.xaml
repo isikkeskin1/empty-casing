@@ -38,7 +38,12 @@
                 Background="#61364A" BorderBrush="#F59BB3" Margin="0,0,8,0"/>
         <Button Content="HIDE COACH HUD" Click="HideCoach_Click"
                 Background="#24333E" BorderBrush="#4BBAC1"/>
+        <Button Content="SCREEN SKETCH" Click="Sketch_Click"
+                Background="#2F334A" BorderBrush="#F0D33C" Margin="8,0,0,0"/>
       </StackPanel>
+      <TextBlock Text="SCREEN SKETCH opens an interactive overlay; while active, it captures mouse input for drawing. ESC, EXIT or STOP ALL closes it."
+                 Foreground="#8AAFC5" FontSize="10" TextWrapping="Wrap"
+                 Margin="0,9,0,0"/>
       <CheckBox x:Name="CoachHudCheck"
                 Content="Display game tips in a 30-second click-through HUD"
                 Checked="CoachHud_Changed" Unchecked="CoachHud_Changed"
