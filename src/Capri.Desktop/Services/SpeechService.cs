@@ -20,6 +20,7 @@ public sealed class SpeechService : IDisposable
     private volatile bool _speaking;
     private bool _disposed;
 
+    public event Action? SpeechFinished;
     public bool IsListening => _listening;
     public bool IsSpeaking => _speaking;
 
@@ -113,7 +114,11 @@ public sealed class SpeechService : IDisposable
     private SpeechSynthesizer CreateSpeaker()
     {
         var speaker = new SpeechSynthesizer();
-        speaker.SpeakCompleted += (_, _) => _speaking = false;
+        speaker.SpeakCompleted += (_, args) =>
+        {
+            _speaking = false;
+            if (!args.Cancelled && !_disposed) SpeechFinished?.Invoke();
+        };
         return speaker;
     }
 
