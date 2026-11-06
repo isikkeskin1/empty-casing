@@ -51,6 +51,21 @@ Select **LOOK NOW** to inspect the selected monitor once. Mainframe's monitor pi
 
 Read [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md) for exact supported behavior, limitations and privacy details.
 
+## Explicit file reading (text and code)
+
+Press **READ FILE** in Mainframe, select one local text/code file, and optionally
+type a question in the chat box. Capri reviews at most the first 12,000
+characters, with a 128 KiB file-size cap, strict UTF-8 and basic credential
+detection. No drive indexing, directories, executables, PDFs or arbitrary
+file writes. If the brain is cloud-based, Capri asks separately before
+transmitting the selected excerpt.
+
+File-derived answers appear only in the current session and are not
+automatically sent in future chat requests, saved as ordinary local history,
+or spoken aloud through Fish Audio. The selected filename/question are
+stored as a normal chat entry. This is a *read-only* operation.
+See [FILE_REVIEW](docs/FILE_REVIEW.md).
+
 ## Windows control inspector (UI Automation v1)
 
 Open **WINDOW CONTROLS** in Mainframe or **Inspect window controls** in the tray menu.
