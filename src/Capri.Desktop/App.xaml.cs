@@ -525,6 +525,7 @@ public partial class App : System.Windows.Application
     public void SetQuietMode(bool enabled)
     {
         _quietMode = enabled;
+        if (enabled) CancelVoiceOutput();
         _chat?.SyncCapabilitySwitches();
         if (!enabled) _companion?.ShowReaction("Quiet mode off. I'm back.");
     }
