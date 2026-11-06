@@ -262,6 +262,45 @@ try
     Check(!InputShortcuts.TryValidate(defaultKeys, out _),
         "duplicate global shortcut bindings cannot be saved");
 
+    Check(AutonomousNavigationPolicy.IsSafeGoal("Find the Display tab") &&
+          AutonomousNavigationPolicy.IsSafeGoal("Navigate to General settings") &&
+          AutonomousNavigationPolicy.IsSafeGoal("Open the Help tab"),
+        "navigation-only task requests are eligible for one-time approval");
+    Check(!AutonomousNavigationPolicy.IsSafeGoal("Buy a subscription") &&
+          !AutonomousNavigationPolicy.IsSafeGoal("Delete account") &&
+          !AutonomousNavigationPolicy.IsSafeGoal("Send a message") &&
+          !AutonomousNavigationPolicy.IsSafeGoal("Change security settings") &&
+          !AutonomousNavigationPolicy.IsSafeGoal("Type into a password box") &&
+          !AutonomousNavigationPolicy.IsSafeGoal(new string('a', 221)),
+        "high-impact tasks and oversized goals never enter autonomous mode");
+
+    var navStart = new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero);
+    Check(AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(20), 2, true) &&
+          !AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(91), 0, true) &&
+          !AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(5), 5, true) &&
+          !AutonomousNavigationPolicy.IsLive(navStart, navStart.AddSeconds(5), 1, false),
+        "task authorization expires on deadline, step cap or revocation");
+    var chooseTab = UiNavigationStep.Parse(
+        "{\"action\":\"select_tab\",\"index\":1,\"note\":\"find settings\"}");
+    Check(chooseTab is { Action: "select_tab", Index: 1 } &&
+          UiNavigationStep.Parse("{\"action\":\"done\"}")?.Action == "done",
+        "model proposals are parsed as strict one-step JSON decisions");
+    Check(UiNavigationStep.Parse("{\"action\":\"click\",\"index\":0}") is null &&
+          UiNavigationStep.Parse("{\"action\":\"select_tab\",\"index\":\"0\"}") is null &&
+          UiNavigationStep.Parse("{\"action\":\"select_tab\"}") is null &&
+          UiNavigationStep.Parse("{\"action\":\"done\",\"index\":0}") is null &&
+          UiNavigationStep.Parse("Just click the Save button") is null,
+        "model cannot propose arbitrary clicks, text, malformed indices or mixed actions");
+    Check(AutonomousNavigationPolicy.CanExecuteModelChoice(
+              chooseTab, new[] { "Home", "Settings" }, 0, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteModelChoice(
+              chooseTab, new[] { "Home", "Settings" }, 5, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteModelChoice(
+              chooseTab, new[] { "Home", "Checkout" }, 0, out _) &&
+          !AutonomousNavigationPolicy.CanExecuteModelChoice(
+              chooseTab, new[] { "Home" }, 0, out _),
+        "AI tab choices are constrained by observed labels, safe names and step budget");
+
     Check(UiNavigationPolicy.Parse("inspect current window") is
           { Kind: UiNavigationKind.InspectWindow },
         "explicit read-only current-window inspection recognized");

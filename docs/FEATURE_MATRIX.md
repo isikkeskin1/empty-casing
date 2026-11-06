@@ -52,3 +52,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Explicit read-only text/code file review | Implemented in source, per-file user selection | Real-model and file-dialog QA |
 | Cloud file-context sharing | Requires separate per-file confirmation | Privacy/provider acceptance QA |
 | PDF/DOCX, images, folder indexing and file editing | Not implemented | Separate parsers, consent and action policy |
+
+
+| Autonomous task-level UIA navigation | Implemented in source: one approval, model-chosen exact tabs, max 5 steps / 90s | Windows real-app QA |
+| Live stop / revoke task permission | STOP TASK and STOP INPUTS cancel pending future steps | In-flight UIA provider calls cannot always be interrupted |
+| Unrestricted AI clicking/typing | Not built | Stronger effect classification, per-app scopes and recovery |

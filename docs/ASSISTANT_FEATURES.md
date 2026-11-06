@@ -114,3 +114,18 @@ requires additional consent for each file. No files are edited or executed,
 no folders are indexed, and the model cannot trigger desktop actions from
 file content. Raw excerpts and file-derived replies are kept ephemeral
 in the session and not re-sent as future conversation history.
+
+
+## One-task desktop navigation autonomy
+
+The AUTO TASK button uses a model-guided observe/plan/act/observe loop over
+the pinned application's accessible, non-sensitive tabs. The user approves
+one named task (maximum five tab selections and 90 seconds), rather than
+confirming each step. The model can suggest only an observed index or done.
+Every selection is locally validated and re-resolved to the same window
+and accessible control. The task can be interrupted with STOP TASK or STOP
+INPUTS. Cloud users explicitly authorize sharing limited app/tab metadata
+for the task; screenshots and form values aren't sent.
+
+This version does not click arbitrary buttons, fill text fields, send
+messages, alter files, execute shell commands or make purchases.

@@ -29,6 +29,10 @@ public sealed class BrainRouter : IBrainProvider, IDisposable
     public Task<AssistantAction?> PlanActionAsync(string request, CancellationToken ct = default) =>
         IsLocal ? _local.PlanActionAsync(request, ct) : _cloud.PlanActionAsync(request, ct);
 
+    public Task<string> PlanUiNavigationRawAsync(string context, CancellationToken ct = default) =>
+        IsLocal ? _local.PlanUiNavigationRawAsync(context, ct) :
+                  _cloud.PlanUiNavigationRawAsync(context, ct);
+
     public Task<string> TestCloudAsync(CancellationToken ct = default) =>
         _cloud.TestAsync(ct);
 

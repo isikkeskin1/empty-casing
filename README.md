@@ -66,6 +66,25 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Autonomous desktop task sessions
+
+The **AUTO TASK** button in Mainframe launches a scoped AI navigation task using
+the goal typed in the chat prompt. Choose/refresh the target window in WINDOW
+CONTROLS, then approve the task **once**. Capri independently inspects that
+application's accessible tab labels, asks your configured local/cloud model
+which safe tab advances the goal, rechecks its identity, selects it, and
+repeats—without stopping for per-click approval. The run lasts at most **5
+selections / 90 seconds**, and never changes to a different window.
+**STOP TASK** or global **STOP INPUTS** cancels the remaining task.
+Cloud mode explicitly discloses that the window title, tab labels and goal
+will be sent to the chosen provider.
+
+This first release intentionally supports tab navigation, not arbitrary
+clicking, typing, sending messages, changing settings, deleting files,
+payments or shopping. It is a real model-guided observe/plan/act/reobserve
+loop but not yet an unrestricted desktop agent. See
+[Autonomous task safety](docs/AUTONOMOUS_TASKS.md).
+
 ## Windows control inspector (UI Automation v1)
 
 Open **WINDOW CONTROLS** in Mainframe or **Inspect window controls** in the tray menu.
