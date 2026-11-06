@@ -24,6 +24,8 @@ The original fan project has a broad feature set. This file tracks our independe
 | Absolute-date reminders | Implemented: ISO dates, tomorrow, English month names, local time | DST/time-zone field testing; no OS background alarm |
 | Game clips via OBS Replay Buffer | Implemented: authenticated localhost WebSocket 5, one-shot save, discovery, optional voice command | Manual Windows/OBS recording & device tests; built-in recording fallback not implemented |
 | File drop and reading | Not implemented | Parsers and explicit file selection |
+| Editable Personal Memory Vault | Implemented: 40 local notes, commands, UI CRUD/export/clear; opt-in contextual use and cloud-provider consent | Validate on Windows and consider DPAPI encryption/migration |
+| Game Coach overlay HUD | Implemented: click-through 30-second visual tips from explicit screenshot help | Borderless/fullscreen game testing, multi-monitor placement |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |
 | Code/Husk integration | Read-only Codex/Claude Code lifecycle hooks and per-session local activity feed | Test with installed Codex/Claude versions; hook schemas can change; no per-file details |
 | Installer signing/updates | Not implemented | Safe release/update verification |
