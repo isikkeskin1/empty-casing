@@ -164,3 +164,15 @@ Speech Recognition. Capri answers with the selected AI brain and Fish voice
 through the user-selected virtual audio cable endpoint, after an audible
 AI introduction. Incoming caller speech is not allowed to operate the PC.
 There is no auto-join, account impersonation, or silent recording.
+
+
+## Native provider connections
+
+Spotify and Roblox account integrations use separate OAuth2 PKCE flows,
+provider authorization and Windows DPAPI token storage. Spotify supports
+connected profile/current playback, track search and direct player
+controls; Roblox supports a linked profile and validated experience
+launches. Hands-free mode removes action confirmation dialogs for
+already-supported, locally validated playback/launch controls, but never
+bypasses spending or account-safety limits. No provider API tokens are
+given to the chat model.

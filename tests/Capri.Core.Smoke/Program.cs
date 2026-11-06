@@ -73,6 +73,69 @@ try
     }
     catch (InvalidOperationException) { /* Expected. */ }
 
+    var verifier = LinkedAccountPolicy.NewRandomValue();
+    var state = LinkedAccountPolicy.NewRandomValue();
+    Check(verifier.Length >= 43 &&
+          state.Length >= 43 &&
+          verifier != LinkedAccountPolicy.NewRandomValue() &&
+          LinkedAccountPolicy.CodeChallenge(verifier).Length == 43,
+        "OAuth PKCE uses strong random verifier, nonce and SHA-256 challenge");
+    Check(LinkedAccountPolicy.IsClientIdValid("aBc123456789") &&
+          !LinkedAccountPolicy.IsClientIdValid("short") &&
+          !LinkedAccountPolicy.IsClientIdValid("sk_fish_do_not_use"),
+        "OAuth public client IDs are validated, secrets aren't accepted in place of IDs");
+    var spotifyAuth = LinkedAccountPolicy.BuildAuthorizationUri(
+        LinkedService.Spotify, "aBc123456789", state,
+        LinkedAccountPolicy.CodeChallenge(verifier));
+    var robloxAuth = LinkedAccountPolicy.BuildAuthorizationUri(
+        LinkedService.Roblox, "123456789000", state,
+        LinkedAccountPolicy.CodeChallenge(verifier));
+    Check(spotifyAuth.Host == "accounts.spotify.com" &&
+          spotifyAuth.Query.Contains("code_challenge_method=S256") &&
+          spotifyAuth.Query.Contains("user-read-playback-state") &&
+          robloxAuth.Host == "apis.roblox.com" &&
+          robloxAuth.Query.Contains("openid") &&
+          robloxAuth.Query.Contains("profile"),
+        "native Spotify and Roblox OAuth authorizations use fixed official HTTPS hosts/scopes");
+    var validSpotifyCallback = new Uri(LinkedAccountPolicy.Redirect(LinkedService.Spotify) +
+        "?code=abcdefghi12345678&state=" + state);
+    Check(LinkedAccountPolicy.ParseCallbackCode(
+              LinkedService.Spotify, validSpotifyCallback, state) ==
+          "abcdefghi12345678",
+        "loopback code accepted only for the expected service and random state");
+    Check(LinkedAccountPolicy.ParseCallbackCode(
+              LinkedService.Spotify, validSpotifyCallback, "wrong") is null &&
+          LinkedAccountPolicy.ParseCallbackCode(
+              LinkedService.Roblox, validSpotifyCallback, state) is null &&
+          LinkedAccountPolicy.ParseCallbackCode(LinkedService.Spotify,
+              new Uri("http://evil.example:18441/oauth/spotify/" +
+                      "?code=abcdefghi12345678&state=" + state), state) is null &&
+          LinkedAccountPolicy.ParseCallbackCode(LinkedService.Spotify,
+              new Uri(LinkedAccountPolicy.Redirect(LinkedService.Spotify) +
+                  "?code=abcdefghi12345678&state=" + state + "&state=" + state),
+              state) is null,
+        "OAuth callback rejects wrong state, provider, host and duplicate query values");
+    Check(LinkedAccountPolicy.Redirect(LinkedService.Spotify) ==
+          "http://127.0.0.1:18441/oauth/spotify/" &&
+          LinkedAccountPolicy.Redirect(LinkedService.Roblox) ==
+          "http://127.0.0.1:18442/oauth/roblox/",
+        "OAuth callback binds to distinct predictable localhost addresses");
+    Check(LinkedAccountPolicy.IsRobloxPlaceId("123456789") &&
+          !LinkedAccountPolicy.IsRobloxPlaceId("0") &&
+          !LinkedAccountPolicy.IsRobloxPlaceId("123&foo=bar") &&
+          LinkedAccountPolicy.RobloxExperienceUri("123").Host == "www.roblox.com",
+        "Roblox launcher accepts positive numeric place IDs only");
+    var linkSettings = new AppSettings
+    {
+        SpotifyClientId = "spotifyapp1234",
+        RobloxClientId = "robloxapp12345"
+    };
+    store.SaveSettings(linkSettings);
+    Check(store.LoadSettings().SpotifyClientId == linkSettings.SpotifyClientId &&
+          store.LoadSettings().RobloxClientId == linkSettings.RobloxClientId,
+        "public OAuth app client IDs persist in settings, not provider secrets");
+    store.SaveSettings(settings);
+
     var steamRoot = Path.Combine(directory, "FakeSteam");
     var steamAppDir = Path.Combine(steamRoot, "steamapps");
     Directory.CreateDirectory(steamAppDir);
