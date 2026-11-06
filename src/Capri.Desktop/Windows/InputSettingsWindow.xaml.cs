@@ -21,6 +21,7 @@ public partial class InputSettingsWindow : Window
         PettingCheck.IsChecked = App.Instance.Settings.EnablePetting;
         FollowUpsCheck.IsChecked = App.Instance.Settings.EnableVoiceFollowUps;
         VoiceInterruptCheck.IsChecked = App.Instance.Settings.AllowVoiceInterrupt;
+        OpenChatForVoiceCheck.IsChecked = App.Instance.Settings.OpenChatForVoiceRequests;
         StatusText.Text = "Select microphone and output, then save. No device monitoring is active.";
         Closed += (_, _) => _testCancellation?.Cancel();
     }
@@ -61,6 +62,7 @@ public partial class InputSettingsWindow : Window
         FocusTypingKey.Text = keys.FocusTyping;
         ToggleCompanionKey.Text = keys.ToggleCompanion;
         BringHereKey.Text = keys.BringHere;
+        StopReplyKey.Text = keys.StopReply;
         StopVoiceKey.Text = keys.StopVoice;
     }
 
@@ -73,6 +75,7 @@ public partial class InputSettingsWindow : Window
         FocusTyping = FocusTypingKey.Text,
         ToggleCompanion = ToggleCompanionKey.Text,
         BringHere = BringHereKey.Text,
+        StopReply = StopReplyKey.Text,
         StopVoice = StopVoiceKey.Text
     };
 
@@ -126,6 +129,7 @@ public partial class InputSettingsWindow : Window
             App.Instance.Settings.EnablePetting = PettingCheck.IsChecked == true;
             App.Instance.Settings.EnableVoiceFollowUps = FollowUpsCheck.IsChecked == true;
             App.Instance.Settings.AllowVoiceInterrupt = VoiceInterruptCheck.IsChecked == true;
+            App.Instance.Settings.OpenChatForVoiceRequests = OpenChatForVoiceCheck.IsChecked == true;
             App.Instance.Store.SaveSettings(App.Instance.Settings);
             StatusText.Text = result.Length == 0
                 ? "Input devices and all shortcuts saved and active."

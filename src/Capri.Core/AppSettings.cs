@@ -36,6 +36,9 @@ public sealed class AppSettings
     public bool DanceToSystemAudio { get; set; }
     public bool EnableVoiceFollowUps { get; set; }
     public bool AllowVoiceInterrupt { get; set; }
+    // Default off: gaming voice requests should not pull a full chat window
+    // into the foreground. If speech is disabled, chat still opens for replies.
+    public bool OpenChatForVoiceRequests { get; set; }
     public double? OverlayLeft { get; set; }
     public double? OverlayTop { get; set; }
 }

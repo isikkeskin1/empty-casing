@@ -665,9 +665,46 @@ try
               .Intent == VoiceIntent.Ignore,
         "speaker output cannot authorize other agent requests");
 
+    voice.Reset();
+    Check(voice.Evaluate("Capri, how is my project?", clock, true, false, false)
+              .Intent == VoiceIntent.Prompt &&
+          voice.Evaluate("and what about tests?", clock.AddSeconds(25),
+              true, false, false).Intent == VoiceIntent.Ignore,
+        "a slow model can exhaust the initial follow-up window before speaking");
+    voice.ReplyPlaybackFinished(clock.AddSeconds(50), true);
+    Check(voice.Evaluate("What about the build?", clock.AddSeconds(54),
+              true, false, false).Intent == VoiceIntent.Prompt,
+        "speech playback completion renews a wake-free follow-up after a slow reply");
+    voice.CancelPendingReply();
+    voice.ReplyPlaybackFinished(clock.AddMinutes(2), true);
+    Check(voice.Evaluate("arbitrary overheard words", clock.AddMinutes(2).AddSeconds(1),
+              true, false, false).Intent == VoiceIntent.Ignore,
+        "cancelled replies never reopen the follow-up lease");
+    voice.Reset();
+    Check(VoiceTurnRouter.IsInterruptPhrase("Capri cancel that") &&
+          VoiceTurnRouter.IsInterruptPhrase("Hey Capri, stop answering") &&
+          !VoiceTurnRouter.IsInterruptPhrase("cancel that") &&
+          !VoiceTurnRouter.IsInterruptPhrase("Capri buy a new microphone"),
+        "only explicit prefixed cancellation qualifies for speech barge-in");
+    Check(voice.Evaluate("Capri cancel that", clock, true, true, false)
+              .Intent == VoiceIntent.Ignore &&
+          voice.Evaluate("Capri cancel that", clock.AddSeconds(1),
+              true, true, true).Intent == VoiceIntent.CancelReply &&
+          voice.Evaluate("try another question", clock.AddSeconds(2),
+              true, false, true).Intent == VoiceIntent.Prompt,
+        "opted-in cancellation interrupts playback and allows immediate rephrasing");
+    voice.Reset();
+    voice.Evaluate("Capri can you explain this?", clock, true, false, true);
+    voice.ReplyPlaybackFinished(clock.AddSeconds(60), false);
+    Check(voice.Evaluate("without prefix", clock.AddSeconds(61), true, false, true)
+              .Intent == VoiceIntent.Ignore,
+        "disabled follow-up preference cannot be rearmed by playback events");
+
     var defaultKeys = new InputShortcuts();
-    Check(InputShortcuts.TryValidate(defaultKeys, out _),
-        "all eight default global shortcuts are valid and distinct");
+    Check(InputShortcuts.TryValidate(defaultKeys, out _) &&
+          defaultKeys.StopReply == "Ctrl+Alt+R" &&
+          defaultKeys.StopReply != defaultKeys.StopVoice,
+        "all nine default shortcuts are valid, with separate reply and emergency stop");
     Check(GlobalShortcut.TryParse("Ctrl+Alt+V", out var toggleKey) &&
           toggleKey.Modifiers == (GlobalShortcut.Ctrl | GlobalShortcut.Alt) &&
           toggleKey.VirtualKey == (uint)'V',

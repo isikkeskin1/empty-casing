@@ -14,6 +14,7 @@ public sealed class VoicePlaybackService : IDisposable
     private bool _disposed;
     public int SpeakerDeviceIndex { get; set; } = -1;
     public bool IsPlaying => _output?.PlaybackState == PlaybackState.Playing;
+    public event Action? PlaybackFinished;
 
     public VoicePlaybackService(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
@@ -35,7 +36,9 @@ public sealed class VoicePlaybackService : IDisposable
             var currentOutput = output;
             output.PlaybackStopped += (_, _) => _dispatcher.BeginInvoke(() =>
             {
-                if (ReferenceEquals(_output, currentOutput)) Stop();
+                if (!ReferenceEquals(_output, currentOutput)) return;
+                Stop();
+                PlaybackFinished?.Invoke();
             });
             _stream = stream;
             _reader = reader;
