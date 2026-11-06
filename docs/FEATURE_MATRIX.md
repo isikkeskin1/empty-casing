@@ -21,7 +21,7 @@ The original fan project has a broad feature set. This file tracks our independe
 | Visual Lookout (owner-armed screen condition alerts) | Implemented: 2-hour RAM rule, uses consented WATCH SCREEN, strict verdict, one notification | Physical-game vision QA and confidence calibration |
 | Quiet Mode | Implemented: per-session suppression of unsolicited commentary and speech | Accessibility and user-state QA |
 | Absolute-date reminders | Implemented: ISO dates, tomorrow, English month names, local time | DST/time-zone field testing; no OS background alarm |
-| Game clips/live reactions | Not implemented | Event and capture pipeline |
+| Game clips via OBS Replay Buffer | Implemented: authenticated localhost WebSocket 5, one-shot save, discovery, optional voice command | Manual Windows/OBS recording & device tests; built-in recording fallback not implemented |
 | File drop and reading | Not implemented | Parsers and explicit file selection |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |
 | Code/Husk integration | Read-only Codex/Claude Code lifecycle hooks and per-session local activity feed | Test with installed Codex/Claude versions; hook schemas can change; no per-file details |
