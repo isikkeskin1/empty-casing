@@ -35,6 +35,7 @@ public partial class App : System.Windows.Application
     private bool _livePresenceEnabled;
     private long _presenceEpoch;
     private DateTimeOffset _nextSpotifyPresenceCheck;
+    private SpotifyPlayback? _spotifyPresenceCache;
     public bool LivePresenceEnabled => _livePresenceEnabled;
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
@@ -283,6 +284,7 @@ public partial class App : System.Windows.Application
         _livePresenceEnabled = enabled;
         _presenceTimer.Stop();
         _presenceJournal.Reset();
+        _spotifyPresenceCache = null;
         if (enabled)
         {
             _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow;
@@ -306,29 +308,41 @@ public partial class App : System.Windows.Application
             // Windows media sessions are the first choice. Only poll the official
             // Spotify API when connected, playing metadata is absent, and the owner
             // explicitly enabled LIVE PRESENCE for this session.
+            var fromSpotifyApi = false;
             if (context.MediaTitle.Length == 0 &&
-                LinkedAccounts.IsConnected(LinkedService.Spotify) &&
-                DateTimeOffset.UtcNow >= _nextSpotifyPresenceCheck)
+                LinkedAccounts.IsConnected(LinkedService.Spotify))
             {
-                _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow.AddSeconds(60);
-                try
+                if (DateTimeOffset.UtcNow >= _nextSpotifyPresenceCheck)
                 {
-                    var playback = await LinkedAccounts.SpotifyPlaybackAsync();
-                    if (playback?.Playing == true)
-                        context = context with
-                        {
-                            MediaTitle = playback.Title,
-                            MediaArtist = playback.Artist
-                        };
+                    _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow.AddSeconds(60);
+                    try
+                    {
+                        _spotifyPresenceCache = await LinkedAccounts.SpotifyPlaybackAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _spotifyPresenceCache = null;
+                        Debug.WriteLine("Presence Spotify fallback: " + ex.GetType().Name);
+                    }
                 }
-                catch (Exception ex)
+                // Reuse the last official playback result between polls instead
+                // of making the track appear to stop every 20 seconds.
+                if (_spotifyPresenceCache?.Playing == true)
                 {
-                    Debug.WriteLine("Presence Spotify fallback: " + ex.GetType().Name);
+                    context = context with
+                    {
+                        MediaTitle = _spotifyPresenceCache.Title,
+                        MediaArtist = _spotifyPresenceCache.Artist
+                    };
+                    fromSpotifyApi = true;
                 }
             }
 
             if (!_livePresenceEnabled || epoch != _presenceEpoch) return;
-            var reaction = _presenceJournal.Observe(context, DateTimeOffset.UtcNow);
+            // Spotify Web API metadata remains local UI material. Do not send
+            // provider-returned track data to a text/vision model.
+            var reaction = _presenceJournal.Observe(context, DateTimeOffset.UtcNow,
+                allowMediaInModel: !fromSpotifyApi);
             if (!string.IsNullOrWhiteSpace(reaction) &&
                 !CallCompanionActive &&
                 !(Settings.ListenToMicrophone && !MicrophoneMuted) &&
