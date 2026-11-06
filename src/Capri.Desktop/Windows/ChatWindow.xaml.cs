@@ -107,6 +107,14 @@ public partial class ChatWindow : Window
     private void OpenConnections_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenConnections();
 
+    private void ListRoutines_Click(object sender, RoutedEventArgs e) =>
+        AppendNotification("Try: gaming mode (Discord + Steam + Spotify), " +
+            "Roblox mode (Discord + Roblox home + Spotify), " +
+            "Roblox dev mode (Creator Dashboard + VS Code + Spotify), " +
+            "study mode (VS Code + Notepad + Spotify). " +
+            "Enable DESKTOP ACTIONS or HANDS-FREE first. Say 'Capri stop all' " +
+            "to cancel remaining steps.");
+
     private void GameHelp_Click(object sender, RoutedEventArgs e) =>
         StartGameHelp();
 
