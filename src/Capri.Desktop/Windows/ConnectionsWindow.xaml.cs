@@ -19,11 +19,13 @@ public partial class ConnectionsWindow : Window
         Closed += (_, _) => _loginCts?.Cancel();
     }
 
-    public void SetSpotifySearch(string query, IReadOnlyList<SpotifyTrackChoice> results)
+    public void SetSpotifySearch(string query, IReadOnlyList<SpotifyTrackChoice> results, bool queue = false)
     {
         TrackQuery.Text = query;
         TrackResults.ItemsSource = results;
-        StatusText.Text = "Choose the correct Spotify track, then press PLAY SELECTED.";
+        StatusText.Text = queue
+            ? "Choose the correct recording, then press QUEUE SELECTED."
+            : "Choose the correct recording, then press PLAY SELECTED.";
     }
 
     private void RefreshConnectionLabels()
@@ -157,6 +159,16 @@ public partial class ConnectionsWindow : Window
             return;
         }
         _ = RunAsync(() => App.Instance.TrySpotifyTrackAsync(selected));
+    }
+
+    private void SpotifyQueueTrack_Click(object sender, RoutedEventArgs e)
+    {
+        if (TrackResults.SelectedItem is not SpotifyTrackChoice selected)
+        {
+            StatusText.Text = "Search and select a Spotify track first.";
+            return;
+        }
+        _ = RunAsync(() => App.Instance.TryQueueSpotifyTrackAsync(selected));
     }
 
     private void OpenRobloxExperience_Click(object sender, RoutedEventArgs e) =>

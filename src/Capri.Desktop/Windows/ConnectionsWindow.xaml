@@ -62,9 +62,12 @@
                    DisplayMemberPath="Display"
                    Background="#0C1B2C" Foreground="#F4F7F9"
                    BorderBrush="#40647E" Padding="5"/>
-          <Button Content="PLAY SELECTED SPOTIFY TRACK" Click="SpotifyPlayTrack_Click"
-                  Background="#235F4C" BorderBrush="#75BA9D"
-                  HorizontalAlignment="Left" Margin="0,10,0,0"/>
+          <WrapPanel Margin="0,10,0,0">
+            <Button Content="PLAY SELECTED SPOTIFY TRACK" Click="SpotifyPlayTrack_Click"
+                    Background="#235F4C" BorderBrush="#75BA9D"/>
+            <Button Content="QUEUE SELECTED SPOTIFY TRACK" Click="SpotifyQueueTrack_Click"
+                    Background="#254D6B" BorderBrush="#75AFD1"/>
+          </WrapPanel>
         </StackPanel>
       </Border>
 

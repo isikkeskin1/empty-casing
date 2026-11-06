@@ -26,6 +26,16 @@ public partial class App : System.Windows.Application
     };
     private bool _mediaSessionBusy;
     private NowPlayingInfo? _lastMediaInfo;
+    private readonly CompanionPresenceJournal _presenceJournal = new();
+    private readonly DispatcherTimer _presenceTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(20)
+    };
+    private bool _presenceBusy;
+    private bool _livePresenceEnabled;
+    private long _presenceEpoch;
+    private DateTimeOffset _nextSpotifyPresenceCheck;
+    public bool LivePresenceEnabled => _livePresenceEnabled;
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
     private ConnectionsWindow? _connections;
@@ -112,6 +122,7 @@ public partial class App : System.Windows.Application
             }
         };
         _mediaSessionTimer.Tick += async (_, _) => await ObserveNowPlayingAsync();
+        _presenceTimer.Tick += async (_, _) => await ObservePresenceAsync();
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
@@ -260,6 +271,77 @@ public partial class App : System.Windows.Application
             : "Context Sense off. No app/song metadata is added to model chats.");
     }
 
+    /// <summary>
+    /// Explicit per-session opt-in. Reads only foreground process names and
+    /// published media metadata. Linked Spotify is a rate-limited fallback.
+    /// Never uploads ambient observations or invokes a language model by itself.
+    /// </summary>
+    public void SetLivePresenceEnabled(bool enabled)
+    {
+        if (_livePresenceEnabled == enabled) return;
+        _presenceEpoch++;
+        _livePresenceEnabled = enabled;
+        _presenceTimer.Stop();
+        _presenceJournal.Reset();
+        if (enabled)
+        {
+            _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow;
+            _presenceTimer.Start();
+            _ = ObservePresenceAsync();
+        }
+        _chat?.SyncCapabilitySwitches();
+        _companion?.ShowReaction(enabled
+            ? "Live Presence on. I'll notice app and song changes locally."
+            : "Live Presence off. Recent activity cleared.");
+    }
+
+    private async Task ObservePresenceAsync()
+    {
+        if (!_livePresenceEnabled || _presenceBusy) return;
+        _presenceBusy = true;
+        var epoch = _presenceEpoch;
+        try
+        {
+            var context = await AmbientSense.ReadOnceAsync();
+            // Windows media sessions are the first choice. Only poll the official
+            // Spotify API when connected, playing metadata is absent, and the owner
+            // explicitly enabled LIVE PRESENCE for this session.
+            if (context.MediaTitle.Length == 0 &&
+                LinkedAccounts.IsConnected(LinkedService.Spotify) &&
+                DateTimeOffset.UtcNow >= _nextSpotifyPresenceCheck)
+            {
+                _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow.AddSeconds(60);
+                try
+                {
+                    var playback = await LinkedAccounts.SpotifyPlaybackAsync();
+                    if (playback?.Playing == true)
+                        context = context with
+                        {
+                            MediaTitle = playback.Title,
+                            MediaArtist = playback.Artist
+                        };
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Presence Spotify fallback: " + ex.GetType().Name);
+                }
+            }
+
+            if (!_livePresenceEnabled || epoch != _presenceEpoch) return;
+            var reaction = _presenceJournal.Observe(context, DateTimeOffset.UtcNow);
+            if (!string.IsNullOrWhiteSpace(reaction) &&
+                !CallCompanionActive &&
+                !(Settings.ListenToMicrophone && !MicrophoneMuted) &&
+                !(Settings.DanceToSystemAudio && reaction.StartsWith("New track:", StringComparison.Ordinal)))
+                _companion?.ShowReaction(reaction);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Live Presence observation: " + ex.GetType().Name);
+        }
+        finally { _presenceBusy = false; }
+    }
+
     public async Task<string> ReplyWithAmbientContextAsync(
         IReadOnlyList<ChatTurn> turns, CancellationToken token = default)
     {
@@ -277,8 +359,13 @@ public partial class App : System.Windows.Application
         if (!Settings.EnableSituationalContext || _actionEpoch != epoch)
             return await Brain.ReplyAsync(turns, token);
 
-        return await Brain.ReplyAsync(
-            AmbientContextPolicy.AnnotateLastUserTurn(turns, context), token);
+        if (_livePresenceEnabled)
+            _presenceJournal.Observe(context, DateTimeOffset.UtcNow);
+        IReadOnlyList<ChatTurn> annotated =
+            AmbientContextPolicy.AnnotateLastUserTurn(turns, context);
+        if (_livePresenceEnabled)
+            annotated = _presenceJournal.AnnotateLastUserTurn(annotated, DateTimeOffset.UtcNow);
+        return await Brain.ReplyAsync(annotated, token);
     }
 
     public void SetHandsFreeMode(bool enabled)
@@ -319,6 +406,7 @@ public partial class App : System.Windows.Application
         _talkOnceRestoresOff = false;
         SetWatchingEnabled(false);
         SetDanceToSystemAudio(false);
+        SetLivePresenceEnabled(false);
         SetMicrophoneEnabled(false);
         Settings.EnableDesktopActions = false;
         Settings.EnableSituationalContext = false;
@@ -800,6 +888,25 @@ public partial class App : System.Windows.Application
         catch (Exception ex) { return "Spotify playback failed: " + ex.Message; }
     }
 
+    public async Task<string> TryQueueSpotifyTrackAsync(SpotifyTrackChoice track)
+    {
+        if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+            return "Connect Spotify from CONNECTIONS first.";
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to queue music.";
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations &&
+            System.Windows.MessageBox.Show(
+                "Add this recording to your Spotify queue?\n\n" + track.Display,
+                "Capri — Spotify queue", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Spotify queue action cancelled.";
+        if (epoch != _actionEpoch || !Settings.EnableDesktopActions)
+            return "Stopped before queuing music.";
+        try { return await LinkedAccounts.SpotifyQueueTrackAsync(track); }
+        catch (Exception ex) { return "Spotify queue failed: " + ex.Message; }
+    }
+
     public string TryOpenRobloxExperience(string placeId)
     {
         if (!LinkedAccountPolicy.IsRobloxPlaceId(placeId))
@@ -841,6 +948,17 @@ public partial class App : System.Windows.Application
         if (input.StartsWith("play ", StringComparison.OrdinalIgnoreCase) &&
             input.EndsWith(" on spotify", StringComparison.OrdinalIgnoreCase))
             return input[5..^" on spotify".Length].Trim();
+        return null;
+    }
+
+    private static string? ExtractSpotifyQueueRequest(string request)
+    {
+        var input = request.Trim();
+        if (input.StartsWith("spotify queue ", StringComparison.OrdinalIgnoreCase))
+            return input["spotify queue ".Length..].Trim();
+        if (input.StartsWith("queue ", StringComparison.OrdinalIgnoreCase) &&
+            input.EndsWith(" on spotify", StringComparison.OrdinalIgnoreCase))
+            return input[6..^" on spotify".Length].Trim();
         return null;
     }
 
@@ -1058,7 +1176,7 @@ public partial class App : System.Windows.Application
         }
 
         var robloxRequest = System.Text.RegularExpressions.Regex.Match(
-            request.Trim(), @"^(?:join roblox|open roblox game|roblox place)s+(d{1,20})$",
+            request.Trim(), @"^(?:join roblox|open roblox game|roblox place)\s+(\d{1,20})$",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         if (robloxRequest.Success)
             return TryOpenRobloxExperience(robloxRequest.Groups[1].Value);
@@ -1087,6 +1205,29 @@ public partial class App : System.Windows.Application
         };
         if (spotifyControl != MediaIntent.None)
             return await TrySpotifyActionAsync(spotifyControl);
+
+        var spotifyQueueQuery = ExtractSpotifyQueueRequest(request);
+        if (!string.IsNullOrWhiteSpace(spotifyQueueQuery))
+        {
+            if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+                return "Connect Spotify in CONNECTIONS first.";
+            if (!Settings.EnableDesktopActions)
+                return "Enable DESKTOP ACTIONS or HANDS-FREE before queuing music.";
+            try
+            {
+                var tracks = await LinkedAccounts.SpotifySearchAsync(spotifyQueueQuery);
+                var exact = tracks.Where(t =>
+                    t.Title.Equals(spotifyQueueQuery, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (exact.Length == 1)
+                    return await TryQueueSpotifyTrackAsync(exact[0]);
+                OpenConnections();
+                _connections?.SetSpotifySearch(spotifyQueueQuery, tracks, queue: true);
+                return tracks.Count == 0
+                    ? "No Spotify track matched '" + spotifyQueueQuery + "'."
+                    : "Found " + tracks.Count + " recordings. Select the one to queue in CONNECTIONS.";
+            }
+            catch (Exception ex) { return "Spotify queue search failed: " + ex.Message; }
+        }
 
         var spotifyQuery = ExtractSpotifyTrackRequest(request);
         if (!string.IsNullOrWhiteSpace(spotifyQuery))
@@ -1417,6 +1558,8 @@ public partial class App : System.Windows.Application
         StopAutonomousTask();
         LinkedAccounts.Dispose();
         _mediaSessionTimer.Stop();
+        _presenceTimer.Stop();
+        _presenceJournal.Reset();
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
         _audioReactions?.Dispose();
