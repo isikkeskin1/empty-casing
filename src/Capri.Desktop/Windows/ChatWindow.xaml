@@ -117,6 +117,9 @@
                   Margin="10,0,0,8" Padding="8,3"/>
           <Button Content="AUTO TASK" Click="OpenAutoTask_Click"
                   Margin="10,0,0,8" Background="#24564D" Padding="8,3"/>
+          <Button Content="ROUTINES" Click="ListRoutines_Click"
+                  Margin="10,0,0,8" Background="#355B51" Padding="8,3"
+                  ToolTip="Try: gaming mode, Roblox mode, Roblox dev mode, study mode."/>
           <Button Content="GAMES" Click="OpenGames_Click"
                   Margin="10,0,0,8" Padding="8,3"/>
           <Button Content="NOW PLAYING" Click="OpenNowPlaying_Click"
@@ -144,7 +147,7 @@
                     Background="#182334" Foreground="#121B29"/>
         </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="DANCE TO AUDIO monitors system playback levels (including calls) only while enabled and never stores audio. TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. HANDS-FREE skips per-action warnings for currently supported commands and auto tasks; it arms DESKTOP ACTIONS when switched on. Startup and STOP ALL disarm execution. Purchases, credentials, sending and destructive actions stay blocked."/>
+                   Text="DANCE TO AUDIO monitors system playback levels (including calls) only while enabled and never stores audio. TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Say 'gaming mode', 'Roblox dev mode' or 'study mode' to launch a validated session routine. HANDS-FREE skips the single routine preview and per-action warnings for supported commands and auto tasks; it arms DESKTOP ACTIONS when switched on. Startup and STOP ALL disarm execution. Purchases, credentials, sending and destructive actions stay blocked."/>
       </StackPanel>
     </Border>
 
