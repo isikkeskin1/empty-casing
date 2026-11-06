@@ -248,6 +248,160 @@ public partial class ChatWindow : Window
         RefreshObsClipStatus();
     }
 
+    public void RefreshMemoryVault()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshMemoryVault);
+            return;
+        }
+        var selectedId = (MemoryList.SelectedItem as PersonalMemory)?.Id;
+        var wasSyncing = _syncing;
+        _syncing = true;
+        try
+        {
+            MemoryList.ItemsSource = App.Instance.Memories.Items.ToArray();
+            if (selectedId is Guid id)
+                MemoryList.SelectedItem = App.Instance.Memories.Items
+                    .FirstOrDefault(n => n.Id == id);
+            UseMemoryCheck.IsChecked = App.Instance.Settings.UsePersonalMemoryInReplies;
+            var hasConsent = App.Instance.Brain.IsLocal ||
+                App.Instance.Settings.MemoryCloudProviderConsent ==
+                App.Instance.Settings.BrainProvider;
+            MemorySharingStatus.Text = !App.Instance.Settings.UsePersonalMemoryInReplies
+                ? "Notes are LOCAL ONLY · context sharing off"
+                : hasConsent
+                    ? (App.Instance.Brain.IsLocal
+                        ? "LOCAL BRAIN · selected notes included in chat requests"
+                        : "CLOUD SHARING ON · " + App.Instance.Settings.BrainProvider)
+                    : "PAUSED · approve sharing for this cloud model provider";
+            MemoryCountText.Text = App.Instance.Memories.Items.Count +
+                " / " + PersonalMemoryPolicy.MaxItems + " saved facts";
+        }
+        finally { _syncing = wasSyncing; }
+    }
+
+    private void MemorySelected_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncing) return;
+        if (MemoryList.SelectedItem is PersonalMemory memory)
+            MemoryNoteBox.Text = memory.Text;
+    }
+
+    private void UseMemory_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        var enable = UseMemoryCheck.IsChecked == true;
+        var approveCloud = false;
+        if (enable && !App.Instance.Brain.IsLocal &&
+            App.Instance.Settings.MemoryCloudProviderConsent !=
+                App.Instance.Settings.BrainProvider)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Include your private saved notes in chat prompts sent to the selected " +
+                "cloud AI provider (" + App.Instance.Settings.BrainProvider + ")?\n\n" +
+                "Saved notes remain on your computer but copies of selected notes " +
+                "leave your PC when used as model context. Changing AI providers " +
+                "requires separate approval.\n\nEnable sharing?",
+                "Capri — share memory with cloud AI?",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes)
+            {
+                RefreshMemoryVault();
+                return;
+            }
+            approveCloud = true;
+        }
+        try
+        {
+            App.Instance.SetMemoryContextEnabled(enable, approveCloud);
+            MemoryFeedbackText.Text = enable
+                ? "Memory context enabled. It is sent only with future normal AI replies."
+                : "Memory context disabled. Your notes are still saved locally.";
+        }
+        catch (Exception ex)
+        {
+            MemoryFeedbackText.Text = "Memory sharing unchanged: " + ex.Message;
+        }
+        RefreshMemoryVault();
+    }
+
+    private void MemoryAdd_Click(object sender, RoutedEventArgs e)
+    {
+        MemoryFeedbackText.Text = App.Instance.Memories.Add(MemoryNoteBox.Text);
+        RefreshMemoryVault();
+        if (MemoryFeedbackText.Text.Contains("saved locally", StringComparison.Ordinal))
+            MemoryNoteBox.Clear();
+    }
+
+    private void MemoryEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (MemoryList.SelectedItem is not PersonalMemory memory)
+        {
+            MemoryFeedbackText.Text = "Select a saved note first.";
+            return;
+        }
+        MemoryFeedbackText.Text = App.Instance.Memories.Edit(memory.Id, MemoryNoteBox.Text);
+        RefreshMemoryVault();
+    }
+
+    private void MemoryDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (MemoryList.SelectedItem is not PersonalMemory memory)
+        {
+            MemoryFeedbackText.Text = "Select a saved note first.";
+            return;
+        }
+        MemoryFeedbackText.Text = App.Instance.Memories.Forget(memory.Id);
+        MemoryNoteBox.Clear();
+        RefreshMemoryVault();
+    }
+
+    private void MemoryClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.Instance.Memories.Items.Count == 0) return;
+        if (System.Windows.MessageBox.Show(
+                "Permanently delete ALL saved notes from this Capri installation? " +
+                "This does not delete conversation history or any copies previously " +
+                "sent to a cloud AI provider.",
+                "Capri — forget everything?",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        App.Instance.Memories.Clear();
+        MemoryNoteBox.Clear();
+        MemoryFeedbackText.Text = "All saved notes deleted from this PC.";
+        RefreshMemoryVault();
+    }
+
+    private void MemoryExport_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.Instance.Memories.Items.Count == 0)
+        {
+            MemoryFeedbackText.Text = "No notes to export.";
+            return;
+        }
+        var chooser = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export your Capri personal notes",
+            FileName = "Capri-Memories.txt",
+            DefaultExt = ".txt",
+            Filter = "Plain text|*.txt",
+            AddExtension = true
+        };
+        if (chooser.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(chooser.FileName,
+                App.Instance.Memories.ListSummary());
+            MemoryFeedbackText.Text = "Notes exported to the file you selected.";
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            MemoryFeedbackText.Text = "Export failed: " + ex.GetType().Name;
+        }
+    }
+
     public void RefreshObsClipStatus()
     {
         if (!Dispatcher.CheckAccess())
