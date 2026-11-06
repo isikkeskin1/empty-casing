@@ -53,7 +53,7 @@ public sealed class VoiceTurnRouter
     {
         var phrase = Normalize(utterance);
         var (wake, request) = SplitWake(phrase);
-        return wake && IsStopSpeech(request);
+        return wake && (IsStopSpeech(request) || IsStopInputs(request));
     }
 
     public VoiceDecision Evaluate(
@@ -69,7 +69,8 @@ public sealed class VoiceTurnRouter
         if (outputPlaying)
         {
             // Do not treat the companion's own voice as another user request.
-            if (!allowVoiceInterrupt || !wake || !IsStopSpeech(request))
+            if (!allowVoiceInterrupt || !wake ||
+                !(IsStopSpeech(request) || IsStopInputs(request)))
                 return default;
         }
         else if (!wake && !OneShotArmed &&
