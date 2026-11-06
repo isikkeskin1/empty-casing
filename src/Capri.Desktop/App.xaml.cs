@@ -1239,6 +1239,12 @@ public partial class App : System.Windows.Application
         if (sessionRoutine is not null)
             return await RunSessionRoutineAsync(sessionRoutine);
 
+        // Do not fall through to the single-action LLM planner and partially
+        // execute a multi-app request containing an unknown or forbidden step.
+        if (CompanionRoutine.LooksLikeMultiAppRequest(request))
+            return "I couldn't validate every requested app. " +
+                   "Try 'open Discord and Spotify' or say 'list routines'.";
+
         if (request.Equals("what app am i in", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("what app am i using", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("what application is open", StringComparison.OrdinalIgnoreCase))
