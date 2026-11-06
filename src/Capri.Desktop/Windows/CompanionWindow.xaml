@@ -13,7 +13,9 @@
       <MenuItem Header="Glitch animation" Click="Glitch_Click"/>
       <MenuItem Header="Toss animation" Click="Toss_Click"/>
       <MenuItem Header="Sleep" Click="Sleep_Click"/>
-      <MenuItem Header="Perch (preview)" Click="Perch_Click"/>
+      <MenuItem Header="Perch on frontmost window" Click="Attach_Click"/>
+      <MenuItem Header="Detach from window" Click="Detach_Click"/>
+      <MenuItem Header="Perch (animation preview)" Click="Perch_Click"/>
       <MenuItem Header="Music perch (preview)" Click="MusicPerch_Click"/>
       <Separator/>
       <MenuItem Header="Open character art folder" Click="OpenArt_Click"/>
@@ -25,7 +27,7 @@
   <Grid>
     <Canvas Width="270" Height="480">
       <Canvas x:Name="CharacterSurface" Width="270" Height="400" Canvas.Top="5"
-              Background="Transparent" MouseLeftButtonDown="Character_MouseDown" Cursor="Hand">
+              MouseLeftButtonDown="Character_MouseDown" Cursor="Hand" ToolTip="Drag to move • Drop near a window edge to perch • Flick to toss">
         <Canvas.RenderTransform>
           <TranslateTransform x:Name="FloatOffset"/>
         </Canvas.RenderTransform>
