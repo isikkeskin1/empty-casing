@@ -9,16 +9,26 @@ public partial class UiInspectorWindow : Window
 {
     private UiWindowSnapshot? _snapshot;
     private bool _busy;
+    private bool _runningTask;
 
     public UiInspectorWindow()
     {
         InitializeComponent();
         Owner = App.Instance.MainWindow;
+        Closed += (_, _) => App.Instance.StopAutonomousTask();
         Loaded += async (_, _) =>
         {
             if (_snapshot is null)
                 await RefreshAsync();
         };
+    }
+
+    public void SetGoal(string goal)
+    {
+        if (!string.IsNullOrWhiteSpace(goal))
+            TaskGoalBox.Text = goal;
+        TaskGoalBox.Focus();
+        TaskGoalBox.SelectAll();
     }
 
     public void DisplaySnapshot(UiWindowSnapshot snapshot)
@@ -38,7 +48,7 @@ public partial class UiInspectorWindow : Window
 
     private void Tab_Changed(object sender, SelectionChangedEventArgs e)
     {
-        SelectButton.IsEnabled = _snapshot is not null &&
+        SelectButton.IsEnabled = !_runningTask && _snapshot is not null &&
             TabsList.SelectedItem is UiTabInfo tab &&
             tab.Enabled && !tab.Offscreen &&
             UiNavigationPolicy.IsSafeTabLabel(tab.Name);
@@ -67,6 +77,65 @@ public partial class UiInspectorWindow : Window
                 ". Open a normal visible application and refresh.";
         }
         finally { _busy = false; }
+    }
+
+    private async void StartTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (_runningTask || _busy) return;
+        if (_snapshot is null)
+        {
+            StatusText.Text = "Press REFRESH WINDOW to select a target application first.";
+            return;
+        }
+        var goal = TaskGoalBox.Text.Trim();
+        if (!AutonomousNavigationPolicy.IsSafeGoal(goal))
+        {
+            StatusText.Text = "Only safe navigation goals are supported. Try: Find the Display tab.";
+            return;
+        }
+
+        _runningTask = true;
+        StartTaskButton.IsEnabled = false;
+        StopTaskButton.IsEnabled = true;
+        SelectButton.IsEnabled = false;
+        TaskLog.Clear();
+
+        try
+        {
+            var result = await App.Instance.RunAutonomousNavigationAsync(
+                _snapshot, goal, line => Dispatcher.BeginInvoke(() =>
+                {
+                    if (!IsVisible) return;
+                    if (TaskLog.Text.Length > 6000)
+                        TaskLog.Text = TaskLog.Text[^4000..];
+                    TaskLog.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + line + "\n");
+                    TaskLog.ScrollToEnd();
+                }));
+            if (IsVisible)
+            {
+                TaskLog.AppendText("RESULT: " + result + "\n");
+                TaskLog.ScrollToEnd();
+                StatusText.Text = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (IsVisible)
+                StatusText.Text = "Task aborted: " + ex.GetType().Name;
+        }
+        finally
+        {
+            _runningTask = false;
+            StartTaskButton.IsEnabled = true;
+            StopTaskButton.IsEnabled = false;
+        }
+    }
+
+    private void StopTask_Click(object sender, RoutedEventArgs e)
+    {
+        App.Instance.StopAutonomousTask();
+        StatusText.Text = "Stop requested. Any current UIA call will finish or time out; no new step will be authorized.";
+        StopTaskButton.IsEnabled = false;
     }
 
     private async void Select_Click(object sender, RoutedEventArgs e)

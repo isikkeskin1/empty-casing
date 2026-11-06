@@ -5,7 +5,7 @@ using Capri.Core;
 namespace Capri.Desktop.Services;
 
 public sealed record UiTabInfo(string Name, string AutomationId, string RuntimeKey,
-    bool Enabled, bool Offscreen);
+    bool Enabled, bool Offscreen, bool Selected = false);
 
 public sealed record UiWindowSnapshot(IntPtr Handle, int ProcessId, string Title,
     DateTimeOffset CapturedAt, IReadOnlyList<UiTabInfo> Tabs);
@@ -26,8 +26,22 @@ public sealed class UiAutomationNavigator
         return await WithScanTimeoutAsync(() => InspectWindow(target.Value.Handle));
     }
 
+    public async Task<UiWindowSnapshot> InspectPinnedAsync(
+        UiWindowSnapshot original, CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested();
+        var current = await WithScanTimeoutAsync(
+            () => InspectWindow(original.Handle), token);
+        if (current.Handle != original.Handle ||
+            current.ProcessId != original.ProcessId ||
+            !string.Equals(current.Title, original.Title, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "The approved application changed or closed. Automatic navigation stopped.");
+        return current;
+    }
+
     public async Task<string> SelectTabAsync(
-        UiWindowSnapshot snapshot, string requestedLabel)
+        UiWindowSnapshot snapshot, string requestedLabel, CancellationToken token = default)
     {
         if (DateTimeOffset.UtcNow - snapshot.CapturedAt > TimeSpan.FromSeconds(20))
             return "The window snapshot expired. Inspect it again before acting.";
@@ -43,7 +57,7 @@ public sealed class UiAutomationNavigator
             true, out var reason))
             return "Blocked: " + reason;
 
-        return await WithScanTimeoutAsync(() => SelectTabCore(snapshot, target));
+        return await WithScanTimeoutAsync(() => SelectTabCore(snapshot, target, token), token);
     }
 
     private static UiWindowSnapshot InspectWindow(IntPtr handle)
@@ -68,7 +82,10 @@ public sealed class UiAutomationNavigator
             if (runtime.Length == 0) continue;
             var enabled = SafeBool(() => item.Current.IsEnabled, false);
             var offscreen = SafeBool(() => item.Current.IsOffscreen, true);
-            tabs.Add(new UiTabInfo(name, id, runtime, enabled, offscreen));
+            var selected = SafeBool(() =>
+                item.TryGetCurrentPattern(SelectionItemPattern.Pattern, out var pattern) &&
+                pattern is SelectionItemPattern chosen && chosen.Current.IsSelected, false);
+            tabs.Add(new UiTabInfo(name, id, runtime, enabled, offscreen, selected));
             if (tabs.Count >= 50) break;
         }
 
@@ -77,7 +94,8 @@ public sealed class UiAutomationNavigator
             DateTimeOffset.UtcNow, tabs);
     }
 
-    private static string SelectTabCore(UiWindowSnapshot snapshot, UiTabInfo chosen)
+    private static string SelectTabCore(
+        UiWindowSnapshot snapshot, UiTabInfo chosen, CancellationToken token)
     {
         if (!IsWindow(snapshot.Handle))
             return "Target window closed. No action taken.";
@@ -115,6 +133,7 @@ public sealed class UiAutomationNavigator
             pattern is not SelectionItemPattern selectable)
             return "That tab does not support a safe Windows accessibility selection.";
 
+        token.ThrowIfCancellationRequested();
         selectable.Select();
         var selected = SafeRead(() => selectable.Current.IsSelected);
         return selected == true
@@ -163,9 +182,10 @@ public sealed class UiAutomationNavigator
         { return default; }
     }
 
-    private static async Task<T> WithScanTimeoutAsync<T>(Func<T> work)
+    private static async Task<T> WithScanTimeoutAsync<T>(
+        Func<T> work, CancellationToken token = default)
     {
-        if (!await ScanGate.WaitAsync(TimeSpan.FromSeconds(1)))
+        if (!await ScanGate.WaitAsync(TimeSpan.FromSeconds(1), token))
             throw new InvalidOperationException("Windows accessibility inspection is already busy.");
 
         // Windows UIA providers can block. Do not free the gate while an orphaned
@@ -173,8 +193,8 @@ public sealed class UiAutomationNavigator
         Task<T>? operation = null;
         try
         {
-            operation = Task.Run(work);
-            return await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            operation = Task.Run(work, token);
+            return await operation.WaitAsync(TimeSpan.FromSeconds(5), token);
         }
         finally
         {

@@ -32,6 +32,8 @@ public partial class App : System.Windows.Application
     private string? _lastScreenObservation;
     private DateTimeOffset _lastObservedAt;
     private long _actionEpoch;
+    private CancellationTokenSource? _autonomousTaskCts;
+    public bool AutonomousTaskRunning => _autonomousTaskCts is not null;
     private readonly VoiceTurnRouter _voiceRouter = new();
     private readonly DispatcherTimer _talkOnceTimeout = new() { Interval = TimeSpan.FromSeconds(20) };
     private bool _talkOnceRestoresOff;
@@ -225,6 +227,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        StopAutonomousTask();
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();
@@ -461,6 +464,60 @@ public partial class App : System.Windows.Application
         }
     }
 
+    public void StopAutonomousTask()
+    {
+        _autonomousTaskCts?.Cancel();
+    }
+
+    /// <summary>
+    /// User approves ONE window-scoped navigation objective. Within that bounded
+    /// lease the model can select safe, revalidated tabs without repeated popups.
+    /// This is not a persistent grant and is never restored from settings.
+    /// </summary>
+    public async Task<string> RunAutonomousNavigationAsync(
+        UiWindowSnapshot inspectedWindow, string goal, Action<string> progress)
+    {
+        if (!AutonomousNavigationPolicy.IsSafeGoal(goal))
+            return "Only non-sensitive navigation goals are allowed (for example: find the Display tab). " +
+                "Purchases, messages, accounts, editing and settings changes are excluded.";
+        if (_autonomousTaskCts is not null)
+            return "A Capri task is already running. Stop it before starting another.";
+        if (DateTimeOffset.UtcNow - inspectedWindow.CapturedAt > TimeSpan.FromSeconds(30))
+            return "Window inspection is old. Press REFRESH WINDOW and retry.";
+
+        var dataDisclosure = Brain.IsLocal
+            ? "Planning is local with Ollama."
+            : "Your selected cloud AI will receive the goal, window title and accessible tab names.";
+        var permit = System.Windows.MessageBox.Show(
+            "Authorize ONE autonomous navigation task?\n\n" +
+            "Window: " + inspectedWindow.Title + "\nGoal: " + goal + "\n\n" +
+            "Capri may choose and select up to FIVE safe tabs within 90 seconds, " +
+            "without asking after each selection.\n\n" +
+            "No typing, messages, purchases, account/security or destructive controls.\n" +
+            dataDisclosure +
+            "\n\nSTOP TASK or STOP INPUTS revokes this permission.\n\nStart task?",
+            "Capri — one-task autonomy permission",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (permit != MessageBoxResult.Yes)
+            return "Task cancelled. No autonomous actions authorized.";
+
+        var epoch = _actionEpoch;
+        using var cts = new CancellationTokenSource();
+        _autonomousTaskCts = cts;
+        try
+        {
+            var runner = new AutonomousNavigationRunner(UiNavigator, Brain);
+            return await runner.RunAsync(inspectedWindow, goal,
+                () => _actionEpoch == epoch && ReferenceEquals(_autonomousTaskCts, cts),
+                progress, cts.Token);
+        }
+        finally
+        {
+            if (ReferenceEquals(_autonomousTaskCts, cts))
+                _autonomousTaskCts = null;
+        }
+    }
+
     public async Task<string> NavigateInspectedTabAsync(
         UiWindowSnapshot snapshot, string tabName)
     {
@@ -494,6 +551,8 @@ public partial class App : System.Windows.Application
                 ". The tab was not confirmed.";
         }
     }
+
+    public void SetAutonomousTaskGoal(string goal) => _uiInspector?.SetGoal(goal);
 
     public void OpenUiInspector()
     {
@@ -750,6 +809,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        StopAutonomousTask();
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
         _audioReactions?.Dispose();

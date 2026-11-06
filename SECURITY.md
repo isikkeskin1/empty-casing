@@ -137,3 +137,31 @@ turns. The short metadata entry (filename and typed question) is persisted.
 File-derived output is not automatically spoken through Fish or other cloud
 TTS. A file may be retained by the selected third-party cloud provider
 under its own terms if the user explicitly consents. No silent telemetry.
+
+
+## One-time authorization for autonomous navigation
+
+AUTO TASK has a separate **one-task** permission prompt: the user approves
+the exact app window and navigation goal, up to five UI Automation TabItem
+selection steps or 90 seconds. No individual confirmation is needed during
+that bounded lease. No automatic consent is saved across tasks/restarts.
+
+The model sees only the user-approved navigation goal and eligible tab names
+/ selected state from the pinned window, never arbitrary window text, form
+contents, passwords or screenshots. A cloud brain receives this limited
+metadata only after the one-time disclosure and approval. The LLM proposes a
+numeric index or done; strict local validation blocks unknown commands, out-
+of-range choices, sensitive labels and expired permissions.
+
+Each action is bound to the same original HWND/process/title and re-observed
+automation runtime ID. The app re-inspects after inference and stops if the
+window or target changed. Duplicate and already-selected tabs are blocked.
+STOP TASK and STOP INPUTS cancel the task token, preventing **subsequent**
+steps; an already executing OS/UIA call cannot be retroactively undone.
+One-time consent never authorizes arbitrary InvokePattern, clicks,
+keyboard typing, credential access, sending messages, file modifications,
+payment, checkout or purchasing.
+
+This approach reduces repetitive approval prompts but **cannot guarantee**
+that every third-party accessibility provider has no side effects. Test
+initially in trusted local apps.
