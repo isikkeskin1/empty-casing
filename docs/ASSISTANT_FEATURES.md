@@ -53,3 +53,17 @@ Select the monitor to watch in the Mainframe. Ctrl+Alt+V toggles microphone reco
 Choose Fish Audio in the voice panel and enter a newly generated API key. The default model is s2.1-pro-free; paid s2.1-pro is optional. The reference ID is optional and should name a voice you have permission to use. Capri sends JSON text to Fish's fixed HTTPS endpoint with an explicit model header and decodes the MP3 entirely in memory. No MP3 is saved. Fish may consume quotas or credits. Windows voice remains a fully local alternative.
 
 This does not create a voice chat call, clone anyone's voice, recognize spoken input through Fish, or enable a character-accurate licensed voice automatically.
+
+
+## Screen observation refinement
+
+Mainframe can choose Follow frontmost app, Primary or a specific monitor, with
+a 10-second to 10-minute automatic watch interval. A 16x9 grayscale in-memory
+thumbnail is used only to skip blank/unchanged frames. The last brief observation
+is accessible in the same session by asking "what did you see?" for three hours.
+Proactive comments pause while active microphone listening is enabled, avoiding
+interruptions. No screen frames or signatures are stored permanently.
+
+Capri reacts to deliberate horizontal or vertical mouse rubs on her body,
+with a cooldown and a toggle in INPUTS. Gesture detection is localized to
+the WPF overlay. It does not monitor the user's general pointer movements.

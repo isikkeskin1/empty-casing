@@ -27,7 +27,8 @@
   <Grid>
     <Canvas Width="270" Height="480">
       <Canvas x:Name="CharacterSurface" Width="270" Height="400" Canvas.Top="5"
-              MouseLeftButtonDown="Character_MouseDown" Cursor="Hand" ToolTip="Drag to move • Drop near a window edge to perch • Flick to toss">
+              MouseLeftButtonDown="Character_MouseDown" MouseMove="Character_MouseMove"
+              MouseLeave="Character_MouseLeave" Cursor="Hand" ToolTip="Drag to move • Drop near a window edge to perch • Flick to toss">
         <Canvas.RenderTransform>
           <TranslateTransform x:Name="FloatOffset"/>
         </Canvas.RenderTransform>

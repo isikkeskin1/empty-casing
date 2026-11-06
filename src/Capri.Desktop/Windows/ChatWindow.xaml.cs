@@ -18,6 +18,7 @@ public partial class ChatWindow : Window
         InitializeComponent();
         DataContext = this;
         InitializeScreenOptions();
+        InitializeWatchIntervals();
         RefreshBrainConfiguration();
         SyncCapabilitySwitches();
 
@@ -36,6 +37,7 @@ public partial class ChatWindow : Window
     {
         _syncing = true;
         ScreenCombo.Items.Add(new ComboBoxItem { Content = "Primary display", Tag = -1 });
+        ScreenCombo.Items.Add(new ComboBoxItem { Content = "Follow frontmost app", Tag = -2 });
         var screens = System.Windows.Forms.Screen.AllScreens;
         for (var i = 0; i < screens.Length; i++)
         {
@@ -48,8 +50,33 @@ public partial class ChatWindow : Window
             });
         }
         var wanted = App.Instance.Settings.ScreenIndex;
-        ScreenCombo.SelectedIndex = wanted >= 0 && wanted < screens.Length ? wanted + 1 : 0;
+        ScreenCombo.SelectedIndex = wanted == -2 ? 1 :
+            wanted >= 0 && wanted < screens.Length ? wanted + 2 : 0;
         _syncing = false;
+    }
+
+    private void InitializeWatchIntervals()
+    {
+        _syncing = true;
+        foreach (var seconds in new[] { 10, 30, 45, 60, 120, 300, 600 })
+            WatchIntervalBox.Items.Add(new ComboBoxItem
+            {
+                Content = seconds < 60 ? seconds + " seconds" : seconds / 60 + " minutes",
+                Tag = seconds
+            });
+        for (var i = 0; i < WatchIntervalBox.Items.Count; i++)
+            if (((ComboBoxItem)WatchIntervalBox.Items[i]).Tag is int value &&
+                value == App.Instance.Settings.WatchIntervalSeconds)
+                WatchIntervalBox.SelectedIndex = i;
+        if (WatchIntervalBox.SelectedIndex < 0) WatchIntervalBox.SelectedIndex = 2;
+        _syncing = false;
+    }
+
+    private void WatchInterval_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncing || (WatchIntervalBox.SelectedItem as ComboBoxItem)?.Tag is not int seconds)
+            return;
+        App.Instance.SetWatchIntervalSeconds(seconds);
     }
 
     private void Screen_Changed(object sender, SelectionChangedEventArgs e)
@@ -246,7 +273,12 @@ public partial class ChatWindow : Window
         {
             string answer;
             var reminder = ReminderParser.Parse(prompt);
-            if (!lookNow && reminder is not null)
+            if (!lookNow && (prompt.Equals("what did you see?", StringComparison.OrdinalIgnoreCase) ||
+                prompt.Equals("what did you see", StringComparison.OrdinalIgnoreCase) ||
+                prompt.Equals("what were you watching", StringComparison.OrdinalIgnoreCase)))
+                answer = App.Instance.RecentScreenObservation ??
+                    "I don't have a recent screen observation. Turn on WATCH SCREEN or press LOOK NOW.";
+            else if (!lookNow && reminder is not null)
                 answer = App.Instance.Reminders.Execute(reminder);
             else if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
             {

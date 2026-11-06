@@ -31,6 +31,8 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 
 The installer includes the .NET runtime, **not** Ollama, model weights, copyrighted animation assets, or cloud credits. Developer setup is described in [the guide](docs/SETUP.md).
 
+**Smart screen input:** Optional WATCH SCREEN uses a tiny in-memory grayscale signature to skip unchanged or blank frames, and stays quiet during voice listening. Ask "what did you see?" for Capri's latest observation from this session (kept in RAM for up to three hours). Gentle mouse rubs over the companion trigger a playful reaction; disable them in INPUTS.
+
 **Reminders and timers:** Try "remind me in 10 minutes to stretch", "set a timer for 30 seconds", "show reminders" or "cancel reminder #1" in the Mainframe or by voice. Reminders are stored locally and fire while Capri is running (or upon reopening if overdue). They are not cloud calendar events.
 
 **Controls:** drag the floating character to move it; double-click to open chat; Ctrl+Shift+Space toggles chat. **Drop near another app's top edge** to perch on its window; she follows that window while it moves and detaches if it's minimized or closed. **Flick her quickly** to toss her around the screen with damped bouncing. Right-click her or use the tray to select **Perch on frontmost window**, **Detach from window**, or any manual animation preview. Music-perch is still a visual preview; beat synchronization isn't implemented.
@@ -41,7 +43,7 @@ The snap system only reads top-level window rectangles. It does not inspect your
 
 ## Screen, mic and desktop assistant
 
-Select **LOOK NOW** to inspect the selected monitor once (choose from the monitor selector in Mainframe). For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
+Select **LOOK NOW** to inspect the selected monitor once. Mainframe's monitor picker now includes **Follow frontmost app** and its watch interval can be set between 10 seconds and 10 minutes. For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
 
 **Fish voice:** Open SET UP BRAIN / VOICE, choose CLOUD — Fish Audio, and enter a newly generated Fish API key. The free S2.1 model is a limited developer offer; selecting Pro may incur charges. An optional voice reference ID must be appropriately licensed. Spoken text is transmitted to Fish; MP3 playback remains in memory. **MIC ON** uses Microsoft's installed Windows speech recognizer, not a cloud transcription endpoint provided by this app. Say "Capri, what's on my screen?" (while WATCH SCREEN is on) or "Capri, open notepad" (with DESKTOP ACTIONS enabled). Spoken recognition depends on the language pack you have installed. **SPEAK REPLIES** uses your system voice; it isn't an imitation of a voice actor.
 

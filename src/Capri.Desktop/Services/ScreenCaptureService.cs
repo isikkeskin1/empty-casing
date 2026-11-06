@@ -17,8 +17,18 @@ public static class ScreenCaptureService
     public static byte[] CaptureScreenJpeg(int index)
     {
         var screens = Screen.AllScreens;
-        var screen = index >= 0 && index < screens.Length ? screens[index] :
-            Screen.PrimaryScreen ?? throw new InvalidOperationException("No primary display available.");
+        Screen screen;
+        if (index == -2)
+        {
+            // Follow the frontmost external window, excluding Capri's own windows.
+            var target = new WindowDockingService().FrontmostWindow();
+            screen = target.HasValue
+                ? Screen.FromHandle(target.Value.Handle)
+                : Screen.PrimaryScreen ?? throw new InvalidOperationException("No primary display available.");
+        }
+        else
+            screen = index >= 0 && index < screens.Length ? screens[index] :
+                Screen.PrimaryScreen ?? throw new InvalidOperationException("No primary display available.");
         var bounds = screen.Bounds;
         if (bounds.Width <= 0 || bounds.Height <= 0)
             throw new InvalidOperationException("No valid display bounds.");
@@ -49,5 +59,27 @@ public static class ScreenCaptureService
             scaled.Save(stream, encoder, options);
         }
         return stream.ToArray();
+    }
+
+    /// <summary>Only 16x9 grayscale samples are retained between watch ticks.</summary>
+    public static byte[] ThumbnailLuminance(byte[] jpeg)
+    {
+        using var memory = new MemoryStream(jpeg, writable: false);
+        using var original = new Bitmap(memory);
+        using var thumbnail = new Bitmap(16, 9, PixelFormat.Format24bppRgb);
+        using (var graphics = Graphics.FromImage(thumbnail))
+        {
+            graphics.InterpolationMode = InterpolationMode.HighQualityBilinear;
+            graphics.DrawImage(original, 0, 0, 16, 9);
+        }
+        var samples = new byte[16 * 9];
+        for (var y = 0; y < 9; y++)
+            for (var x = 0; x < 16; x++)
+            {
+                var pixel = thumbnail.GetPixel(x, y);
+                samples[y * 16 + x] = (byte)((pixel.R * 77 +
+                    pixel.G * 150 + pixel.B * 29) >> 8);
+            }
+        return samples;
     }
 }

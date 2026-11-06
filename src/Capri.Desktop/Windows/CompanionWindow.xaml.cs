@@ -17,6 +17,7 @@ public partial class CompanionWindow : Window
     private readonly DispatcherTimer _follow = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly DispatcherTimer _flight = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private FrameAnimator? _frames;
+    private readonly PettingGesture _petting = new();
     private WindowDockingService.Target? _attached;
     private double _relativeX = 0.5;
     private TossMotion.State _motion;
@@ -74,6 +75,20 @@ public partial class CompanionWindow : Window
         });
         SetMood(_mood);
     }
+
+    private void Character_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!App.Instance.Settings.EnablePetting ||
+            e.LeftButton == MouseButtonState.Pressed ||
+            e.RightButton == MouseButtonState.Pressed) return;
+
+        var local = e.GetPosition(CharacterSurface);
+        var timestampMs = Stopwatch.GetTimestamp() * 1000 / Stopwatch.Frequency;
+        if (_petting.Observe(local.X, local.Y, timestampMs))
+            ShowReaction("Hey, easy with the hair! Okay, that's actually pretty nice.");
+    }
+
+    private void Character_MouseLeave(object sender, MouseEventArgs e) => _petting.Reset();
 
     private void Character_MouseDown(object sender, MouseButtonEventArgs e)
     {

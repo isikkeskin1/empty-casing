@@ -75,6 +75,41 @@ try
     }
     Check(motion.Stopped, "toss decelerates and settles on the screen floor");
 
+    var screenGate = new ScreenChangeGate();
+    var brightFrame = Enumerable.Repeat((byte)90, 144).ToArray();
+    Check(screenGate.ShouldObserve(brightFrame, -1),
+        "first nonblank screen observation is allowed");
+    Check(!screenGate.ShouldObserve(brightFrame, -1),
+        "unchanged screen observation is suppressed");
+    var cursorOnly = brightFrame.ToArray();
+    cursorOnly[7] = 105;
+    Check(!screenGate.ShouldObserve(cursorOnly, -1),
+        "tiny screen changes do not consume vision model calls");
+    var changedFrame = Enumerable.Repeat((byte)160, 144).ToArray();
+    Check(screenGate.ShouldObserve(changedFrame, -1) &&
+          !screenGate.ShouldObserve(changedFrame, -1),
+        "meaningfully different screen observed exactly once");
+    Check(!screenGate.ShouldObserve(new byte[144], -1),
+        "blank screen suppresses AI watching");
+    Check(screenGate.ShouldObserve(brightFrame, -2),
+        "changing target monitor resumes observation");
+
+    var petting = new PettingGesture();
+    Check(!petting.Observe(10, 20, 1000) &&
+          !petting.Observe(85, 20, 1100) &&
+          !petting.Observe(10, 20, 1200) &&
+          !petting.Observe(85, 20, 1300) &&
+          petting.Observe(10, 20, 1400),
+        "deliberate back-and-forth strokes cause a pet reaction");
+    Check(!petting.Observe(90, 20, 1500),
+        "petting cooldown prevents repetitive reaction spam");
+    var monotonic = new PettingGesture();
+    Check(!monotonic.Observe(1, 1, 1000) &&
+          !monotonic.Observe(20, 1, 1100) &&
+          !monotonic.Observe(50, 1, 1200) &&
+          !monotonic.Observe(80, 1, 1300),
+        "ordinary one-direction cursor movement is not a pet");
+
     var defaultKeys = new InputShortcuts();
     Check(InputShortcuts.TryValidate(defaultKeys, out _),
         "all seven default global shortcuts are valid and distinct");
