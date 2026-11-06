@@ -61,6 +61,7 @@ public partial class App : System.Windows.Application
     private string? _lastScreenObservation;
     private DateTimeOffset _lastObservedAt;
     private long _actionEpoch;
+    private CancellationTokenSource? _routineCts;
     private CancellationTokenSource? _autonomousTaskCts;
     public bool AutonomousTaskRunning => _autonomousTaskCts is not null;
     private readonly VoiceTurnRouter _voiceRouter = new();
@@ -389,6 +390,7 @@ public partial class App : System.Windows.Application
         if (!enabled)
         {
             StopAutonomousTask();
+            StopSessionRoutine();
             _actionEpoch++;
         }
         Settings.SkipActionConfirmations = enabled;
@@ -405,6 +407,7 @@ public partial class App : System.Windows.Application
         if (!enabled)
         {
             StopAutonomousTask();
+            StopSessionRoutine();
             _actionEpoch++;
         }
         Settings.EnableDesktopActions = enabled;
@@ -416,6 +419,7 @@ public partial class App : System.Windows.Application
     {
         StopCallCompanionMode();
         StopAutonomousTask();
+        StopSessionRoutine();
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();
@@ -1151,8 +1155,90 @@ public partial class App : System.Windows.Application
         _uiInspector.Activate();
     }
 
+    public void StopSessionRoutine() => _routineCts?.Cancel();
+
+    /// <summary>
+    /// Run a single explicitly named owner routine. No model can add to the
+    /// action list; every step is individually revalidated immediately before
+    /// execution. Hands-free only skips the ONE routine preview dialog.
+    /// </summary>
+    private async Task<string> RunSessionRoutineAsync(CompanionRoutine routine)
+    {
+        if (!CompanionRoutine.TryValidate(routine, out var reason))
+            return "Routine blocked: " + reason;
+        if (_routineCts is not null)
+            return "Another session routine is already running. Say 'Capri stop all' to cancel.";
+        var approval = ActionApprovalPolicy.Decide(
+            Settings.EnableDesktopActions, Settings.SkipActionConfirmations,
+            locallyValidated: true, prohibited: false);
+        if (approval == ActionApproval.Blocked)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE before starting a routine.";
+
+        var epoch = _actionEpoch;
+        if (approval == ActionApproval.ConfirmEachAction &&
+            System.Windows.MessageBox.Show(
+                "Start this local multi-action routine?\n\n" + routine.Preview +
+                "\n\nOnly these apps/sites will open, in this order. No logins, " +
+                "purchases, typing, messages or file changes. STOP ALL cancels " +
+                "any remaining actions.",
+                "Capri — session routine", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Routine cancelled; no applications were launched.";
+
+        if (!Settings.EnableDesktopActions || epoch != _actionEpoch)
+            return "Routine stopped before starting.";
+
+        using var cts = new CancellationTokenSource();
+        _routineCts = cts;
+        var completed = new List<string>();
+        try
+        {
+            foreach (var step in routine.Steps)
+            {
+                if (cts.IsCancellationRequested || epoch != _actionEpoch ||
+                    !Settings.EnableDesktopActions)
+                    return "Routine stopped. Completed " + completed.Count +
+                           " of " + routine.Steps.Count + " steps.";
+                if (!ActionPolicy.TryValidate(step, out reason))
+                    return "Routine halted before an unsafe step: " + reason;
+                try { completed.Add(DesktopActionExecutor.Execute(step)); }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    System.ComponentModel.Win32Exception)
+                {
+                    return "Routine stopped after " + completed.Count +
+                           " steps: " + ex.GetType().Name + " launching " +
+                           step.Argument + ".";
+                }
+                if (completed.Count < routine.Steps.Count)
+                    await Task.Delay(250, cts.Token);
+            }
+            _companion?.ShowReaction(routine.Name + " ready. I'm here if you need me.");
+            return routine.Name + " ready.\n" + string.Join("\n", completed);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            return "Routine cancelled after " + completed.Count +
+                   " of " + routine.Steps.Count + " steps.";
+        }
+        finally
+        {
+            if (ReferenceEquals(_routineCts, cts))
+                _routineCts = null;
+        }
+    }
+
     public async Task<string?> TryHandleActionAsync(string request)
     {
+        if (request.Equals("list routines", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("what routines can you do", StringComparison.OrdinalIgnoreCase))
+            return "Available session routines: gaming mode, Roblox mode, " +
+                   "Roblox dev mode and focus/study mode. Say 'set up my gaming session' " +
+                   "to open the preset apps in one go. All routine steps stay on the desktop allowlist.";
+
+        var sessionRoutine = CompanionRoutine.Parse(request);
+        if (sessionRoutine is not null)
+            return await RunSessionRoutineAsync(sessionRoutine);
+
         if (request.Equals("what app am i in", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("what app am i using", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("what application is open", StringComparison.OrdinalIgnoreCase))
