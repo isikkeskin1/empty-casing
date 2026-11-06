@@ -98,6 +98,16 @@ public sealed record CompanionRoutine(string Name, IReadOnlyList<AssistantAction
         return TryValidate(result, out _) ? result : null;
     }
 
+    public static bool LooksLikeMultiAppRequest(string? request)
+    {
+        if (string.IsNullOrWhiteSpace(request)) return false;
+        var phrase = request.Trim().ToLowerInvariant();
+        return (phrase.StartsWith("open ", StringComparison.Ordinal) ||
+                phrase.StartsWith("launch ", StringComparison.Ordinal) ||
+                phrase.StartsWith("start ", StringComparison.Ordinal)) &&
+               (phrase.Contains(',') || phrase.Contains(" and ", StringComparison.Ordinal));
+    }
+
     public static bool TryValidate(CompanionRoutine? routine, out string reason)
     {
         if (routine is null || routine.Steps.Count is < 1 or > MaximumSteps)
