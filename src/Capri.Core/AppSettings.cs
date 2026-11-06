@@ -22,6 +22,9 @@ public sealed class AppSettings
     public string FishModel { get; set; } = "s2.1-pro-free";
     public string FishReferenceId { get; set; } = "";
     public bool WatchScreen { get; set; }
+    // Explicit opt-in to include minimal foreground app process/media hints in
+    // the next regular model reply (including cloud models). No background scan.
+    public bool EnableSituationalContext { get; set; }
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }
     public bool EnableDesktopActions { get; set; }

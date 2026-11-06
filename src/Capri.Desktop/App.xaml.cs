@@ -18,6 +18,7 @@ public partial class App : System.Windows.Application
     public UiAutomationNavigator UiNavigator { get; } = new();
     public SteamGameService SteamGames { get; } = new();
     public NowPlayingService NowPlaying { get; } = new();
+    public AmbientContextService AmbientSense { get; private set; } = null!;
     private NowPlayingWindow? _nowPlayingWindow;
     private readonly DispatcherTimer _mediaSessionTimer = new()
     {
@@ -70,6 +71,7 @@ public partial class App : System.Windows.Application
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
         LinkedAccounts = new LinkedAccountService(Settings, Secrets);
+        AmbientSense = new AmbientContextService(NowPlaying);
         _fishVoice = new FishAudioClient(Secrets);
         _voicePlayback = new VoicePlaybackService(Dispatcher)
         {
@@ -248,6 +250,37 @@ public partial class App : System.Windows.Application
     /// The saved no-popup preference does not grant background permissions: every
     /// launch still starts with desktop actions disabled. The owner must re-arm.
     /// </summary>
+    public void SetSituationalContextEnabled(bool enabled)
+    {
+        Settings.EnableSituationalContext = enabled;
+        Store.SaveSettings(Settings);
+        _chat?.SyncCapabilitySwitches();
+        _companion?.ShowReaction(enabled
+            ? "Context Sense on. App and song hints are included with replies."
+            : "Context Sense off. No app/song metadata is added to model chats.");
+    }
+
+    public async Task<string> ReplyWithAmbientContextAsync(
+        IReadOnlyList<ChatTurn> turns, CancellationToken token = default)
+    {
+        if (!Settings.EnableSituationalContext)
+            return await Brain.ReplyAsync(turns, token);
+
+        var epoch = _actionEpoch;
+        AmbientContext context;
+        try { context = await AmbientSense.ReadOnceAsync(token); }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            System.Runtime.InteropServices.COMException or TimeoutException)
+        { return await Brain.ReplyAsync(turns, token); }
+
+        // STOP ALL or toggling sense off during observation revokes metadata sharing.
+        if (!Settings.EnableSituationalContext || _actionEpoch != epoch)
+            return await Brain.ReplyAsync(turns, token);
+
+        return await Brain.ReplyAsync(
+            AmbientContextPolicy.AnnotateLastUserTurn(turns, context), token);
+    }
+
     public void SetHandsFreeMode(bool enabled)
     {
         if (!enabled)
@@ -288,6 +321,8 @@ public partial class App : System.Windows.Application
         SetDanceToSystemAudio(false);
         SetMicrophoneEnabled(false);
         Settings.EnableDesktopActions = false;
+        Settings.EnableSituationalContext = false;
+        Store.SaveSettings(Settings);
         CancelVoiceOutput();
         _chat?.SyncCapabilitySwitches();
         _companion?.ShowReaction("Inputs off. Screen, mic, actions and speech stopped.");
@@ -984,6 +1019,22 @@ public partial class App : System.Windows.Application
 
     public async Task<string?> TryHandleActionAsync(string request)
     {
+        if (request.Equals("what app am i in", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("what app am i using", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("what application is open", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var context = await AmbientSense.ReadOnceAsync();
+                return string.IsNullOrWhiteSpace(context.Application)
+                    ? "I couldn't identify a foreground external application's process."
+                    : "Your foreground external application appears to be " +
+                      MediaMetadataPolicy.Clean(context.Application, 55) + ".";
+            }
+            catch (Exception ex)
+            { return "App identification unavailable: " + ex.GetType().Name; }
+        }
+
         if (request.Equals("open connections", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("connect spotify", StringComparison.OrdinalIgnoreCase) ||
             request.Equals("connect roblox", StringComparison.OrdinalIgnoreCase) ||

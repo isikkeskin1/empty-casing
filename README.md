@@ -66,6 +66,26 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Context Sense — lightweight ambient awareness
+
+Mainframe → **CONTEXT SENSE · APP + MUSIC** lets Capri reference the
+active external application and current media title/artist when she replies,
+without the user explaining which game or song is open every time. Unlike
+WATCH SCREEN, this mode never captures pixels; it reads only a short app
+process name and local Windows Now Playing metadata, on demand during a
+normal chat reply. No background scanning or prompt-history storage.
+
+This is opt-in because the tiny context note is sent along with the normal
+chat request to your configured brain, including a cloud provider if one
+is selected. It is inserted into a temporary copy of the latest user
+message and framed as **untrusted observations**, not executable commands.
+STOP ALL disables and unsaves context sharing. When off, ordinary replies
+do not gather or transmit the app/music hint.
+
+You can ask "what app am I in?" to read the foreground external app's
+process name directly and locally, without turning on continuous sense
+or sending a screenshot. This is not mind reading or game-memory access.
+
 ## Native Spotify + Roblox account connections (OAuth PKCE)
 
 Mainframe → **CONNECTIONS** links accounts through their official browser
