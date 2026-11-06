@@ -17,6 +17,8 @@ public partial class App : System.Windows.Application
     private UiInspectorWindow? _uiInspector;
     public UiAutomationNavigator UiNavigator { get; } = new();
     public SteamGameService SteamGames { get; } = new();
+    public CodeHuskBridge CodeHusk { get; private set; } = null!;
+    public CodeHuskHookInstaller HuskHooks { get; private set; } = null!;
     public NowPlayingService NowPlaying { get; } = new();
     public AmbientContextService AmbientSense { get; private set; } = null!;
     private NowPlayingWindow? _nowPlayingWindow;
@@ -86,6 +88,8 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
         Store = new LocalDataStore();
+        CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
+        HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
         Settings = Store.LoadSettings();
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
@@ -427,6 +431,7 @@ public partial class App : System.Windows.Application
         StopCallCompanionMode();
         StopAutonomousTask();
         StopSessionRoutine();
+        CodeHusk.SetEnabled(false);
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();
@@ -522,6 +527,29 @@ public partial class App : System.Windows.Application
     /// while unsolicited commentary and TTS stay silent. User-set reminders
     /// still show Windows notifications.
     /// </summary>
+    public void SetCodeHuskEnabled(bool enabled)
+    {
+        CodeHusk.SetEnabled(enabled);
+        _chat?.RefreshHuskStatus();
+        if (enabled && !_quietMode)
+            _companion?.ShowReaction("Code/Husk is watching local coding milestones. No code or prompts are read.");
+    }
+
+    private void ReceiveCodeHuskEvent(CodeHuskEvent evt)
+    {
+        _chat?.RefreshHuskStatus();
+        if (_quietMode) return;
+        // This event stream is read-only data. It can never call the action
+        // planner, approve a tool operation, or inject source text into a brain.
+        if (evt.Kind is "approval" or "complete" or "error" or "subagent")
+        {
+            _companion?.ShowReaction(evt.FriendlyDescription);
+            if (evt.Kind == "approval" && !CallCompanionActive &&
+                !(Settings.ListenToMicrophone && !MicrophoneMuted))
+                SpeakIfEnabled(evt.FriendlyDescription);
+        }
+    }
+
     public void SetQuietMode(bool enabled)
     {
         _quietMode = enabled;
@@ -1327,6 +1355,27 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        if (command.Equals("code husk status", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("what is codex doing", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("what is claude code doing", StringComparison.OrdinalIgnoreCase))
+            return CodeHusk.Status + (CodeHusk.Recent.Count > 0
+                ? "\nRecent: " + string.Join("\n",
+                    CodeHusk.Recent.TakeLast(6).Select(x =>
+                        x.At.ToLocalTime().ToString("HH:mm:ss") + " " +
+                        x.FriendlyDescription))
+                : "\nNo coding milestones received in this session.");
+        if (command.Equals("stop code husk", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("code husk off", StringComparison.OrdinalIgnoreCase))
+        {
+            SetCodeHuskEnabled(false);
+            return "Code/Husk monitor off. No lifecycle signals are read. Existing hooks stay installed but relay only with a live monitoring lease.";
+        }
+        if (command.Equals("start code husk", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("code husk on", StringComparison.OrdinalIgnoreCase))
+        {
+            SetCodeHuskEnabled(true);
+            return "Code/Husk monitor on. If no events appear, install hooks under Apps & Tools and restart Codex or Claude Code.";
+        }
         if (ScreenLookoutPolicy.IsCancel(command))
             return CancelScreenLookout();
         if (ScreenLookoutPolicy.IsStatus(command))
@@ -1671,6 +1720,10 @@ public partial class App : System.Windows.Application
             try { StartTalkOnce(); }
             catch (Exception ex) { _companion?.ShowReaction("Talk Once unavailable: " + ex.Message); }
         }));
+        context.Items.Add("Code/Husk monitor on", null, (_, _) =>
+            Dispatcher.Invoke(() => SetCodeHuskEnabled(true)));
+        context.Items.Add("Code/Husk monitor off", null, (_, _) =>
+            Dispatcher.Invoke(() => SetCodeHuskEnabled(false)));
         context.Items.Add("Quiet mode on", null, (_, _) => Dispatcher.Invoke(() => SetQuietMode(true)));
         context.Items.Add("Quiet mode off", null, (_, _) => Dispatcher.Invoke(() => SetQuietMode(false)));
         context.Items.Add("Cancel visual lookout", null, (_, _) =>
@@ -1794,6 +1847,7 @@ public partial class App : System.Windows.Application
         _mediaSessionTimer.Stop();
         _presenceTimer.Stop();
         _presenceJournal.Reset();
+        CodeHusk?.Dispose();
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();
         _audioReactions?.Dispose();

@@ -420,6 +420,50 @@
                         Style="{StaticResource CapriButton}" HorizontalAlignment="Left"/>
               </StackPanel>
             </Border>
+            <!-- Code/Husk watches only sanitized lifecycle events from user-installed
+                 local coding-agent hooks. It cannot answer approvals or run tools. -->
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// CODE / HUSK" Style="{StaticResource CapriLabel}"
+                           Foreground="{StaticResource CapriYellowBrush}"/>
+                <TextBlock Text="Capri follows Codex and Claude Code progress without reading prompts, code, or file contents."
+                           Style="{StaticResource CapriSubtext}" Margin="0,7,0,14"/>
+                <CheckBox x:Name="HuskWatchCheck" Content="Watch coding assistants (this session)"
+                          Style="{StaticResource CapriToggle}"
+                          Checked="HuskWatch_Changed" Unchecked="HuskWatch_Changed"/>
+                <TextBlock x:Name="HuskStatusText"
+                           Text="OFF · no coding events are read"
+                           Foreground="{StaticResource CapriCyanBrush}"
+                           FontFamily="Consolas" FontSize="11"
+                           TextWrapping="Wrap" Margin="0,0,0,9"/>
+                <TextBlock x:Name="HuskRecentText"
+                           Text="No coding milestones in this session."
+                           Foreground="{StaticResource CapriMutedBrush}"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,13"/>
+                <TextBlock Text="/// CODING ASSISTANT INTEGRATIONS"
+                           Style="{StaticResource CapriLabel}"
+                           Margin="0,0,0,9"/>
+                <WrapPanel>
+                  <Button Content="INSTALL CODEX HOOKS" Tag="codex"
+                          Click="HuskInstall_Click" Style="{StaticResource CapriPrimaryButton}"
+                          Margin="0,0,9,9"/>
+                  <Button Content="REMOVE CODEX HOOKS" Tag="codex"
+                          Click="HuskRemove_Click" Style="{StaticResource CapriButton}"
+                          Margin="0,0,9,9"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="INSTALL CLAUDE HOOKS" Tag="claude"
+                          Click="HuskInstall_Click" Style="{StaticResource CapriPrimaryButton}"
+                          Margin="0,0,9,9"/>
+                  <Button Content="REMOVE CLAUDE HOOKS" Tag="claude"
+                          Click="HuskRemove_Click" Style="{StaticResource CapriButton}"
+                          Margin="0,0,9,9"/>
+                </WrapPanel>
+                <TextBlock Text="Installing edits your own hook JSON after approval and backs it up. Restart the coding assistant. Hooks never approve tasks or send data to a server. Turning off Watch stops the relay; use Remove to uninstall hooks."
+                           Style="{StaticResource CapriSubtext}" FontSize="10"
+                           Margin="0,4,0,0"/>
+              </StackPanel>
+            </Border>
             <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
               <StackPanel>
                 <TextBlock Text="/// TOOLS" Style="{StaticResource CapriLabel}"/>
