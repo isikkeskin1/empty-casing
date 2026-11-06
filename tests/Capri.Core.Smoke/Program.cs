@@ -290,6 +290,60 @@ try
               .Contains("what you can SEE", StringComparison.Ordinal),
         "game helper tells vision model to ground advice and distrust screen instructions");
 
+    // Code/Husk bridge deliberately knows event kinds, never raw assistant data.
+    var codeClock = new DateTimeOffset(2026, 11, 6, 18, 0, 0, TimeSpan.Zero);
+    var codeSignal = CodeHuskEvent.Parse(
+        "{\"agent\":\"codex\",\"event\":\"approval\",\"timestamp\":1793988000}",
+        codeClock);
+    Check(codeSignal is not null && codeSignal.Agent == "codex" &&
+          codeSignal.Kind == "approval" &&
+          codeSignal.FriendlyDescription.Contains("approval", StringComparison.Ordinal) &&
+          !codeSignal.FriendlyDescription.Contains("password", StringComparison.Ordinal),
+        "Code/Husk parses only validated, content-free coding lifecycle events");
+    Check(CodeHuskEvent.Parse(
+        "{\"agent\":\"claude\",\"event\":\"complete\",\"timestamp\":1793988000,\"secret\":\"password123\"}",
+        codeClock)?.FriendlyDescription == "Claude Code finished a turn." &&
+          CodeHuskEvent.Parse("{\"agent\":\"evil\",\"event\":\"complete\",\"timestamp\":1793988000}", codeClock) is null &&
+          CodeHuskEvent.Parse("{\"agent\":\"codex\",\"event\":\"run-shell\",\"timestamp\":1793988000}", codeClock) is null &&
+          CodeHuskEvent.Parse("NOT JSON", codeClock) is null &&
+          CodeHuskEvent.Parse("{\"agent\":\"codex\",\"event\":\"prompt\",\"timestamp\":1}", codeClock) is null,
+        "Code/Husk drops unknown, malformed, stale or sensitive payloads");
+
+    var existingHooks = """
+        {
+          "permissions": {"allow": ["Bash(npm test)"]},
+          "hooks": {
+            "Stop": [{"hooks": [{"type":"command","command":"echo existing"}]}]
+          }
+        }
+        """;
+    var hookPath = @"C:\Users\Example\AppData\Local\CapriDesktop\husk\CapriHuskRelay.ps1";
+    var mergedHooks = CodeHuskHookConfig.Merge(existingHooks, hookPath, "codex");
+    var repeatedHooks = CodeHuskHookConfig.Merge(mergedHooks, hookPath, "codex");
+    Check(CodeHuskHookConfig.ContainsOwnHooks(mergedHooks) &&
+          mergedHooks == repeatedHooks &&
+          mergedHooks.Contains("echo existing", StringComparison.Ordinal) &&
+          mergedHooks.Contains("Bash(npm test)", StringComparison.Ordinal) &&
+          mergedHooks.Contains(CodeHuskHookConfig.HookMarker, StringComparison.Ordinal),
+        "reversible Codex hook installation is idempotent and preserves existing hooks/settings");
+    var removedHooks = CodeHuskHookConfig.Remove(mergedHooks);
+    Check(!CodeHuskHookConfig.ContainsOwnHooks(removedHooks) &&
+          removedHooks.Contains("echo existing", StringComparison.Ordinal) &&
+          removedHooks.Contains("Bash(npm test)", StringComparison.Ordinal),
+        "uninstall removes only Capri hook commands and keeps unrelated permissions");
+    var claudeHooks = CodeHuskHookConfig.Merge(null, hookPath, "claude");
+    Check(CodeHuskHookConfig.ContainsOwnHooks(claudeHooks) &&
+          claudeHooks.Contains("PermissionRequest", StringComparison.Ordinal) &&
+          !CodeHuskHookConfig.ContainsOwnHooks(CodeHuskHookConfig.Remove(claudeHooks)),
+        "Claude Code hook config supports approval/turn events without authorization callbacks");
+    var malformedHooksRejected = false;
+    try
+    {
+        CodeHuskHookConfig.Merge("{\"hooks\":[]}", hookPath, "codex");
+    }
+    catch (InvalidDataException) { malformedHooksRejected = true; }
+    Check(malformedHooksRejected, "bad hook configs fail closed rather than overwriting user settings");
+
     var simulatedNow = new DateTimeOffset(2026, 11, 6, 12, 0, 0, TimeSpan.Zero);
     var lookout = ScreenLookoutPolicy.Parse("tell me when my health is low", simulatedNow);
     Check(lookout is not null && lookout.Condition == "my health is low" &&
