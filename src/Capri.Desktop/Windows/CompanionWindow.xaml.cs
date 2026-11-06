@@ -13,6 +13,7 @@ public partial class CompanionWindow : Window
 {
     private readonly WindowDockingService _windows = new();
     private readonly DispatcherTimer _returnToIdle = new();
+    private readonly DispatcherTimer _reactionTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     private readonly DispatcherTimer _follow = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly DispatcherTimer _flight = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private FrameAnimator? _frames;
@@ -29,6 +30,7 @@ public partial class CompanionWindow : Window
         Closed += (_, _) =>
         {
             _returnToIdle.Stop();
+            _reactionTimer.Stop();
             _follow.Stop();
             _flight.Stop();
             _frames?.Dispose();
@@ -37,6 +39,11 @@ public partial class CompanionWindow : Window
         {
             _returnToIdle.Stop();
             SetMood(_attached.HasValue ? CompanionMood.Perching : CompanionMood.Idle);
+        };
+        _reactionTimer.Tick += (_, _) =>
+        {
+            _reactionTimer.Stop();
+            ReactionBubble.Visibility = Visibility.Collapsed;
         };
         _follow.Tick += (_, _) => TrackAttachedWindow();
         _flight.Tick += (_, _) => AdvanceFlight();
@@ -212,6 +219,16 @@ public partial class CompanionWindow : Window
 
         _flight.Stop();
         App.Instance.SavePosition(Left, Top);
+    }
+
+    public void ShowReaction(string reaction)
+    {
+        if (string.IsNullOrWhiteSpace(reaction)) return;
+        ReactionText.Text = reaction.Length > 220 ? reaction[..220] + "…" : reaction;
+        ReactionBubble.Visibility = Visibility.Visible;
+        _reactionTimer.Stop();
+        _reactionTimer.Start();
+        SetMood(CompanionMood.Talking);
     }
 
     public void SetMood(CompanionMood mood)

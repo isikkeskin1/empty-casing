@@ -35,3 +35,14 @@ Permissioned screen capture, context extraction, Windows UI Automation (not arbi
 Reproducible installer, signing/reputation plan, auto-update safety, crash handling without telemetry by default, full dependency and rights inventory, user-facing security review, and independent user testing. Brand/trademark/character licensing must be resolved before a character-faithful public or commercial distribution.
 
 **Principle:** quality over features, functional changes over commit counts.
+
+
+## Phase 3.1 — local perception and real reactions (implemented in source)
+
+Owner-initiated primary-monitor screenshots with Ollama vision, opt-in 45-second reactions displayed in the character bubble, Windows-installed microphone dictation started explicitly by the owner (prefix 'Capri'), optional local speech synthesis, and limited desktop app/website/media actions with per-action confirmation. Purchases, typing and arbitrary clicking are not implemented. This is a functional vertical slice, not feature parity with the reference project.
+
+**Release gate:** Windows CI plus physical Windows checks of screen acquisition, microphone language-pack behavior, vision model compatibility, voice output and action confirmations. Screen perception is not continuous video, voice is not full-duplex, and speech/audio input permissions should be unmistakable to users.
+
+## Phase 3.2 — deeper computer assistance (future)
+
+A stronger perception/action plan with multi-monitor selection, UI Automation element grounding, explicit per-step visual confirmation, a visible action log and global cancellation. Any writing, deletion, remote communication or settings changes require a distinct irreversible-action approval. Shopping and payments remain excluded. Test prompt injection from web pages and desktop screenshots before expanding the action list.

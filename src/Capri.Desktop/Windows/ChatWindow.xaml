@@ -1,7 +1,7 @@
 <Window x:Class="Capri.Desktop.Windows.ChatWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="560" Height="670" MinWidth="460" MinHeight="510" Background="#0C101A"
+        Width="620" Height="800" MinWidth="520" MinHeight="630" Background="#0C101A"
         Foreground="#E1EBF7" Title="Capri Desktop — Mainframe"
         WindowStartupLocation="CenterScreen">
   <Window.Resources>
@@ -26,6 +26,7 @@
 
   <Grid Margin="20">
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
@@ -68,6 +69,31 @@
     </Border>
 
     <Border Grid.Row="2" BorderBrush="{StaticResource BorderTone}" BorderThickness="1"
+            Margin="0,0,0,12" Padding="10" Background="#121D2B">
+      <StackPanel>
+        <DockPanel>
+          <TextBlock Text="VISION MODEL" VerticalAlignment="Center" Foreground="#92AABE"
+                     FontFamily="Consolas" FontSize="11" Margin="0,0,10,0"/>
+          <Button Content="LOOK NOW" DockPanel.Dock="Right" Click="Look_Click"
+                  Padding="10,5" Margin="8,0,0,0"/>
+          <TextBox x:Name="VisionModelBox" MinWidth="100" Padding="7,5"/>
+        </DockPanel>
+        <WrapPanel Margin="0,10,0,0">
+          <CheckBox x:Name="WatchCheck" Content="WATCH SCREEN" Margin="0,0,18,8"
+                    Checked="Watch_Changed" Unchecked="Watch_Changed"/>
+          <CheckBox x:Name="MicCheck" Content="MIC ON" Margin="0,0,18,8"
+                    Checked="Mic_Changed" Unchecked="Mic_Changed"/>
+          <CheckBox x:Name="SpeakCheck" Content="SPEAK REPLIES" Margin="0,0,18,8"
+                    Checked="Speak_Changed" Unchecked="Speak_Changed"/>
+          <CheckBox x:Name="ActionsCheck" Content="DESKTOP ACTIONS" Margin="0,0,0,8"
+                    Checked="Actions_Changed" Unchecked="Actions_Changed"/>
+        </WrapPanel>
+        <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
+                   Text="Screen: snapshots to local Ollama every 45s when enabled. Mic: Windows speech recognition, say 'Capri' before a request. Actions: only approved apps, HTTPS links and media keys; each requires confirmation. No purchases."/>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="3" BorderBrush="{StaticResource BorderTone}" BorderThickness="1"
             Background="#111927" CornerRadius="4">
       <ScrollViewer x:Name="TranscriptScroll" VerticalScrollBarVisibility="Auto">
         <ItemsControl ItemsSource="{Binding Messages}" Margin="12">
@@ -105,7 +131,7 @@
       </ScrollViewer>
     </Border>
 
-    <Grid Grid.Row="3" Margin="0,12,0,8">
+    <Grid Grid.Row="4" Margin="0,12,0,8">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
@@ -117,7 +143,7 @@
               Content="SEND ↗" FontWeight="SemiBold" Margin="10,0,0,0"
               Click="Send_Click"/>
     </Grid>
-    <DockPanel Grid.Row="4">
+    <DockPanel Grid.Row="5">
       <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="CLEAR CHAT"
               Click="Clear_Click" FontSize="10" Padding="7,4"/>
       <TextBlock Text="ENTER SENDS   /   SHIFT+ENTER NEW LINE"
