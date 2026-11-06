@@ -12,6 +12,9 @@ namespace Capri.Desktop;
 public partial class App : System.Windows.Application
 {
     private const int HotkeyId = 0xCA91;
+    private const int VoiceHotkeyId = 0xCA92;
+    private const uint ModAlt = 0x0001;
+    private const uint VkV = 0x56;
     private const int WmHotkey = 0x0312;
     private const uint ModControl = 0x0002;
     private const uint ModShift = 0x0004;
@@ -29,6 +32,7 @@ public partial class App : System.Windows.Application
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private bool _registeredHotkey;
+    private bool _registeredVoiceHotkey;
     private SpeechService? _speech;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromSeconds(45) };
     private bool _watchBusy;
@@ -39,6 +43,7 @@ public partial class App : System.Windows.Application
     public LocalDataStore Store { get; private set; } = null!;
     public BrainRouter Brain { get; private set; } = null!;
     public SecretStore Secrets { get; private set; } = null!;
+    public ReminderScheduler Reminders { get; private set; } = null!;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -47,6 +52,7 @@ public partial class App : System.Windows.Application
         Settings = Store.LoadSettings();
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
+        Reminders = new ReminderScheduler(Store, NotifyReminder);
         _speech = new SpeechService(text =>
             Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
 
@@ -146,7 +152,8 @@ public partial class App : System.Windows.Application
 
     public async Task<string> AskScreenAsync(string question)
     {
-        var jpeg = await Task.Run(ScreenCaptureService.CapturePrimaryScreenJpeg);
+        var index = Settings.ScreenIndex;
+        var jpeg = await Task.Run(() => ScreenCaptureService.CaptureScreenJpeg(index));
         return await Brain.SeeScreenAsync(jpeg, question);
     }
 
@@ -209,6 +216,22 @@ public partial class App : System.Windows.Application
         catch (Exception ex) { return "Action failed: " + ex.Message; }
     }
 
+    private void NotifyReminder(ReminderEntry reminder)
+    {
+        var message = reminder.Message.Length > 180 ? reminder.Message[..180] + "…" : reminder.Message;
+        _tray?.ShowBalloonTip(8000, "Capri reminder #" + reminder.Id,
+            message, System.Windows.Forms.ToolTipIcon.Info);
+        _companion?.ShowReaction("Reminder: " + message);
+        SpeakIfEnabled("Reminder: " + message);
+        _chat?.AppendNotification("Reminder #" + reminder.Id + ": " + message);
+    }
+
+    public void ShowReminderList()
+    {
+        ShowChat();
+        _chat?.AppendNotification(Reminders.Describe());
+    }
+
     private void RegisterGlobalHotkey()
     {
         if (_companion is null || _windowHandle != IntPtr.Zero) return;
@@ -216,6 +239,7 @@ public partial class App : System.Windows.Application
         if (_windowHandle == IntPtr.Zero) return;
         HwndSource.FromHwnd(_windowHandle)?.AddHook(OnWindowMessage);
         _registeredHotkey = RegisterHotKey(_windowHandle, HotkeyId, ModControl | ModShift, VkSpace);
+        _registeredVoiceHotkey = RegisterHotKey(_windowHandle, VoiceHotkeyId, ModControl | ModAlt, VkV);
     }
 
     private IntPtr OnWindowMessage(IntPtr handle, int message, IntPtr wparam, IntPtr lparam, ref bool handled)
@@ -223,6 +247,18 @@ public partial class App : System.Windows.Application
         if (message == WmHotkey && wparam.ToInt32() == HotkeyId)
         {
             ToggleChat();
+            handled = true;
+        }
+        else if (message == WmHotkey && wparam.ToInt32() == VoiceHotkeyId)
+        {
+            try { SetMicrophoneEnabled(!Settings.ListenToMicrophone); }
+            catch (Exception ex)
+            {
+                SetMicrophoneEnabled(false);
+                System.Windows.MessageBox.Show(ex.Message, "Capri microphone", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            _chat?.SyncCapabilitySwitches();
             handled = true;
         }
         return IntPtr.Zero;
@@ -233,6 +269,7 @@ public partial class App : System.Windows.Application
         var context = new System.Windows.Forms.ContextMenuStrip();
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
+        context.Items.Add("Show reminders", null, (_, _) => Dispatcher.Invoke(ShowReminderList));
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
         context.Items.Add("Reload character art", null, (_, _) => Dispatcher.Invoke(() => _companion?.ReloadArt()));
@@ -321,9 +358,12 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         _watchTimer.Stop();
+        Reminders?.Dispose();
         _speech?.Dispose();
         if (_registeredHotkey && _windowHandle != IntPtr.Zero)
             UnregisterHotKey(_windowHandle, HotkeyId);
+        if (_registeredVoiceHotkey && _windowHandle != IntPtr.Zero)
+            UnregisterHotKey(_windowHandle, VoiceHotkeyId);
 
         Brain?.Dispose();
         if (_tray is not null)

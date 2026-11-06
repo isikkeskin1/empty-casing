@@ -46,3 +46,10 @@ Owner-initiated primary-monitor screenshots with Ollama vision, opt-in 45-second
 ## Phase 3.2 — deeper computer assistance (future)
 
 A stronger perception/action plan with multi-monitor selection, UI Automation element grounding, explicit per-step visual confirmation, a visible action log and global cancellation. Any writing, deletion, remote communication or settings changes require a distinct irreversible-action approval. Shopping and payments remain excluded. Test prompt injection from web pages and desktop screenshots before expanding the action list.
+
+
+## Phase 3.3 — personal reminders and multi-monitor selection (implemented in source)
+
+Deterministic relative timers/reminders, local persistence, tray notifications, selected-display screenshots, global mic toggle. Does not implement recurring reminders, background scheduling when the app is closed, or a full calendar integration.
+
+**Release gate:** run the Windows build, core parsing/persistence tests, and real-device tests of screen enumeration, notification rendering and hotkey conflicts.

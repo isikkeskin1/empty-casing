@@ -8,6 +8,7 @@ public sealed class AppSettings
     public string CloudTextModel { get; set; } = "meta/llama-3.1-70b-instruct";
     public string CloudVisionModel { get; set; } = "";
     public bool SetupCompleted { get; set; }
+    public int ScreenIndex { get; set; } = -1;
     public string SpeechVoice { get; set; } = "";
     public bool WatchScreen { get; set; }
     public bool ListenToMicrophone { get; set; }

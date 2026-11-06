@@ -25,3 +25,12 @@ MIC ON, WATCH SCREEN, and desktop automation start OFF at each launch. For cloud
 Windows SmartScreen or antivirus may warn because the installer is unsigned. Investigate warnings; do not assume they are false positives.
 
 See [SECURITY.md](../SECURITY.md) and [feature matrix](FEATURE_MATRIX.md).
+
+
+## Reminders and monitor selection
+
+Mainframe has a **WATCH MONITOR** picker. Choose Primary display or one of your attached monitors before pressing LOOK NOW or enabling WATCH SCREEN. Only that monitor is captured, not all displays simultaneously.
+
+Set a timer by typing or saying "set a timer for 30 seconds" or "remind me in 10 minutes to stretch". Use "show reminders" for pending entries and "cancel reminder #2" to cancel one. Reminders are stored on your PC, displayed in Capri's chat/bubble and as Windows tray notifications. The app must be open to deliver live notifications; missed reminders are delivered after the next app launch.
+
+Ctrl+Alt+V toggles microphone recognition for the current session (if Windows language packs permit it); Ctrl+Shift+Space toggles the chat panel. Neither shortcut starts cloud screen watching.

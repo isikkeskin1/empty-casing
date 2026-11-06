@@ -18,6 +18,30 @@ try
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
 
+    var reminder = ReminderParser.Parse("remind me in 10 minutes to stretch");
+    Check(reminder?.Kind == ReminderKind.Reminder &&
+          reminder.Delay == TimeSpan.FromMinutes(10) &&
+          reminder.Message == "stretch", "natural-language reminder parsed");
+    var timer = ReminderParser.Parse("set a timer for 30 seconds");
+    Check(timer?.Kind == ReminderKind.Timer && timer.Delay == TimeSpan.FromSeconds(30),
+        "natural-language timer parsed");
+    Check(ReminderParser.Parse("list reminders")?.Kind == ReminderKind.List &&
+          ReminderParser.Parse("cancel reminder #8")?.CancelId == 8,
+        "reminder list and cancellation parsed");
+    Check(ReminderParser.Parse("remind me in 9000 days to wait") is null &&
+          ReminderParser.Parse("remind me what you said") is null,
+        "out-of-range or ambiguous reminder requests rejected");
+
+    var item = new ReminderEntry
+    {
+        Id = 7, Message = "test notification", DueAt = DateTimeOffset.UtcNow.AddMinutes(3)
+    };
+    store.SaveReminders(new[] { item });
+    var loadedReminder = store.LoadReminders().Single();
+    Check(loadedReminder.Id == 7 && loadedReminder.Message == "test notification",
+        "reminder schedule persists across app restarts");
+
+
     var timingPath = Path.Combine(directory, "timing.json");
     File.WriteAllText(timingPath, "{\"frameDurationsMs\":[42,83,8,5000]}");
     var timing = AnimationTiming.Load(timingPath);
