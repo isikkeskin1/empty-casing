@@ -9,6 +9,8 @@ public sealed class AppSettings
     public string CloudVisionModel { get; set; } = "";
     public bool SetupCompleted { get; set; }
     public int ScreenIndex { get; set; } = -1;
+    public int WatchIntervalSeconds { get; set; } = 45;
+    public bool EnablePetting { get; set; } = true;
     public string SpeechVoice { get; set; } = "";
     public string VoiceProvider { get; set; } = "windows";
     public int MicrophoneDeviceIndex { get; set; } = -1;

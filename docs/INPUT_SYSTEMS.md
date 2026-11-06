@@ -17,9 +17,9 @@ implementation. Character art rights are a separate question.
 | Recognized commands | Prefix Capri / Hey Capri before commands | Independent on-device wake word and audio interruption |
 | Speaker | Selected device for Fish Audio in-memory MP3 playback | Selected output for Windows TTS and all sounds |
 | Voice | Windows system TTS or opted-in Fish cloud TTS | Offline neural voice, sound style layers |
-| Screen | Explicit snapshots or consented periodic watching of chosen monitor | Foreground app follow, unchanged-frame filtering, multi-screen context |
+| Screen | Explicit snapshots or consented periodic watching of chosen monitor | Foreground-app follow and unchanged-frame filtering implemented; multi-screen simultaneous context remains future |
 | Windows geometry | Track app rectangle and sit on its top edge | DPI and transparent hit-testing polish |
-| Mouse | Drag, drop and toss Capri | Patting, cursor ride, window icon interactions |
+| Mouse | Drag, drop and toss Capri | Local head-pat/mouse-rub recognition implemented; cursor ride and icon interactions future |
 | Stop inputs | One click disables screen, mic, desktop-action permission and spoken replies | Cancel all model requests/actions |
 | Game input | Not built | Per-game user-taught controls, per-app opt-in and global stop |
 | Call input | Not built | Opt-in loopback, speaker separation, caller cannot authorize actions |
@@ -81,3 +81,29 @@ Desktop actions still require approval, with payments and purchases prohibited.
 Windows CI and deterministic shortcut tests do not replace physical audio-device tests.
 This update does not claim full-duplex calls, general keyboard/mouse automation or
 feature parity with the original project.
+
+
+## Smart observation and tactile input update
+
+Mainframe's WATCH MONITOR offers Follow frontmost app, Primary and individual monitors.
+WATCH EVERY supports 10, 30, 45, 60, 120, 300 or 600 second intervals. Opt-in
+watching captures a small JPEG and calculates a 16x9 grayscale signature in memory
+before sending to the selected local/cloud vision model. Unchanged and black
+screens are skipped, reducing unnecessary API use. The model only receives
+screenshots when meaningful visual changes have been observed. No screenshot is
+saved to disk by this app. Watching stays quiet while live microphone listening
+is active. Explicit LOOK NOW is never filtered by this automatic gate.
+
+Up to one last proactive observation is retained in RAM for three hours; asking
+"what did you see?" returns it without taking a new screenshot. This does not
+persist across app restarts. It is not a full semantic screen-memory system.
+
+Cursor strokes over Capri's own surface can trigger a friendly reaction after
+several deliberate back-and-forth motions. A 10-second cooldown suppresses
+repeat reactions. This is limited to Capri's WPF surface and does not hook or
+record general mouse movements. Disable this behavior in Input Control Center.
+
+Emergency stop increments the action-session generation. Any desktop action
+proposal still being planned when stopped is rejected before its confirmation
+and execution. Existing MessageBox approvals cannot be forcibly dismissed;
+a future task controller must implement full per-step cancellation.

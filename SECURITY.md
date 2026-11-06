@@ -39,3 +39,22 @@ The endpoint is pinned and the app accepts only the s2.1-pro-free or s2.1-pro mo
 ## Configurable desktop input
 
 Input Control Center uses Windows RegisterHotKey, not a global keylogger. The selected NAudio recording device feeds a bounded in-memory PCM stream to the Windows speech engine only after MIC ON. Mic mute and STOP INPUTS close recording. The five-second mic test saves or uploads no audio. Selected speaker routing currently applies to Fish Audio, while Windows TTS uses the default device. The stop control does not terminate unrelated OS jobs. See docs/INPUT_SYSTEMS.md.
+
+
+## Smarter opt-in screen watcher and gestures
+
+Auto watching now calculates a 16x9 grayscale frame signature in memory to avoid
+resending identical or blank screens. The last accepted signature and last
+short observation are volatile RAM only, with observation access limited to the
+last three hours. Explicit LOOK NOW still sends a current screenshot by request.
+A Follow frontmost app selector chooses the monitor containing the highest
+eligible non-Capri window, falling back to the primary screen. A visible
+selection and time interval are required; screen watching stays off at launch.
+
+Mouse-rub gestures are detected locally within the companion WPF control,
+without global pointer hooks. No mouse-motion history is written to disk.
+Turning off petting in Input Control Center disables gesture reactions.
+
+STOP INPUTS now also invalidates pending AI desktop action plans, so a proposal
+completed after the stop is not executed. Approval dialogs already on screen
+still need manual dismissal; purchases remain forbidden.

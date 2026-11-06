@@ -18,6 +18,7 @@ public partial class InputSettingsWindow : Window
         Owner = App.Instance.MainWindow;
         PopulateDevices();
         DisplayBindings(App.Instance.Settings.Shortcuts ?? new InputShortcuts());
+        PettingCheck.IsChecked = App.Instance.Settings.EnablePetting;
         StatusText.Text = "Select microphone and output, then save. No device monitoring is active.";
         Closed += (_, _) => _testCancellation?.Cancel();
     }
@@ -118,6 +119,8 @@ public partial class InputSettingsWindow : Window
                 throw new ArgumentException(reason);
             var result = App.Instance.ApplyInputSettings(bindings,
                 SelectedIndex(MicBox), SelectedIndex(SpeakerBox));
+            App.Instance.Settings.EnablePetting = PettingCheck.IsChecked == true;
+            App.Instance.Store.SaveSettings(App.Instance.Settings);
             StatusText.Text = result.Length == 0
                 ? "Input devices and all shortcuts saved and active."
                 : "Saved, with conflicts: " + result;

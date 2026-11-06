@@ -101,8 +101,15 @@
                     MinWidth="190" MaxWidth="350" Padding="6,4"
                     Background="#182334" Foreground="#121B29"/>
         </DockPanel>
+        <DockPanel Margin="0,2,0,10">
+          <TextBlock Text="WATCH EVERY" VerticalAlignment="Center" Foreground="#92ACBA"
+                     FontSize="10" FontFamily="Consolas" Margin="0,0,10,0"/>
+          <ComboBox x:Name="WatchIntervalBox" SelectionChanged="WatchInterval_Changed"
+                    MinWidth="145" Padding="6,4"
+                    Background="#182334" Foreground="#121B29"/>
+        </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="Vision: selected monitor, every 45s while watching. Customize hotkeys and microphone in INPUTS. Say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
+                   Text="Vision: selected or foreground-app monitor, skips unchanged screens. Customize hotkeys and microphone in INPUTS. Say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
       </StackPanel>
     </Border>
 

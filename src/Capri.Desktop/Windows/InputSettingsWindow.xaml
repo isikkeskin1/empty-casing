@@ -122,6 +122,8 @@
               <TextBox x:Name="StopVoiceKey" Grid.Row="6" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" IsReadOnly="True"/>
             </Grid>
+            <CheckBox x:Name="PettingCheck" Content="React to gentle mouse rubs over Capri"
+                      Margin="0,12,0,0" Foreground="#C7E2E9"/>
           </StackPanel>
         </Border>
         <TextBlock Text="Safety: Windows may reserve some combinations. If a shortcut is unavailable, Capri reports it rather than installing a global keyboard hook. STOP INPUTS shuts down screen watching, mic capture, desktop actions and speech."
