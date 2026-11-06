@@ -91,6 +91,10 @@
                     Margin="0,0,18,8" Foreground="#86DDD5"
                     ToolTip="Opt-in: include the active app process and Windows Now Playing title in regular chat-model requests, even with a cloud brain."
                     Checked="Context_Changed" Unchecked="Context_Changed"/>
+          <CheckBox x:Name="PresenceCheck" Content="LIVE PRESENCE · LOCAL"
+                    Margin="0,0,18,8" Foreground="#F9B4D1"
+                    ToolTip="Per-session opt-in to watch process and media changes every 20 seconds. A linked Spotify account is polled only when Windows has no song metadata. Local reactions and temporary RAM memory; nothing is sent to a model unless CONTEXT SENSE is also on and you send a chat request."
+                    Checked="Presence_Changed" Unchecked="Presence_Changed"/>
           <Button x:Name="TalkOnceButton" Content="TALK ONCE" Click="TalkOnce_Click"
                   Margin="0,0,12,8" Padding="8,3"/>
           <Button Content="STOP VOICE" Click="StopVoice_Click"

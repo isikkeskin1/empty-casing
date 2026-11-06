@@ -136,6 +136,39 @@ try
         "public OAuth app client IDs persist in settings, not provider secrets");
     store.SaveSettings(settings);
 
+    var journal = new CompanionPresenceJournal();
+    var stamp = new DateTimeOffset(2026, 11, 6, 13, 0, 0, TimeSpan.Zero);
+    Check(journal.Observe(new AmbientContext("explorer", "", ""), stamp) is null,
+        "live presence establishes a baseline without a spontaneous announcement");
+    var gameReaction = journal.Observe(
+        new AmbientContext("RobloxPlayerBeta", "", ""), stamp.AddMinutes(1));
+    Check(gameReaction is not null && gameReaction.Contains("Roblox"),
+        "foreground Roblox transition produces a local, bounded reaction");
+    var songReaction = journal.Observe(
+        new AmbientContext("RobloxPlayerBeta", "Test Song", "Artist"),
+        stamp.AddMinutes(2));
+    Check(songReaction is null &&
+          journal.DescribeRecent(stamp.AddMinutes(2)).Contains("Test Song") &&
+          journal.DescribeRecent(stamp.AddMinutes(2)).Contains("RobloxPlayerBeta"),
+        "recent app and media events stay in temporary memory with a reaction cooldown");
+    var annotatedJournal = journal.AnnotateLastUserTurn(
+        new[] { new ChatTurn { Role = "user", Text = "What changed?" } },
+        stamp.AddMinutes(2));
+    Check(annotatedJournal[0].Text.Contains("RECENT SESSION ACTIVITY") &&
+          annotatedJournal[0].Text.Contains("untrusted", StringComparison.OrdinalIgnoreCase),
+        "recent activity is labeled untrusted before a user-triggered model reply");
+    var officialOnly = new CompanionPresenceJournal();
+    officialOnly.Observe(new AmbientContext("explorer", "", ""), stamp);
+    officialOnly.Observe(new AmbientContext("explorer", "Spotify API Song", "Artist"),
+        stamp.AddMinutes(1), allowMediaInModel: false);
+    Check(!officialOnly.DescribeRecent(stamp.AddMinutes(1)).Contains("Spotify API Song"),
+        "official Spotify API playback metadata stays local and out of model inputs");
+    journal.Reset();
+    Check(journal.DescribeRecent(stamp.AddMinutes(2)) == "" &&
+          journal.Observe(new AmbientContext("RobloxPlayerBeta", "", ""),
+              stamp.AddMinutes(3)) is null,
+        "STOP ALL and disabling live presence can erase session history and reset baseline");
+
     Check(!new AppSettings().EnableSituationalContext,
         "situational context collection/sharing defaults disabled");
     var priorMessage = new ChatTurn { Role = "user", Text = "What should I do?" };

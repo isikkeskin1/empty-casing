@@ -312,6 +312,18 @@ public sealed class LinkedAccountService : IDisposable
         return results;
     }
 
+    public async Task<string> SpotifyQueueTrackAsync(
+        SpotifyTrackChoice track, CancellationToken cancellationToken = default)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(track.Uri,
+                @"^spotify:track:[A-Za-z0-9]{22}$"))
+            return "Invalid Spotify track URI.";
+        using var response = await RequestAsync(LinkedService.Spotify,
+            HttpMethod.Post, "me/player/queue?uri=" + Uri.EscapeDataString(track.Uri),
+            null, cancellationToken);
+        return "Added to Spotify queue: " + track.Display;
+    }
+
     public async Task<string> SpotifyPlayTrackAsync(
         SpotifyTrackChoice track, CancellationToken cancellationToken = default)
     {

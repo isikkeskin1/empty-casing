@@ -149,6 +149,7 @@ public partial class ChatWindow : Window
         _syncing = true;
         WatchCheck.IsChecked = App.Instance.Settings.WatchScreen;
         ContextCheck.IsChecked = App.Instance.Settings.EnableSituationalContext;
+        PresenceCheck.IsChecked = App.Instance.LivePresenceEnabled;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
         TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
@@ -231,6 +232,12 @@ public partial class ChatWindow : Window
     {
         if (_syncing) return;
         App.Instance.SetSituationalContextEnabled(ContextCheck.IsChecked == true);
+    }
+
+    private void Presence_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetLivePresenceEnabled(PresenceCheck.IsChecked == true);
     }
 
     private void Watch_Changed(object sender, RoutedEventArgs e)

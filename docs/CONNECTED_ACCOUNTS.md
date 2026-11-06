@@ -99,3 +99,34 @@ Launch links: https://create.roblox.com/docs/production/promotion/deeplinks
 - STOP ALL disarms new playback and game-launch actions even when
   HANDS-FREE is saved.
 - Test Disconnect followed by server-side revocation.
+
+## Live Presence and Spotify queue
+
+Mainframe → **LIVE PRESENCE · LOCAL** starts a foreground-process / Windows
+Now Playing watcher at 20-second intervals. It is off on every app start,
+regardless of saved chat preferences, and stops immediately with **STOP ALL**.
+The watcher keeps only up to eight app/song changes from the previous 30
+minutes in RAM; a two-minute cooldown prevents repetitive character bubbles.
+It never reads the contents of a Roblox game, private messages, lyrics,
+window titles or raw audio. If Windows media metadata is missing, a connected
+Spotify account can be queried through the official Player API no more than
+once every 60 seconds while the watcher is enabled.
+
+Proactive visual reactions happen *locally*, without invoking a model or
+Fish Audio. Temporary activity memory is included in a user-triggered model
+reply only when **CONTEXT SENSE · APP + MUSIC** is also enabled. It is
+marked as untrusted observation and is erased when Live Presence is switched
+off or the app exits. This is context awareness, not thought or game-state
+reading.
+
+For an explicitly selected recording, CONNECTIONS now offers **QUEUE SELECTED
+SPOTIFY TRACK** in addition to Play. Chat/voice phrases include
+"spotify queue [song title]" and "queue [song title] on spotify". A unique
+exact-title match may be queued without opening a picker; ambiguous matches
+still require selecting a recording. This uses Spotify's official
+`POST /v1/me/player/queue` endpoint, an authorized Premium account and an
+active playback device. Hands-free skips *repeat* confirmation dialogs only
+while desktop actions are armed; STOP ALL disarms them.
+
+Roblox launch phrases such as "join roblox 123456" now correctly parse the
+numeric place ID before invoking the documented official experience URL.
