@@ -176,6 +176,8 @@
               Click="Clear_Click" FontSize="10" Padding="7,4"/>
       <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="REMINDERS"
               Click="ShowReminders_Click" Margin="0,0,8,0" FontSize="10" Padding="7,4"/>
+      <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="READ FILE"
+              Click="ReadFile_Click" Margin="0,0,8,0" FontSize="10" Padding="7,4"/>
       <TextBlock Text="ENTER SENDS   /   SHIFT+ENTER NEW LINE"
                  VerticalAlignment="Center" Foreground="#8293A6"
                  FontFamily="Consolas" FontSize="10"/>

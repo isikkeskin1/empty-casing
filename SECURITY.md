@@ -114,3 +114,26 @@ can stall, so scans run off the WPF UI thread with bounded traversal and a
 visible timeout. This is a cautious development capability; UIA cannot guarantee
 that every provider's tab selection is completely side-effect-free. Use only
 on ordinary, trusted applications while testing.
+
+
+## Explicit file review
+
+READ FILE uses a Windows file picker for one local text/code file. It never
+recursively lists directories, runs code, edits files, executes macros, follows
+symlinks or reads network shares. It requires allowlisted extensions, strict
+UTF-8, a maximum 128 KiB source file and a maximum 12,000 characters in the
+analysis prompt. The scanner rejects common API key/credential patterns,
+including bearer tokens and private-key blocks. **Pattern screening cannot
+guarantee that a document has no sensitive information.**
+
+Selected file text is sent only to the chosen local model unless the user
+separately confirms sending it to their cloud AI provider. It is explicitly
+marked as untrusted content, never fed into the desktop action planner.
+The file's full filesystem path is not included in the model prompt.
+
+Raw file excerpts and file-derived assistant results are not persisted in
+Capri's ordinary conversation history and are not passed as future chat
+turns. The short metadata entry (filename and typed question) is persisted.
+File-derived output is not automatically spoken through Fish or other cloud
+TTS. A file may be retained by the selected third-party cloud provider
+under its own terms if the user explicitly consents. No silent telemetry.

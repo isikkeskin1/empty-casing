@@ -47,3 +47,8 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | UI Automation read-only window tab inspection | Implemented in source, manual opt-in | Physical Windows UIA provider QA |
 | Safe tab selection | Explicit owner command, exact observed tab, confirmation and fresh re-check | Cross-app verification and action audit log |
 | Arbitrary computer clicking, typing, file edits, messages | Not implemented | Grounded UIA targeting, task previews and policy enforcement |
+
+
+| Explicit read-only text/code file review | Implemented in source, per-file user selection | Real-model and file-dialog QA |
+| Cloud file-context sharing | Requires separate per-file confirmation | Privacy/provider acceptance QA |
+| PDF/DOCX, images, folder indexing and file editing | Not implemented | Separate parsers, consent and action policy |

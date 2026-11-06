@@ -103,3 +103,14 @@ credential, security, destructive and message-related tab labels are blocked.
 This is limited tab navigation, not general computer use. No arbitrary
 InvokePattern, clicking coordinates, keyboard text injection, file changes
 or checkout is implemented.
+
+
+## Read an explicitly selected file
+
+Mainframe READ FILE opens the Windows file picker. Supported small UTF-8 text
+and source-code files are checked for likely secrets and limited to a 12k
+character excerpt before being analyzed by the chosen brain. A cloud brain
+requires additional consent for each file. No files are edited or executed,
+no folders are indexed, and the model cannot trigger desktop actions from
+file content. Raw excerpts and file-derived replies are kept ephemeral
+in the session and not re-sent as future conversation history.

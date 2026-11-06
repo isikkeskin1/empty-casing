@@ -152,7 +152,9 @@ public partial class ChatWindow : Window
             Timestamp = DateTimeOffset.Now
         });
         while (Messages.Count > 120) Messages.RemoveAt(0);
-        App.Instance.Store.SaveHistory(Messages);
+        // File-derived content is a temporary result: do not persist it or
+        // include it as a future model conversation turn.
+        App.Instance.Store.SaveHistory(Messages.Where(x => x.Role != "file_result"));
         Dispatcher.BeginInvoke(() => TranscriptScroll.ScrollToEnd());
     }
 
@@ -341,6 +343,78 @@ public partial class ChatWindow : Window
             Add("system", "Request failed: " + exception.Message +
                 "\nCheck your selected model, local Ollama status, or cloud key and quota.");
             UpdateStatus("REQUEST ERROR", Colors.OrangeRed);
+        }
+        finally
+        {
+            _busy = false;
+            SendButton.IsEnabled = true;
+            PromptBox.IsEnabled = true;
+            PromptBox.Focus();
+        }
+    }
+
+    private async void ReadFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose one text or code file for Capri to review",
+            Filter = "Text and code files|*.txt;*.md;*.csv;*.json;*.log;*.py;*.cs;*.js;*.ts;*.tsx;*.jsx;*.java;*.c;*.cpp;*.h;*.hpp;*.html;*.css;*.xml;*.yaml;*.yml;*.toml;*.ini;*.sql;*.rs;*.go",
+            Multiselect = false,
+            CheckFileExists = true
+        };
+        if (picker.ShowDialog(this) != true) return;
+
+        _busy = true;
+        SendButton.IsEnabled = false;
+        PromptBox.IsEnabled = false;
+        UpdateStatus("READING SELECTED FILE", Colors.LightSkyBlue);
+        App.Instance.SetMood(CompanionMood.Thinking);
+        try
+        {
+            var excerpt = await Task.Run(() =>
+                LocalFileContextReader.ReadExplicitFile(picker.FileName));
+
+            var task = PromptBox.Text.Trim();
+            var provider = App.Instance.Brain.IsLocal
+                ? "local Ollama" : "your selected cloud AI provider";
+            if (!App.Instance.Brain.IsLocal &&
+                System.Windows.MessageBox.Show(
+                    "Share content from " + excerpt.FileName + " with " + provider +
+                    "?\n\n" + excerpt.CharactersRead + " characters will be sent. " +
+                    (excerpt.Truncated ? "Only the beginning of the file is included.\n\n" : "\n\n") +
+                    "The file may contain personal data not detected by the credential scanner. " +
+                    "Capri will not save the raw excerpt to chat history. " +
+                    "File-derived answers are saved locally and will not be spoken aloud.",
+                    "Capri — share file with cloud brain",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                UpdateStatus("FILE SHARING CANCELLED", Colors.LightSkyBlue);
+                return;
+            }
+
+            // This instruction is sent only as a chat question. It is never treated
+            // as an action plan, and the local file path or full content is not saved.
+            var question = LocalFileContextReader.BuildAnalysisPrompt(excerpt, task);
+            Add("user", "Review selected file: " + excerpt.FileName +
+                (string.IsNullOrWhiteSpace(task) ? "" : "\nQuestion: " + task) +
+                (excerpt.Truncated ? "\n(First 12,000 characters)" : ""));
+            PromptBox.Clear();
+            var answer = await App.Instance.Brain.ReplyAsync(
+                new[] { new ChatTurn { Role = "user", Text = question } });
+            Add("file_result", answer);
+            App.Instance.SetMood(CompanionMood.Reply);
+            // File-derived answers are not auto-spoken: cloud TTS would transmit
+            // those excerpts to an additional third-party provider.
+            UpdateStatus("FILE REVIEW READY", Colors.LightGreen);
+        }
+        catch (Exception ex)
+        {
+            App.Instance.SetMood(CompanionMood.Error);
+            Add("system", "File review stopped: " + ex.Message);
+            UpdateStatus("FILE NOT READ", Colors.OrangeRed);
         }
         finally
         {

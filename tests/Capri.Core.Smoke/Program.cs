@@ -18,6 +18,61 @@ try
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
 
+    var readPath = Path.Combine(directory, "sample.md");
+    File.WriteAllText(readPath, "# Project notes\n\nA test file for Capri.");
+    var localExcerpt = LocalFileContextReader.ReadExplicitFile(readPath);
+    Check(localExcerpt.FileName == "sample.md" &&
+          localExcerpt.Content.Contains("Project notes") && !localExcerpt.Truncated,
+        "explicit UTF-8 file read produces a limited read-only excerpt");
+    var filePrompt = LocalFileContextReader.BuildAnalysisPrompt(localExcerpt,
+        "Explain the project notes");
+    Check(filePrompt.Contains("FILE CONTENT START") &&
+          filePrompt.Contains("untrusted") &&
+          filePrompt.Contains("Explain the project notes"),
+        "file text is framed as untrusted question context, not action instructions");
+    Check(LocalFileContextReader.IsAllowedExtension("notes.md") &&
+          LocalFileContextReader.IsAllowedExtension("main.py") &&
+          !LocalFileContextReader.IsAllowedExtension("settings.env") &&
+          !LocalFileContextReader.IsAllowedExtension("installer.exe") &&
+          !LocalFileContextReader.IsAllowedExtension("private.pdf"),
+        "file import enforces a narrow plaintext extension allowlist");
+
+    Check(LocalFileContextReader.ContainsLikelyCredential(
+              "Authorization: Bearer FAKE-TEST-KEY-123456789") &&
+          LocalFileContextReader.ContainsLikelyCredential(
+              "-----BEGIN PRIVATE KEY-----\nSYNTHETIC\n") &&
+          !LocalFileContextReader.ContainsLikelyCredential("Example code and comments"),
+        "file import rejects likely secrets before any model request");
+    File.WriteAllText(readPath, "password: fake-test-secret-123");
+    try
+    {
+        LocalFileContextReader.ReadExplicitFile(readPath);
+        throw new Exception("Credential-containing file was not blocked.");
+    }
+    catch (InvalidOperationException) { /* Expected. */ }
+
+    File.WriteAllText(readPath, "A\0B");
+    try
+    {
+        LocalFileContextReader.ReadExplicitFile(readPath);
+        throw new Exception("Binary-looking file was not blocked.");
+    }
+    catch (InvalidOperationException) { /* Expected. */ }
+
+    File.WriteAllText(readPath, new string('x', 15_500));
+    var longExcerpt = LocalFileContextReader.ReadExplicitFile(readPath);
+    Check(longExcerpt.Truncated &&
+          longExcerpt.Content.Length == LocalFileContextReader.MaxPromptCharacters &&
+          longExcerpt.SourceCharacters == 15_500,
+        "file analysis caps the number of characters sent to a brain");
+    File.WriteAllText(readPath, new string('a', LocalFileContextReader.MaxBytes + 1));
+    try
+    {
+        LocalFileContextReader.ReadExplicitFile(readPath);
+        throw new Exception("Oversized file was not blocked.");
+    }
+    catch (InvalidOperationException) { /* Expected. */ }
+
     var reminder = ReminderParser.Parse("remind me in 10 minutes to stretch");
     Check(reminder?.Kind == ReminderKind.Reminder &&
           reminder.Delay == TimeSpan.FromMinutes(10) &&
