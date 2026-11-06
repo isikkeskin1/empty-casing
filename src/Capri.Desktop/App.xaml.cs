@@ -317,7 +317,9 @@ public partial class App : System.Windows.Application
                     _nextSpotifyPresenceCheck = DateTimeOffset.UtcNow.AddSeconds(60);
                     try
                     {
-                        _spotifyPresenceCache = await LinkedAccounts.SpotifyPlaybackAsync();
+                        var latest = await LinkedAccounts.SpotifyPlaybackAsync();
+                        if (_livePresenceEnabled && epoch == _presenceEpoch)
+                            _spotifyPresenceCache = latest;
                     }
                     catch (Exception ex)
                     {
