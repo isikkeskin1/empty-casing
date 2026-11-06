@@ -27,6 +27,7 @@ public partial class ChatWindow : Window
         RefreshBrainConfiguration();
         ObsPortBox.Text = App.Instance.Settings.ObsWebSocketPort.ToString();
         SyncCapabilitySwitches();
+        RefreshMemoryVault();
         SelectPage("CHAT");
 
         foreach (var turn in App.Instance.Store.LoadHistory())
@@ -133,18 +134,20 @@ public partial class ChatWindow : Window
 
     private void SelectPage(string section)
     {
-        if (section is not ("CHAT" or "MODES" or "CONTROLS" or "CONNECT"))
+        if (section is not ("CHAT" or "MODES" or "CONTROLS" or "CONNECT" or "MEMORY"))
             section = "CHAT";
         _activePage = section;
         ChatPage.Visibility = section == "CHAT" ? Visibility.Visible : Visibility.Collapsed;
         ModesPage.Visibility = section == "MODES" ? Visibility.Visible : Visibility.Collapsed;
         ControlsPage.Visibility = section == "CONTROLS" ? Visibility.Visible : Visibility.Collapsed;
         ConnectionsPage.Visibility = section == "CONNECT" ? Visibility.Visible : Visibility.Collapsed;
+        MemoryPage.Visibility = section == "MEMORY" ? Visibility.Visible : Visibility.Collapsed;
         PageTitle.Text = section switch
         {
             "MODES" => "Start a session",
             "CONTROLS" => "Senses & control",
             "CONNECT" => "Apps & tools",
+            "MEMORY" => "My Memory Vault",
             _ => "Talk to Capri"
         };
         PageSubtitle.Text = section switch
@@ -152,6 +155,7 @@ public partial class ChatWindow : Window
             "MODES" => "One click can prepare your whole desktop.",
             "CONTROLS" => "Manage voice, vision, actions and your AI models.",
             "CONNECT" => "Keep music, games and linked services within reach.",
+            "MEMORY" => "Your notes, your control. Nothing is remembered automatically.",
             _ => "Ask a question, launch a task or just talk. Capri is here."
         };
         var regular = (Style)FindResource("CapriNavButton");
@@ -160,6 +164,8 @@ public partial class ChatWindow : Window
         NavModes.Style = section == "MODES" ? selected : regular;
         NavControls.Style = section == "CONTROLS" ? selected : regular;
         NavConnect.Style = section == "CONNECT" ? selected : regular;
+        NavMemory.Style = section == "MEMORY" ? selected : regular;
+        if (section == "MEMORY") RefreshMemoryVault();
         if (section == "CHAT")
             Dispatcher.BeginInvoke(() => TranscriptScroll.ScrollToEnd());
     }
