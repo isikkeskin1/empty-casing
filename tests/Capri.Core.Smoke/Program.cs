@@ -51,6 +51,24 @@ try
     }
     Check(motion.Stopped, "toss decelerates and settles on the screen floor");
 
+    Check(!new AppSettings().WatchScreen && !new AppSettings().ListenToMicrophone &&
+          !new AppSettings().EnableDesktopActions, "perception and actions are off by default");
+    Check(ActionPolicy.IsPurchaseRequest("please buy this for me") &&
+          ActionPolicy.IsPurchaseRequest("check out my cart"),
+          "purchases and checkout are explicitly refused");
+    Check(!ActionPolicy.TryValidate(new AssistantAction("shell", "powershell"), out _),
+          "arbitrary shell commands cannot execute");
+    Check(!ActionPolicy.TryValidate(new AssistantAction("open_url", "file:///C:/Windows"), out _),
+          "local file URLs cannot execute");
+    Check(!ActionPolicy.TryValidate(new AssistantAction("open_url", "http://example.com"), out _),
+          "only HTTPS links are allowed");
+    Check(ActionPolicy.TryValidate(new AssistantAction("open_app", "notepad"), out _),
+          "allowlisted applications validate");
+    Check(ActionPolicy.ParsePlannerResponse("{\"kind\":\"open_app\",\"argument\":\"notepad\"}")?.Kind == "open_app",
+          "assistant action JSON parses");
+    Check(ActionPolicy.ParsePlannerResponse("{\"kind\":\"buy\",\"argument\":\"anything\"}") is null,
+          "untrusted planner actions are rejected");
+
     var fakeHandler = new FakeHandler();
     using var client = new HttpClient(fakeHandler);
     using var brain = new OllamaBrain(settings, client);
@@ -58,6 +76,15 @@ try
     var reply = await brain.ReplyAsync(turns);
     Check(reply == "ready", "local Ollama reply decoded");
     Check(fakeHandler.SawUserMessage && fakeHandler.SawCorrectModel, "Ollama request includes conversation and selected model");
+    settings.VisionModel = "vision-test";
+    var observation = await brain.SeeScreenAsync(new byte[] { 1, 2, 3 }, "describe this");
+    Check(observation == "screen described" && fakeHandler.SawVisionImage,
+        "vision request sends base64 image to the selected local model");
+    var plan = await brain.PlanActionAsync("please open notepad");
+    Check(plan?.Kind == "open_app" && plan.Argument == "notepad" && fakeHandler.SawJsonPlan,
+        "assistant generates an allowlisted plan without executing anything");
+    Check(await brain.PlanActionAsync("please buy this") is null,
+        "purchase prompt cannot reach the action planner");
     Console.WriteLine("All Capri.Core smoke checks passed.");
 }
 finally
@@ -81,6 +108,8 @@ sealed class FakeHandler : HttpMessageHandler
 {
     public bool SawUserMessage { get; private set; }
     public bool SawCorrectModel { get; private set; }
+    public bool SawVisionImage { get; private set; }
+    public bool SawJsonPlan { get; private set; }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -92,10 +121,32 @@ sealed class FakeHandler : HttpMessageHandler
                 { Content = new StringContent("{}") };
 
         var json = await request.Content!.ReadAsStringAsync(cancellationToken);
-        SawUserMessage = json.Contains("\"content\":\"hello\"", StringComparison.Ordinal);
-        SawCorrectModel = json.Contains("\"model\":\"test-model\"", StringComparison.Ordinal);
+        SawUserMessage |= json.Contains("\"content\":\"hello\"", StringComparison.Ordinal);
+        SawCorrectModel |= json.Contains("\"model\":\"test-model\"", StringComparison.Ordinal);
+
+        if (json.Contains("\"images\":", StringComparison.Ordinal))
+        {
+            SawVisionImage = json.Contains("\"model\":\"vision-test\"", StringComparison.Ordinal) &&
+                json.Contains("AQID", StringComparison.Ordinal);
+            return Reply("screen described");
+        }
+
+        if (json.Contains("\"format\":\"json\"", StringComparison.Ordinal))
+        {
+            SawJsonPlan = true;
+            return Reply("{\"kind\":\"open_app\",\"argument\":\"notepad\"}");
+        }
+
+        return Reply("ready");
+    }
+
+    private static HttpResponseMessage Reply(string message)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            message = new { role = "assistant", content = message }
+        });
         return new HttpResponseMessage(HttpStatusCode.OK)
-            { Content = new StringContent("{\"message\":{\"role\":\"assistant\",\"content\":\"ready\"}}") };
+            { Content = new StringContent(json) };
     }
 }
-

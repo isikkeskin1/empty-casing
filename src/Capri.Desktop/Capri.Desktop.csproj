@@ -11,5 +11,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Capri.Core/Capri.Core.csproj" />
+    <PackageReference Include="System.Speech" Version="10.0.14" />
   </ItemGroup>
 </Project>

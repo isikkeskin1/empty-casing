@@ -54,6 +54,12 @@
         <Image x:Name="CharacterImage" Canvas.Left="15" Canvas.Top="8" Width="240" Height="384"
                Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality"/>
       </Canvas>
+      <Border x:Name="ReactionBubble" Canvas.Left="10" Canvas.Top="310" Width="250" MaxHeight="94"
+              Padding="10,8" Visibility="Collapsed" CornerRadius="9"
+              Background="#EF0F1A2D" BorderBrush="#D1FF4C92" BorderThickness="1">
+        <TextBlock x:Name="ReactionText" TextWrapping="Wrap" Foreground="#F1F5F9"
+                   FontSize="12" FontFamily="Consolas" MaxHeight="80"/>
+      </Border>
       <Border Canvas.Left="35" Canvas.Top="409" Width="200" Height="30"
               Background="#F0111827" BorderBrush="#6854B0C7" BorderThickness="1" CornerRadius="6">
         <DockPanel VerticalAlignment="Center" Margin="12,0">
