@@ -22,6 +22,7 @@ public partial class ChatWindow : Window
         InitializeScreenOptions();
         InitializeWatchIntervals();
         RefreshBrainConfiguration();
+        ObsPortBox.Text = App.Instance.Settings.ObsWebSocketPort.ToString();
         SyncCapabilitySwitches();
         SelectPage("CHAT");
 
@@ -217,6 +218,7 @@ public partial class ChatWindow : Window
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         QuietCheck.IsChecked = App.Instance.QuietModeEnabled;
         HuskWatchCheck.IsChecked = App.Instance.CodeHusk.Enabled;
+        ObsArmedCheck.IsChecked = App.Instance.ObsClipsEnabled;
         DanceCheck.IsChecked = App.Instance.Settings.DanceToSystemAudio;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         HandsFreeCheck.IsChecked = App.Instance.Settings.SkipActionConfirmations;
@@ -234,7 +236,91 @@ public partial class ChatWindow : Window
         _syncing = false;
         UpdateLookoutStatus();
         RefreshHuskStatus();
+        RefreshObsClipStatus();
     }
+
+    public void RefreshObsClipStatus()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshObsClipStatus);
+            return;
+        }
+        ObsClipStatusText.Text = App.Instance.ObsClipStatus +
+            (App.Instance.ObsPasswordSaved ? " · password saved" : " · no password");
+    }
+
+    private void ObsSaveCredentials_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(ObsPortBox.Text.Trim(), out var port))
+        {
+            ObsClipFeedbackText.Text = "Enter the OBS WebSocket port (normally 4455).";
+            return;
+        }
+        try
+        {
+            var password = ObsPasswordBox.Password;
+            App.Instance.ConfigureObs(port, password.Length == 0 ? null : password);
+            ObsPasswordBox.Clear();
+            RefreshObsClipStatus();
+            ObsClipFeedbackText.Text = App.Instance.ObsPasswordSaved
+                ? "Connection settings saved locally. Enable clip controls for this session."
+                : "Local port saved. Enter your OBS WebSocket password to enable clips.";
+        }
+        catch (Exception ex)
+        {
+            ObsClipFeedbackText.Text = "Could not save OBS settings: " + ex.Message;
+        }
+    }
+
+    private void ObsForgetPassword_Click(object sender, RoutedEventArgs e)
+    {
+        if (System.Windows.MessageBox.Show(
+                "Remove the saved OBS password and disarm clip controls?",
+                "Capri — OBS clips", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        App.Instance.ForgetObsPassword();
+        ObsPasswordBox.Clear();
+        ObsClipFeedbackText.Text = "Saved OBS password removed from Capri.";
+        SyncCapabilitySwitches();
+    }
+
+    private void ObsArmed_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        try
+        {
+            App.Instance.SetObsClipsEnabled(ObsArmedCheck.IsChecked == true);
+            ObsClipFeedbackText.Text = ObsArmedCheck.IsChecked == true
+                ? "Clip controls ready. Start OBS Replay Buffer, then say 'Capri, clip that'."
+                : "OBS clip controls disarmed. OBS's own replay state is unchanged.";
+        }
+        catch (Exception ex)
+        {
+            _syncing = true;
+            ObsArmedCheck.IsChecked = false;
+            _syncing = false;
+            ObsClipFeedbackText.Text = ex.Message;
+        }
+        RefreshObsClipStatus();
+    }
+
+    private async void ObsReplay_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string command } btn) return;
+        btn.IsEnabled = false;
+        try
+        {
+            ObsClipFeedbackText.Text = "Contacting local OBS…";
+            ObsClipFeedbackText.Text = await App.Instance.RunObsReplayAsync(command);
+            RefreshObsClipStatus();
+        }
+        finally { btn.IsEnabled = true; }
+    }
+
+    private void ObsShowClip_Click(object sender, RoutedEventArgs e) =>
+        ObsClipFeedbackText.Text = App.Instance.OpenLastObsClip();
 
     public void RefreshHuskStatus()
     {
