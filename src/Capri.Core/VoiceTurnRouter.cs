@@ -6,6 +6,7 @@ public enum VoiceIntent
     Prompt,
     Wake,
     StopSpeech,
+    CancelReply,
     StopInputs,
     MuteMicrophone
 }
@@ -22,6 +23,7 @@ public sealed class VoiceTurnRouter
     private DateTimeOffset _followUpUntil;
     private DateTimeOffset _lastAcceptedAt;
     private string _lastAccepted = "";
+    private bool _awaitingReplyCompletion;
 
     public bool OneShotArmed { get; private set; }
     public bool IsOneShotExpired(DateTimeOffset now) => OneShotArmed && now >= _oneShotUntil;
@@ -43,7 +45,25 @@ public sealed class VoiceTurnRouter
         _followUpUntil = default;
         _lastAcceptedAt = default;
         _lastAccepted = "";
+        _awaitingReplyCompletion = false;
     }
+
+    /// <summary>
+    /// An accepted voice question keeps its wake-free follow-up permission
+    /// through slow AI generation and spoken playback. Refresh only after
+    /// the reply finishes; nothing is armed by an unsolicited desktop event.
+    /// </summary>
+    public void ReplyPlaybackFinished(DateTimeOffset now, bool allowFollowUps)
+    {
+        if (!_awaitingReplyCompletion) return;
+        _awaitingReplyCompletion = false;
+        if (allowFollowUps)
+            _followUpUntil = now.AddSeconds(20);
+        else
+            _followUpUntil = default;
+    }
+
+    public void CancelPendingReply() => _awaitingReplyCompletion = false;
 
     /// <summary>
     /// Synthetic speech and desktop audio cannot issue arbitrary commands while output is playing.
@@ -53,7 +73,8 @@ public sealed class VoiceTurnRouter
     {
         var phrase = Normalize(utterance);
         var (wake, request) = SplitWake(phrase);
-        return wake && (IsStopSpeech(request) || IsStopInputs(request));
+        return wake && (IsStopSpeech(request) || IsCancelReply(request) ||
+            IsStopInputs(request));
     }
 
     public VoiceDecision Evaluate(
@@ -70,7 +91,8 @@ public sealed class VoiceTurnRouter
         {
             // Do not treat the companion's own voice as another user request.
             if (!allowVoiceInterrupt || !wake ||
-                !(IsStopSpeech(request) || IsStopInputs(request)))
+                !(IsStopSpeech(request) || IsCancelReply(request) ||
+                  IsStopInputs(request)))
                 return default;
         }
         else if (!wake && !OneShotArmed &&
@@ -91,6 +113,7 @@ public sealed class VoiceTurnRouter
 
         var kind = request.Length == 0 ? VoiceIntent.Wake :
             IsStopSpeech(request) ? VoiceIntent.StopSpeech :
+            IsCancelReply(request) ? VoiceIntent.CancelReply :
             IsStopInputs(request) ? VoiceIntent.StopInputs :
             IsMuteMicrophone(request) ? VoiceIntent.MuteMicrophone : VoiceIntent.Prompt;
 
@@ -102,11 +125,22 @@ public sealed class VoiceTurnRouter
         // refreshes the 20-second period. Voice output still blocks arbitrary
         // recognition, and mute/stop commands end the conversation lease.
         if (kind is VoiceIntent.StopSpeech or VoiceIntent.StopInputs or VoiceIntent.MuteMicrophone)
+        {
             _followUpUntil = default;
+            _awaitingReplyCompletion = false;
+        }
+        else if (kind == VoiceIntent.CancelReply)
+        {
+            _awaitingReplyCompletion = false;
+            if (allowFollowUps && wake) _followUpUntil = now.AddSeconds(20);
+        }
         else if (allowFollowUps && (wake || now < _followUpUntil) &&
                  kind is VoiceIntent.Wake or VoiceIntent.Prompt)
             _followUpUntil = now.AddSeconds(20);
         else if (!allowFollowUps) _followUpUntil = default;
+
+        if (kind == VoiceIntent.Prompt)
+            _awaitingReplyCompletion = allowFollowUps;
 
         return new VoiceDecision(kind, request, wasOneShot);
     }
@@ -134,6 +168,12 @@ public sealed class VoiceTurnRouter
         text.Equals("stop talking", StringComparison.OrdinalIgnoreCase) ||
         text.Equals("be quiet", StringComparison.OrdinalIgnoreCase) ||
         text.Equals("quiet", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCancelReply(string text) =>
+        text.Equals("cancel reply", StringComparison.OrdinalIgnoreCase) ||
+        text.Equals("cancel that", StringComparison.OrdinalIgnoreCase) ||
+        text.Equals("stop answering", StringComparison.OrdinalIgnoreCase) ||
+        text.Equals("never mind", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsStopInputs(string text) =>
         text.Equals("stop inputs", StringComparison.OrdinalIgnoreCase) ||
