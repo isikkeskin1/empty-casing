@@ -1543,7 +1543,11 @@ public partial class App : System.Windows.Application
         _gameCenter.Activate();
     }
 
-    public void RequestGameHelpFromChat() => _chat?.StartGameHelp();
+    public void RequestGameHelpFromChat()
+    {
+        EnsureChatWindow();
+        _chat?.StartGameHelp();
+    }
 
     public string TryLaunchSteamGame(SteamGame game)
     {
