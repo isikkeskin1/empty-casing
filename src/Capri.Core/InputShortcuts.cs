@@ -13,6 +13,7 @@ public sealed class InputShortcuts
     public string FocusTyping { get; set; } = "Ctrl+Alt+T";
     public string ToggleCompanion { get; set; } = "Ctrl+Alt+H";
     public string BringHere { get; set; } = "Ctrl+Alt+C";
+    public string StopReply { get; set; } = "Ctrl+Alt+R";
     public string StopVoice { get; set; } = "Ctrl+Alt+X";
 
     public IEnumerable<(string Action, string Gesture)> Bindings()
@@ -24,6 +25,7 @@ public sealed class InputShortcuts
         yield return (nameof(FocusTyping), FocusTyping);
         yield return (nameof(ToggleCompanion), ToggleCompanion);
         yield return (nameof(BringHere), BringHere);
+        yield return (nameof(StopReply), StopReply);
         yield return (nameof(StopVoice), StopVoice);
     }
 
