@@ -8,6 +8,7 @@ public sealed class InputShortcuts
 {
     public string OpenChat { get; set; } = "Ctrl+Shift+Space";
     public string ToggleMic { get; set; } = "Ctrl+Alt+V";
+    public string TalkOnce { get; set; } = "Ctrl+Alt+Space";
     public string MuteMic { get; set; } = "Ctrl+Alt+N";
     public string FocusTyping { get; set; } = "Ctrl+Alt+T";
     public string ToggleCompanion { get; set; } = "Ctrl+Alt+H";
@@ -18,6 +19,7 @@ public sealed class InputShortcuts
     {
         yield return (nameof(OpenChat), OpenChat);
         yield return (nameof(ToggleMic), ToggleMic);
+        yield return (nameof(TalkOnce), TalkOnce);
         yield return (nameof(MuteMic), MuteMic);
         yield return (nameof(FocusTyping), FocusTyping);
         yield return (nameof(ToggleCompanion), ToggleCompanion);

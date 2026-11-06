@@ -97,6 +97,20 @@ public partial class ChatWindow : Window
 
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
+    private void TalkOnce_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            App.Instance.StartTalkOnce();
+            UpdateStatus("LISTENING ONCE", Colors.LightGreen);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus("MIC UNAVAILABLE", Colors.OrangeRed);
+            System.Windows.MessageBox.Show(ex.Message, "Talk Once", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+    private void StopVoice_Click(object sender, RoutedEventArgs e) => App.Instance.StopVoiceOutput();
     public void FocusPrompt()
     {
         Show();
@@ -110,6 +124,7 @@ public partial class ChatWindow : Window
         WatchCheck.IsChecked = App.Instance.Settings.WatchScreen;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
+        TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         _syncing = false;

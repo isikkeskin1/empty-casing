@@ -22,6 +22,8 @@ public sealed class AppSettings
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }
     public bool EnableDesktopActions { get; set; }
+    public bool EnableVoiceFollowUps { get; set; }
+    public bool AllowVoiceInterrupt { get; set; }
     public double? OverlayLeft { get; set; }
     public double? OverlayTop { get; set; }
 }

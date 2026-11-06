@@ -32,3 +32,9 @@ All major additions should have a real feature PR, Windows CI and manual device 
 The Input Control Center now has a selectable microphone, five-second meter, mute that closes capture, configurable global hotkeys, chosen Fish Audio playback device, and STOP INPUTS. Real-device Windows testing is still required. Gamepad control, voice-call loopback, full-duplex audio, background hotword and UI Automation actions are not yet implemented.
 
 Smart watching supports configurable intervals (10 seconds–10 minutes), blank/unchanged frame suppression, in-RAM last observation and a voice-listening quiet mode. Mouse rub/head-pat interactions operate only over the character surface with cooldown; neither requires global pointer capture.
+
+
+| Voice Talk Once | Implemented in source: 20-second one-shot mic session | Physical-device and language-pack QA |
+| Optional short voice follow-ups | Implemented in source, OFF by default | Noise/echo and background speech QA |
+| "Capri stop" speech interruption | Implemented with owner opt-in | Headset/echo safety and reliability QA |
+| Acoustic echo cancellation, streaming VAD, full-duplex chat | Not built | Separate DSP/STT architecture |

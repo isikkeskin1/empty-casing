@@ -19,6 +19,8 @@ public partial class InputSettingsWindow : Window
         PopulateDevices();
         DisplayBindings(App.Instance.Settings.Shortcuts ?? new InputShortcuts());
         PettingCheck.IsChecked = App.Instance.Settings.EnablePetting;
+        FollowUpsCheck.IsChecked = App.Instance.Settings.EnableVoiceFollowUps;
+        VoiceInterruptCheck.IsChecked = App.Instance.Settings.AllowVoiceInterrupt;
         StatusText.Text = "Select microphone and output, then save. No device monitoring is active.";
         Closed += (_, _) => _testCancellation?.Cancel();
     }
@@ -54,6 +56,7 @@ public partial class InputSettingsWindow : Window
     {
         OpenChatKey.Text = keys.OpenChat;
         ToggleMicKey.Text = keys.ToggleMic;
+        TalkOnceKey.Text = keys.TalkOnce;
         MuteMicKey.Text = keys.MuteMic;
         FocusTypingKey.Text = keys.FocusTyping;
         ToggleCompanionKey.Text = keys.ToggleCompanion;
@@ -65,6 +68,7 @@ public partial class InputSettingsWindow : Window
     {
         OpenChat = OpenChatKey.Text,
         ToggleMic = ToggleMicKey.Text,
+        TalkOnce = TalkOnceKey.Text,
         MuteMic = MuteMicKey.Text,
         FocusTyping = FocusTypingKey.Text,
         ToggleCompanion = ToggleCompanionKey.Text,
@@ -120,6 +124,8 @@ public partial class InputSettingsWindow : Window
             var result = App.Instance.ApplyInputSettings(bindings,
                 SelectedIndex(MicBox), SelectedIndex(SpeakerBox));
             App.Instance.Settings.EnablePetting = PettingCheck.IsChecked == true;
+            App.Instance.Settings.EnableVoiceFollowUps = FollowUpsCheck.IsChecked == true;
+            App.Instance.Settings.AllowVoiceInterrupt = VoiceInterruptCheck.IsChecked == true;
             App.Instance.Store.SaveSettings(App.Instance.Settings);
             StatusText.Text = result.Length == 0
                 ? "Input devices and all shortcuts saved and active."

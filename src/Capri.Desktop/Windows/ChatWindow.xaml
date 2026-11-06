@@ -87,6 +87,10 @@
         <WrapPanel Margin="0,10,0,0">
           <CheckBox x:Name="WatchCheck" Content="WATCH SCREEN" Margin="0,0,18,8"
                     Checked="Watch_Changed" Unchecked="Watch_Changed"/>
+          <Button x:Name="TalkOnceButton" Content="TALK ONCE" Click="TalkOnce_Click"
+                  Margin="0,0,12,8" Padding="8,3"/>
+          <Button Content="STOP VOICE" Click="StopVoice_Click"
+                  Margin="0,0,12,8" Padding="8,3"/>
           <CheckBox x:Name="MicCheck" Content="MIC ON" Margin="0,0,18,8"
                     Checked="Mic_Changed" Unchecked="Mic_Changed"/>
           <CheckBox x:Name="SpeakCheck" Content="SPEAK REPLIES" Margin="0,0,18,8"
@@ -109,7 +113,7 @@
                     Background="#182334" Foreground="#121B29"/>
         </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="Vision: selected or foreground-app monitor, skips unchanged screens. Customize hotkeys and microphone in INPUTS. Say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
+                   Text="TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
       </StackPanel>
     </Border>
 
