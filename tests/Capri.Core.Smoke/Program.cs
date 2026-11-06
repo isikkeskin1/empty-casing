@@ -17,6 +17,17 @@ try
     store.SaveHistory(turns);
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
+    Check(ScreenSketchPolicy.Parse("draw on screen") == "open" &&
+          ScreenSketchPolicy.Parse("start screen drawing") == "open" &&
+          ScreenSketchPolicy.Parse("open drawing mode!") == "open" &&
+          ScreenSketchPolicy.Parse("stop drawing") == "close" &&
+          ScreenSketchPolicy.Parse("exit drawing mode") == "close" &&
+          ScreenSketchPolicy.Parse("draw on screen and send a message") is null &&
+          ScreenSketchPolicy.Parse("draw on screen then execute code") is null &&
+          ScreenSketchPolicy.Parse("erase my game") is null &&
+          ScreenSketchPolicy.Parse("read my screen") is null,
+        "screen drawing requires explicit exact phrases and cannot bundle other actions");
+
     // Personal memory is only created through explicit owner actions. Chats
     // and screenshots are never harvested automatically into the vault.
     var memories = new PersonalMemoryVault(store);
