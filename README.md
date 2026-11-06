@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Code/Husk Mode — follow Codex and Claude Code work
+
+Capri can now act as a quiet, read-only companion while **local Codex CLI or Claude Code** runs. In Control Deck → **Apps & Tools → Code/Husk**, install the respective user-level hooks with an explicit review prompt and automatic config backup, restart the coding assistant, then turn **Watch coding assistants** on for the session.
+
+She can react to prompts, approvals needed, turn completion, tool errors, subagent starts and context compaction when the installed CLI emits the corresponding hooks. The event feed contains **only known event names and timestamps**, never prompts, code, tool arguments or file contents, and isn't sent to a model. Capri never approves actions on your behalf. **STOP ALL**, quitting Capri or turning the watcher off disables the short-lived local event relay; uninstall buttons remove only Capri's hook handlers.
+
+See [Code/Husk Mode guide](docs/CODE_HUSK.md) for exact file locations, setup, event availability, privacy and rollback.
+
 ## Visual Lookout, Quiet Mode and calendar reminders
 
 **Watch for a visible condition.** Enable WATCH SCREEN in Senses & Control (and approve the cloud screenshot disclosure if applicable), then enter `my health is low` or `the download finishes` into Visual Lookout. Or say `Capri, tell me when my health is low`. Capri uses the selected vision model to assess changed frames; a possible match sends a local alert and automatically disarms the lookout. `Cancel lookout`, STOP ALL, or the two-hour session limit ends it.
