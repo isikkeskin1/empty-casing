@@ -1,0 +1,35 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build app
+        run: dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo
+      - name: Smoke test core
+        run: dotnet run --project tests/Capri.Core.Smoke/Capri.Core.Smoke.csproj -c Release
+      - name: Publish Windows executable
+        run: dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: Package executable
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapriDesktop-win-x64
+          path: CapriDesktop-win-x64.zip
+          retention-days: 14
