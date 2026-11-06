@@ -207,6 +207,43 @@ try
     Check(!InputShortcuts.TryValidate(defaultKeys, out _),
         "duplicate global shortcut bindings cannot be saved");
 
+    Check(UiNavigationPolicy.Parse("inspect current window") is
+          { Kind: UiNavigationKind.InspectWindow },
+        "explicit read-only current-window inspection recognized");
+    Check(UiNavigationPolicy.Parse("show window tabs") is
+          { Kind: UiNavigationKind.InspectWindow },
+        "tab inspection has a second explicit owner command");
+    Check(UiNavigationPolicy.Parse("switch to the Settings tab") is
+          { Kind: UiNavigationKind.SelectTab, TabName: "Settings" },
+        "explicit select-tab command parses by observed label");
+    Check(UiNavigationPolicy.Parse("go to Help tab") is
+          { Kind: UiNavigationKind.SelectTab, TabName: "Help" },
+        "natural tab navigation command recognized");
+    Check(UiNavigationPolicy.Parse("click buy now") is null &&
+          UiNavigationPolicy.Parse("switch to Checkout tab") is null &&
+          UiNavigationPolicy.Parse("switch to Security tab") is null &&
+          UiNavigationPolicy.Parse("switch to Delete Account tab") is null,
+        "UI navigation parser never authorizes buttons, purchases, credentials or deletion");
+    Check(UiNavigationPolicy.IsSafeTabLabel("Editor") &&
+          !UiNavigationPolicy.IsSafeTabLabel("Billing") &&
+          !UiNavigationPolicy.IsSafeTabLabel("Reset Password"),
+        "tab names are restricted independently of AI instructions");
+    var uiNow = new DateTimeOffset(2026, 11, 6, 8, 0, 0, TimeSpan.Zero);
+    Check(UiNavigationPolicy.CanSelectTab("Settings", "Settings", "TabItem", true,
+              false, uiNow, uiNow.AddSeconds(2), true, out _),
+        "a visible, exact-match, recent accessibility tab may be proposed");
+    Check(!UiNavigationPolicy.CanSelectTab("Settings", "Settings", "Button", true,
+              false, uiNow, uiNow.AddSeconds(2), true, out _) &&
+          !UiNavigationPolicy.CanSelectTab("Settings", "Settings", "TabItem", true,
+              false, uiNow, uiNow.AddSeconds(21), true, out _) &&
+          !UiNavigationPolicy.CanSelectTab("Settings", "Settings", "TabItem", true,
+              false, uiNow, uiNow.AddSeconds(2), false, out _) &&
+          !UiNavigationPolicy.CanSelectTab("Settings", "Help", "TabItem", true,
+              false, uiNow, uiNow.AddSeconds(2), true, out _) &&
+          !UiNavigationPolicy.CanSelectTab("Settings", "Settings", "TabItem", false,
+              false, uiNow, uiNow.AddSeconds(2), true, out _),
+        "stale, wrong-role, wrong-window, changed-name and disabled controls are rejected");
+
     Check(!new AppSettings().WatchScreen && !new AppSettings().ListenToMicrophone &&
           !new AppSettings().EnableDesktopActions, "perception and actions are off by default");
     Check(ActionPolicy.IsPurchaseRequest("please buy this for me") &&

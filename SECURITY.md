@@ -90,3 +90,27 @@ Capri is speaking. STOP INPUTS disables the loopback capture immediately.
 
 The audio detector is approximate, not musical beat tracking or song
 identification, and only works on compatible Windows audio outputs.
+
+
+## Windows accessibility inspection (v1)
+
+The owner may explicitly open WINDOW CONTROLS to inspect the frontmost external
+window's accessibility *TabItem* names. Capri does not read form values,
+password contents, text boxes or full screen accessibility trees into the AI.
+The inspector caps traversal depth, elements and tab counts. Its snapshot is
+held only in RAM for a maximum of 20 seconds.
+
+Selecting a tab requires the desktop-actions toggle (OFF at startup), an exact
+unambiguous matching label, a fresh snapshot, enabled/visible TabItem role, a
+second explicit approval and re-verification of target process, window title,
+automation ID and runtime ID. Only the UIA SelectionItem.Select pattern may be
+used. Sensitive navigation labels (payment/checkout/credentials/security,
+account control, messages, deletion) are refused. No arbitrary Invoke, click,
+keyboard text injection, automation scripts, password access or purchasing.
+
+No accessibility text is sent to AI models by the inspector. Cloud voice
+speech is not used to read out the list of accessible names. Some UIA providers
+can stall, so scans run off the WPF UI thread with bounded traversal and a
+visible timeout. This is a cautious development capability; UIA cannot guarantee
+that every provider's tab selection is completely side-effect-free. Use only
+on ordinary, trusted applications while testing.

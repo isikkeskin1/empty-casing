@@ -88,3 +88,18 @@ transcribed or uploaded by Capri. The detector reports simple activity and
 timing pulses to the companion's music-perch animation; it returns to idle
 after playback stops. Consent is renewed every app session. No song title
 recognition or call-speaker separation is implemented.
+
+
+## Accessible Windows tab control
+
+WINDOW CONTROLS explicitly inspects the foreground external application's
+accessible UI Automation TabItems, without reading text values, passwords,
+arbitrary buttons or pages into a cloud model. Capri can select a fresh,
+unambiguous, allowed tab after a separate confirmation with desktop actions
+enabled. The selected UI element is resolved again by window and runtime ID
+immediately before selection. The snapshot expires in 20 seconds. Payment,
+credential, security, destructive and message-related tab labels are blocked.
+
+This is limited tab navigation, not general computer use. No arbitrary
+InvokePattern, clicking coordinates, keyboard text injection, file changes
+or checkout is implemented.

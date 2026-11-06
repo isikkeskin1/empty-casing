@@ -14,6 +14,8 @@ public partial class App : System.Windows.Application
     private ChatWindow? _chat;
     private SetupWindow? _setup;
     private InputSettingsWindow? _inputSettings;
+    private UiInspectorWindow? _uiInspector;
+    public UiAutomationNavigator UiNavigator { get; } = new();
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
@@ -459,10 +461,84 @@ public partial class App : System.Windows.Application
         }
     }
 
+    public async Task<string> NavigateInspectedTabAsync(
+        UiWindowSnapshot snapshot, string tabName)
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS first. Tab selection is disabled for this session.";
+        if (!UiNavigationPolicy.IsSafeTabLabel(tabName))
+            return "This tab is blocked by the navigation safety policy.";
+        var candidates = snapshot.Tabs.Where(x =>
+            x.Name.Equals(tabName, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (candidates.Length != 1 ||
+            !UiNavigationPolicy.CanSelectTab(tabName, candidates[0].Name, "TabItem",
+                candidates[0].Enabled, candidates[0].Offscreen,
+                snapshot.CapturedAt, DateTimeOffset.UtcNow, true, out var reason))
+            return "Cannot select tab: " + (candidates.Length != 1
+                ? "No unique visible tab. Refresh the window inspector." : reason);
+
+        var epoch = _actionEpoch;
+        var answer = System.Windows.MessageBox.Show(
+            "Select exactly one accessibility tab?\n\nApplication: " + snapshot.Title +
+            "\nTab: " + tabName +
+            "\n\nNo arbitrary mouse clicks or keyboard text will be sent.",
+            "Capri — approve tab navigation", MessageBoxButton.YesNo,
+            MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes) return "Cancelled. No action taken.";
+        if (_actionEpoch != epoch || !Settings.EnableDesktopActions)
+            return "Stopped. No tab action was performed.";
+        try { return await UiNavigator.SelectTabAsync(snapshot, tabName); }
+        catch (Exception ex)
+        {
+            return "Windows accessibility failed: " + ex.GetType().Name +
+                ". The tab was not confirmed.";
+        }
+    }
+
+    public void OpenUiInspector()
+    {
+        if (_uiInspector is null)
+        {
+            _uiInspector = new UiInspectorWindow();
+            _uiInspector.Closed += (_, _) => _uiInspector = null;
+        }
+        _uiInspector.Show();
+        _uiInspector.Activate();
+    }
+
     public async Task<string?> TryHandleActionAsync(string request)
     {
         if (ActionPolicy.IsPurchaseRequest(request))
             return "Buying, payments and checkout are disabled.";
+
+        var uiNavigation = UiNavigationPolicy.Parse(request);
+        if (uiNavigation is not null)
+        {
+            try
+            {
+                var snapshot = await UiNavigator.InspectFrontAsync();
+                if (uiNavigation.Kind == UiNavigationKind.InspectWindow)
+                {
+                    OpenUiInspector();
+                    _uiInspector?.DisplaySnapshot(snapshot);
+                    return "Inspected " + snapshot.Tabs.Count +
+                        " accessible tabs. Review them in WINDOW CONTROLS. No action taken.";
+                }
+                return await NavigateInspectedTabAsync(snapshot, uiNavigation.TabName);
+            }
+            catch (Exception ex)
+            {
+                return "Could not inspect the target app: " + ex.GetType().Name +
+                    ". Try a normal, visible application window.";
+            }
+        }
+
+        if (request.Contains(" tab", StringComparison.OrdinalIgnoreCase) &&
+            (request.Contains("switch", StringComparison.OrdinalIgnoreCase) ||
+             request.Contains("navigate", StringComparison.OrdinalIgnoreCase) ||
+             request.Contains("go to", StringComparison.OrdinalIgnoreCase)))
+            return "Tab action not supported or blocked. Use WINDOW CONTROLS to inspect eligible tabs.";
+
         if (!Settings.EnableDesktopActions || !ActionPolicy.LooksLikeRequest(request))
             return null;
 
@@ -555,6 +631,7 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
+        context.Items.Add("Inspect window controls", null, (_, _) => Dispatcher.Invoke(OpenUiInspector));
         context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
         {
             try { StartTalkOnce(); }
