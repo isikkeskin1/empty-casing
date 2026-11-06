@@ -156,6 +156,8 @@ public partial class ChatWindow : Window
         NavModes.Style = section == "MODES" ? selected : regular;
         NavControls.Style = section == "CONTROLS" ? selected : regular;
         NavConnect.Style = section == "CONNECT" ? selected : regular;
+        if (section == "CHAT")
+            Dispatcher.BeginInvoke(() => TranscriptScroll.ScrollToEnd());
     }
 
     private void LaunchRoutine_Click(object sender, RoutedEventArgs e)
@@ -495,6 +497,7 @@ public partial class ChatWindow : Window
             CheckFileExists = true
         };
         if (picker.ShowDialog(this) != true) return;
+        SelectPage("CHAT");
 
         _busy = true;
         SendButton.IsEnabled = false;
