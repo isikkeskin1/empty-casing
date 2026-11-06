@@ -850,6 +850,7 @@ public partial class ChatWindow : Window
         ChatTurn? livePreview = null;
         var streamed = false;
         var speakingSentences = false;
+        var showCoachResult = false;
         var partialText = new StringBuilder();
         var lastPreview = DateTimeOffset.MinValue;
 
@@ -921,7 +922,26 @@ public partial class ChatWindow : Window
             else if (!lookNow && reminder is not null)
                 answer = App.Instance.Reminders.Execute(reminder);
             else if (!lookNow && GameHelpPolicy.IsGameHelpRequest(prompt))
-                answer = await App.Instance.AskGameHelpAsync(prompt, token);
+            {
+                if (!App.Instance.Brain.IsLocal &&
+                    System.Windows.MessageBox.Show(
+                        "Share one screenshot of your selected monitor with " +
+                        "your cloud AI provider to get a game tip?\n\n" +
+                        "The image may show personal information. Nothing is sent " +
+                        "unless you approve this specific request.",
+                        "Capri — send game screenshot?",
+                        MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                        MessageBoxResult.No) != MessageBoxResult.Yes)
+                {
+                    answer = "Game screenshot not shared. Select local Ollama or approve a " +
+                             "one-time cloud screenshot to get visible game advice.";
+                }
+                else
+                {
+                    answer = await App.Instance.AskGameHelpAsync(prompt, token);
+                    showCoachResult = true;
+                }
+            }
             else if (lookNow || (App.Instance.Settings.WatchScreen && RefersToScreen(prompt)))
             {
                 if (!App.Instance.Brain.IsLocal && !App.Instance.Settings.WatchScreen && !lookNow)
@@ -948,6 +968,7 @@ public partial class ChatWindow : Window
             token.ThrowIfCancellationRequested();
             ClearLivePreview();
             Add("assistant", answer);
+            if (showCoachResult) App.Instance.ShowGameCoachTip(answer);
             App.Instance.SetMood(CompanionMood.Reply);
             if (streamed && speakingSentences)
                 App.Instance.CompleteLiveSpeech();
