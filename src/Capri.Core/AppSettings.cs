@@ -27,6 +27,12 @@ public sealed class AppSettings
     // Explicit opt-in to include minimal foreground app process/media hints in
     // the next regular model reply (including cloud models). No background scan.
     public bool EnableSituationalContext { get; set; }
+    // Private notes are never injected into cloud/local brain prompts until opt-in.
+    public bool UsePersonalMemoryInReplies { get; set; }
+    // Only the provider explicitly consented to may receive saved notes.
+    public string MemoryCloudProviderConsent { get; set; } = "";
+    // Show explicit game help as a no-focus HUD for ~30 seconds, never permanent watching.
+    public bool ShowGameCoachHud { get; set; } = true;
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }
     // Windows TTS can begin complete sentences during streamed model output.

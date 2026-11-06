@@ -35,8 +35,14 @@
         <Button x:Name="LaunchButton" Content="LAUNCH SELECTED" Click="Launch_Click"
                 IsEnabled="False" Background="#245D57" BorderBrush="#7EE0BF"/>
         <Button Content="GAME HELP (SCREEN)" Click="GameHelp_Click"
-                Background="#61364A" BorderBrush="#F59BB3"/>
+                Background="#61364A" BorderBrush="#F59BB3" Margin="0,0,8,0"/>
+        <Button Content="HIDE COACH HUD" Click="HideCoach_Click"
+                Background="#24333E" BorderBrush="#4BBAC1"/>
       </StackPanel>
+      <CheckBox x:Name="CoachHudCheck"
+                Content="Display game tips in a 30-second click-through HUD"
+                Checked="CoachHud_Changed" Unchecked="CoachHud_Changed"
+                Foreground="#D9E9F1" Margin="0,11,0,0"/>
       <TextBlock Text="Launch requires desktop actions enabled (or HANDS-FREE). Cloud screenshot help asks separately before sharing. No cheat injection or game-memory access."
                  Foreground="#839EB3" FontSize="11" TextWrapping="Wrap"
                  Margin="0,12,0,0"/>

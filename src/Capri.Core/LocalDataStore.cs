@@ -27,6 +27,12 @@ public sealed class LocalDataStore
     public AppSettings LoadSettings() => Read<AppSettings>("settings.json") ?? new AppSettings();
     public IReadOnlyList<ChatTurn> LoadHistory() => Read<List<ChatTurn>>("history.json") ?? new List<ChatTurn>();
 
+    public IReadOnlyList<PersonalMemory> LoadPersonalMemories() =>
+        Read<List<PersonalMemory>>("personal-memories.json") ?? new List<PersonalMemory>();
+
+    public void SavePersonalMemories(IEnumerable<PersonalMemory> notes) =>
+        Write("personal-memories.json", notes.Take(PersonalMemoryPolicy.MaxItems).ToArray());
+
     public IReadOnlyList<ReminderEntry> LoadReminders() =>
         Read<List<ReminderEntry>>("reminders.json") ?? new List<ReminderEntry>();
 

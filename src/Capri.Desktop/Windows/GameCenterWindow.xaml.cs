@@ -12,6 +12,7 @@ public partial class GameCenterWindow : Window
     public GameCenterWindow()
     {
         InitializeComponent();
+        CoachHudCheck.IsChecked = App.Instance.Settings.ShowGameCoachHud;
         Owner = App.Instance.MainWindow;
         Loaded += async (_, _) => await ReloadAsync(false);
     }
@@ -59,10 +60,27 @@ public partial class GameCenterWindow : Window
         StatusText.Text = App.Instance.TryLaunchSteamGame(game);
     }
 
+    private void CoachHud_Changed(object sender, RoutedEventArgs e)
+    {
+        App.Instance.Settings.ShowGameCoachHud = CoachHudCheck.IsChecked == true;
+        App.Instance.Store.SaveSettings(App.Instance.Settings);
+        if (CoachHudCheck.IsChecked != true)
+            App.Instance.HideGameCoachTip();
+    }
+
+    private void HideCoach_Click(object sender, RoutedEventArgs e)
+    {
+        App.Instance.HideGameCoachTip();
+        StatusText.Text = "Game coach HUD dismissed.";
+    }
+
     private void GameHelp_Click(object sender, RoutedEventArgs e)
     {
-        App.Instance.ShowChat();
+        // Keep the foreground game undisturbed: use an unseen chat host for
+        // the existing explicit, one-frame screenshot question.
         App.Instance.RequestGameHelpFromChat();
-        StatusText.Text = "Opened Mainframe to analyze one current screen frame.";
+        StatusText.Text = "Requesting one screenshot tip. The 30-second HUD " +
+                          "will appear if enabled and the model answers.";
+        Hide();
     }
 }
