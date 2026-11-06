@@ -5,6 +5,9 @@ public sealed class AppSettings
     public string OllamaModel { get; set; } = "qwen3:4b";
     public string VisionModel { get; set; } = "qwen3-vl:4b";
     public string BrainProvider { get; set; } = "local";
+    // Public OAuth application identifiers only. Never put access/refresh tokens here.
+    public string SpotifyClientId { get; set; } = "";
+    public string RobloxClientId { get; set; } = "";
     public string CloudTextModel { get; set; } = "meta/llama-3.1-70b-instruct";
     public string CloudVisionModel { get; set; } = "";
     public bool SetupCompleted { get; set; }

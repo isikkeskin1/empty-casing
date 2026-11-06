@@ -115,6 +115,9 @@
                   Margin="10,0,0,8" Padding="8,3"/>
           <Button Content="VOICE CALL" Click="OpenCallCompanion_Click"
                   Margin="10,0,0,8" Padding="8,3" Background="#543A6D"/>
+          <Button Content="CONNECTIONS" Click="OpenConnections_Click"
+                  Margin="10,0,0,8" Padding="8,3"
+                  Background="#1E5B68" BorderBrush="#70CBDA"/>
           <Button Content="GAME HELP" Click="GameHelp_Click"
                   Margin="10,0,0,8" Background="#364E67" Padding="8,3"/>
         </WrapPanel>

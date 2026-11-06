@@ -66,6 +66,35 @@ or spoken aloud through Fish Audio. The selected filename/question are
 stored as a normal chat entry. This is a *read-only* operation.
 See [FILE_REVIEW](docs/FILE_REVIEW.md).
 
+## Native Spotify + Roblox account connections (OAuth PKCE)
+
+Mainframe → **CONNECTIONS** links accounts through their official browser
+authorization pages. Register your own Spotify/Roblox OAuth application,
+enter each *public client ID*, and whitelist the exact localhost redirect
+shown in CONNECTIONS. Capri uses authorization-code **PKCE with a random
+state**, a one-shot listener on 127.0.0.1, and Windows **DPAPI-encrypted**
+access and refresh tokens. Client secrets, passwords and Roblox session
+cookies are never needed. Connection requires actual permission from each
+provider, and neither service is considered connected before OAuth succeeds.
+
+**Spotify:** connected account profile, active Spotify Connect playback,
+track search, play a selected track, pause/resume/skip via actual Spotify
+Web API endpoints. Commands include "spotify now", "spotify next" and
+"spotify play [song title]". Search ambiguities require selecting the
+recording in CONNECTIONS. Most player APIs require Premium. In Spotify
+2026 Development Mode, the app owner needs Premium and an allowlist applies.
+
+**Roblox:** connect through Roblox Open Cloud OAuth to read your linked
+profile/username. Say "roblox profile" or "join roblox [numeric place ID]"
+to open a validated experience launch link. Roblox Open Cloud **does not
+allow third-party apps to remotely control arbitrary in-game actions**.
+Capri's Game Help vision is the route for gameplay advice, and official
+creator APIs can be added separately by granular scoped permissions.
+
+Read [Connections guide](docs/CONNECTED_ACCOUNTS.md). Purchases, payments,
+Robux spending, sending messages and writing games are never authorized
+by account linking or hands-free mode.
+
 ## Voice Call Companion (experimental, explicitly disclosed AI)
 
 Mainframe → **VOICE CALL** configures an opt-in spoken companion over the

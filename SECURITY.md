@@ -275,3 +275,38 @@ voice channels or send chat messages by bot API and never impersonates
 the human account owner. STOP CALL MODE or STOP ALL cancels listening.
 Provider device routing and feedback-loop avoidance require real-machine
 testing before relying on this for calls.
+
+
+## Connected provider accounts (Spotify + Roblox)
+
+CONNECTIONS uses official OAuth2 Authorization Code + PKCE rather than
+passwords or game cookies. OAuth requests use random verifiers and state,
+HTTPS provider endpoints and a one-time TCP callback bound only to
+127.0.0.1, with strict callback path/port/Host/state checks. Each provider
+has its own fixed port. The external browser handles provider login.
+Access and refresh tokens are serialized in Windows DPAPI-encrypted local
+storage, never written to settings.json, embedded in repository source,
+logged to a console, displayed in UI or included in language-model prompts.
+
+The connection UI exposes only public provider app IDs, provider profiles
+and explicitly requested playback/search results. Spotify requests are
+made only to fixed official API endpoints. Search queries are encoded
+as query parameters, never used as URLs. Roblox uses Open Cloud userinfo
+for account identity and a numeric-only game-start URL for opening an
+experience on the user's own PC.
+
+Provider controls require DESKTOP ACTIONS armed; HANDS-FREE skips per-action
+dialogs but doesn't authorize payments, sending messages, modifying
+account security, Robux purchases, or creator resource writes. Linking
+alone doesn't enable microphone, screen capture or desktop actions.
+
+Disconnecting locally deletes DPAPI token data; the owner should also
+revoke the connection in provider account settings to revoke server-side
+grants. Spotify and Roblox can enforce Premium, developer-app review,
+scopes, rate limits and provider availability. API responses are not
+automatically granted additional permissions or treated as model tools.
+
+A one-time local OAuth receiver only accepts matching random-state
+responses and times out; it is NOT exposed on a LAN interface. Users
+must never send client secrets, refresh tokens or cookie values to
+ChatGPT, Capri's chat model or public GitHub commits.

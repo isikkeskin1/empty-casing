@@ -27,6 +27,8 @@ public partial class App : System.Windows.Application
     private NowPlayingInfo? _lastMediaInfo;
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
+    private ConnectionsWindow? _connections;
+    public LinkedAccountService LinkedAccounts { get; private set; } = null!;
     private CallLoopbackListeningService? _callListener;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
@@ -67,6 +69,7 @@ public partial class App : System.Windows.Application
         Settings = Store.LoadSettings();
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
+        LinkedAccounts = new LinkedAccountService(Settings, Secrets);
         _fishVoice = new FishAudioClient(Secrets);
         _voicePlayback = new VoicePlaybackService(Dispatcher)
         {
@@ -687,6 +690,125 @@ public partial class App : System.Windows.Application
         finally { _mediaSessionBusy = false; }
     }
 
+    public void OpenConnections()
+    {
+        if (_connections is null)
+        {
+            _connections = new ConnectionsWindow();
+            _connections.Closed += (_, _) => _connections = null;
+        }
+        _connections.Show();
+        _connections.Activate();
+    }
+
+    public void SaveLinkedClientIds(string spotifyId, string robloxId)
+    {
+        if (!string.IsNullOrWhiteSpace(spotifyId) &&
+            !LinkedAccountPolicy.IsClientIdValid(spotifyId) ||
+            !string.IsNullOrWhiteSpace(robloxId) &&
+            !LinkedAccountPolicy.IsClientIdValid(robloxId))
+            throw new ArgumentException(
+                "Use your registered provider app's public client ID, not a secret or token.");
+        Settings.SpotifyClientId = spotifyId.Trim();
+        Settings.RobloxClientId = robloxId.Trim();
+        Store.SaveSettings(Settings);
+    }
+
+    public async Task<string> TrySpotifyActionAsync(MediaIntent intent)
+    {
+        if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+            return "Connect Spotify from CONNECTIONS first.";
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to control Spotify.";
+        if (intent is not (MediaIntent.Play or MediaIntent.Pause or
+            MediaIntent.NextTrack or MediaIntent.PreviousTrack))
+            return "Unsupported Spotify control.";
+
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations)
+        {
+            if (System.Windows.MessageBox.Show(
+                "Send " + intent + " to your linked Spotify account?",
+                "Capri — Spotify control",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+                return "Spotify action cancelled.";
+        }
+        if (epoch != _actionEpoch || !Settings.EnableDesktopActions)
+            return "Action stopped before contacting Spotify.";
+
+        try { return await LinkedAccounts.SpotifyControlAsync(intent); }
+        catch (Exception ex) { return "Spotify request failed: " + ex.Message; }
+    }
+
+    public async Task<string> TrySpotifyTrackAsync(SpotifyTrackChoice track)
+    {
+        if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+            return "Connect Spotify from CONNECTIONS first.";
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to start Spotify playback.";
+
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations)
+        {
+            if (System.Windows.MessageBox.Show(
+                "Play the selected Spotify track?\\n\\n" + track.Display,
+                "Capri — Spotify track",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+                return "Spotify playback cancelled.";
+        }
+        if (epoch != _actionEpoch || !Settings.EnableDesktopActions)
+            return "Stopped before sending to Spotify.";
+
+        try { return await LinkedAccounts.SpotifyPlayTrackAsync(track); }
+        catch (Exception ex) { return "Spotify playback failed: " + ex.Message; }
+    }
+
+    public string TryOpenRobloxExperience(string placeId)
+    {
+        if (!LinkedAccountPolicy.IsRobloxPlaceId(placeId))
+            return "Enter a valid numeric Roblox place ID.";
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE to launch Roblox.";
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations)
+        {
+            if (System.Windows.MessageBox.Show(
+                "Open Roblox experience with place ID " + placeId + "?",
+                "Capri — Roblox launch",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+                return "Roblox launch cancelled.";
+        }
+        if (epoch != _actionEpoch || !Settings.EnableDesktopActions)
+            return "Stopped before opening Roblox.";
+        try
+        {
+            Process.Start(new ProcessStartInfo(
+                LinkedAccountPolicy.RobloxExperienceUri(placeId).AbsoluteUri)
+            { UseShellExecute = true });
+            return "Opened the Roblox game-start link for place " + placeId +
+                   ". Roblox may prompt you to launch its client.";
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
+            InvalidOperationException)
+        {
+            return "Could not open Roblox: " + ex.GetType().Name;
+        }
+    }
+
+    private static string? ExtractSpotifyTrackRequest(string request)
+    {
+        var input = request.Trim();
+        if (input.StartsWith("spotify play ", StringComparison.OrdinalIgnoreCase))
+            return input["spotify play ".Length..].Trim();
+        if (input.StartsWith("play ", StringComparison.OrdinalIgnoreCase) &&
+            input.EndsWith(" on spotify", StringComparison.OrdinalIgnoreCase))
+            return input[5..^" on spotify".Length].Trim();
+        return null;
+    }
+
     public void OpenCallCompanion()
     {
         if (_callWindow is null)
@@ -862,6 +984,86 @@ public partial class App : System.Windows.Application
 
     public async Task<string?> TryHandleActionAsync(string request)
     {
+        if (request.Equals("open connections", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("connect spotify", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("connect roblox", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("linked accounts", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenConnections();
+            return "CONNECTIONS is open. Register provider apps and authorize your account via the official browser flow.";
+        }
+
+        if (request.Equals("roblox profile", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("my roblox account", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!LinkedAccounts.IsConnected(LinkedService.Roblox))
+                return "Connect Roblox in CONNECTIONS to read your official account profile.";
+            try
+            {
+                var profile = await LinkedAccounts.ProfileAsync(LinkedService.Roblox);
+                return "Linked Roblox: " + profile.Name + " (" + profile.Detail + ").";
+            }
+            catch (Exception ex) { return "Roblox profile unavailable: " + ex.Message; }
+        }
+
+        var robloxRequest = System.Text.RegularExpressions.Regex.Match(
+            request.Trim(), @"^(?:join roblox|open roblox game|roblox place)s+(d{1,20})$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (robloxRequest.Success)
+            return TryOpenRobloxExperience(robloxRequest.Groups[1].Value);
+
+        if (request.Equals("spotify now", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("spotify status", StringComparison.OrdinalIgnoreCase) ||
+            request.Equals("what's playing on spotify", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+                return "Connect Spotify in CONNECTIONS first.";
+            try
+            {
+                var playing = await LinkedAccounts.SpotifyPlaybackAsync();
+                return playing?.Summary ?? "Spotify reports no current playback/device.";
+            }
+            catch (Exception ex) { return "Spotify status unavailable: " + ex.Message; }
+        }
+
+        var spotifyControl = request.Trim().ToLowerInvariant() switch
+        {
+            "spotify pause" or "pause spotify" => MediaIntent.Pause,
+            "spotify resume" or "spotify play" or "resume spotify" => MediaIntent.Play,
+            "spotify next" or "skip spotify" => MediaIntent.NextTrack,
+            "spotify previous" => MediaIntent.PreviousTrack,
+            _ => MediaIntent.None
+        };
+        if (spotifyControl != MediaIntent.None)
+            return await TrySpotifyActionAsync(spotifyControl);
+
+        var spotifyQuery = ExtractSpotifyTrackRequest(request);
+        if (!string.IsNullOrWhiteSpace(spotifyQuery))
+        {
+            if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
+                return "Connect Spotify in CONNECTIONS first.";
+            if (!Settings.EnableDesktopActions)
+                return "Enable DESKTOP ACTIONS or HANDS-FREE before starting playback.";
+            try
+            {
+                var matches = await LinkedAccounts.SpotifySearchAsync(spotifyQuery);
+                var exact = matches.Where(t =>
+                    t.Title.Equals(spotifyQuery, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (exact.Length == 1)
+                    return await TrySpotifyTrackAsync(exact[0]);
+                OpenConnections();
+                _connections?.SetSpotifySearch(spotifyQuery, matches);
+                return matches.Count == 0
+                    ? "No Spotify track matched '" + spotifyQuery + "'."
+                    : "I found " + matches.Count + " candidate tracks; choose the exact recording in CONNECTIONS.";
+            }
+            catch (Exception ex)
+            {
+                return "Spotify search unavailable: " + ex.Message;
+            }
+        }
+
+
         var mediaIntent = MediaMetadataPolicy.Parse(request);
         if (mediaIntent == MediaIntent.Status)
         {
@@ -1040,6 +1242,7 @@ public partial class App : System.Windows.Application
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
         context.Items.Add("Voice Call Companion", null, (_, _) => Dispatcher.Invoke(OpenCallCompanion));
+        context.Items.Add("Spotify / Roblox Connections", null, (_, _) => Dispatcher.Invoke(OpenConnections));
         context.Items.Add("Inspect window controls", null, (_, _) => Dispatcher.Invoke(OpenUiInspector));
         context.Items.Add("Talk once (20 seconds)", null, (_, _) => Dispatcher.Invoke(() =>
         {
@@ -1161,6 +1364,7 @@ public partial class App : System.Windows.Application
     {
         StopCallCompanionMode();
         StopAutonomousTask();
+        LinkedAccounts.Dispose();
         _mediaSessionTimer.Stop();
         _watchTimer.Stop();
         _talkOnceTimeout.Stop();

@@ -39,7 +39,11 @@ public sealed class SecretStore
 
     private static string CredentialId(string provider) =>
         string.Equals(provider, "fish", StringComparison.OrdinalIgnoreCase)
-            ? "fish" : ProviderCatalog.Get(provider).Id;
+            ? "fish" :
+        string.Equals(provider, "spotify", StringComparison.OrdinalIgnoreCase)
+            ? "spotify" :
+        string.Equals(provider, "roblox", StringComparison.OrdinalIgnoreCase)
+            ? "roblox" : ProviderCatalog.Get(provider).Id;
 
     private string FileFor(string provider) =>
         Path.Combine(_directory, CredentialId(provider) + ".dpapi");

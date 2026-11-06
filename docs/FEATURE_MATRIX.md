@@ -85,3 +85,11 @@ Smart watching supports configurable intervals (10 seconds–10 minutes), blank/
 | Disclosed AI Call Companion | Experimental call-playback local speech recognition, AI replies via routed Fish TTS | Real-device/virtual-cable QA |
 | Discord automatic join / speaking through Discord bot connection | Not implemented; requires approved integration | Discord OAuth/application voice tooling |
 | Call participant command restrictions | Only addressed conversational replies, no desktop action planner | Adversarial and real-call tests |
+
+
+| Spotify official OAuth PKCE connection | Implemented in source, requires owner-registered Spotify app/client ID | Live OAuth and Premium device QA |
+| Spotify native playback / track search | Official Web API /me/player, /me/player/play, search and skips | 2026 Development Mode limits apply |
+| Roblox official OAuth PKCE profile | Implemented with openid/profile and userinfo | Live Roblox creator app registration/OAuth QA |
+| Roblox experience launch | Numeric validated place ID to documented game-start link | Roblox now recommends share links for promotion |
+| Spotify/Roblox credentials | Windows DPAPI, no secrets in source or chat context | Windows profile / logout QA |
+| Unrestricted Roblox player-game control | Not supported by Roblox Open Cloud OAuth | Game-specific APIs, approved integrations and screen guidance |
