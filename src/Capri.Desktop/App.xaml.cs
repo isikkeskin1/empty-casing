@@ -91,6 +91,8 @@ public partial class App : System.Windows.Application
     public static App Instance => (App)Current;
     public AppSettings Settings { get; private set; } = new();
     public LocalDataStore Store { get; private set; } = null!;
+    public PersonalMemoryVault Memories { get; private set; } = null!;
+    private GameCoachHudWindow? _gameCoachHud;
     public BrainRouter Brain { get; private set; } = null!;
     public SecretStore Secrets { get; private set; } = null!;
     public ReminderScheduler Reminders { get; private set; } = null!;
@@ -99,6 +101,7 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
         Store = new LocalDataStore();
+        Memories = new PersonalMemoryVault(Store);
         CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
         HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
         Settings = Store.LoadSettings();
@@ -397,9 +400,17 @@ public partial class App : System.Windows.Application
         IReadOnlyList<ChatTurn> turns, CancellationToken token = default,
         Func<string, Task>? onDelta = null)
     {
-        Task<string> ReplyCore(IReadOnlyList<ChatTurn> source) =>
-            onDelta is null ? Brain.ReplyAsync(source, token) :
-                Brain.StreamReplyAsync(source, onDelta, token);
+        Task<string> ReplyCore(IReadOnlyList<ChatTurn> source)
+        {
+            var allowed = Settings.UsePersonalMemoryInReplies &&
+                (Brain.IsLocal || string.Equals(Settings.MemoryCloudProviderConsent,
+                    Settings.BrainProvider, StringComparison.Ordinal));
+            var effective = allowed
+                ? PersonalMemoryPolicy.AnnotateLastUserTurn(source, Memories.Items)
+                : source;
+            return onDelta is null ? Brain.ReplyAsync(effective, token) :
+                Brain.StreamReplyAsync(effective, onDelta, token);
+        }
         if (!Settings.EnableSituationalContext)
             return await ReplyCore(turns);
 
@@ -1626,6 +1637,9 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        var memoryCommand = PersonalMemoryPolicy.ParseCommand(command);
+        if (memoryCommand is not null)
+            return HandleMemoryCommand(memoryCommand);
         var clipAction = ObsReplayProtocol.ClassifyIntent(command);
         if (clipAction is not null)
             return await RunObsReplayAsync(clipAction);
