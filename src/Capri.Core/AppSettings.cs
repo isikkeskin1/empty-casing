@@ -8,6 +8,8 @@ public sealed class AppSettings
     // Public OAuth application identifiers only. Never put access/refresh tokens here.
     public string SpotifyClientId { get; set; } = "";
     public string RobloxClientId { get; set; } = "";
+    // OBS is loopback-only; no hostname or password is saved in settings.json.
+    public int ObsWebSocketPort { get; set; } = 4455;
     public string CloudTextModel { get; set; } = "meta/llama-3.1-70b-instruct";
     public string CloudVisionModel { get; set; } = "";
     public bool SetupCompleted { get; set; }
