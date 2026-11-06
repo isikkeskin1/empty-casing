@@ -23,6 +23,12 @@ public sealed class BrainRouter : IBrainProvider, IDisposable
     public Task<string> ReplyAsync(IReadOnlyList<ChatTurn> turns, CancellationToken ct = default) =>
         IsLocal ? _local.ReplyAsync(turns, ct) : _cloud.ReplyAsync(turns, ct);
 
+    public Task<string> StreamReplyAsync(
+        IReadOnlyList<ChatTurn> turns, Func<string, Task> onDelta,
+        CancellationToken ct = default) =>
+        IsLocal ? _local.StreamReplyAsync(turns, onDelta, ct) :
+                  _cloud.StreamReplyAsync(turns, onDelta, ct);
+
     public Task<string> SeeScreenAsync(byte[] jpeg, string question, CancellationToken ct = default) =>
         IsLocal ? _local.SeeScreenAsync(jpeg, question, ct) : _cloud.SeeScreenAsync(jpeg, question, ct);
 
