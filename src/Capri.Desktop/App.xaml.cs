@@ -470,12 +470,12 @@ public partial class App : System.Windows.Application
             return "This tab is blocked by the navigation safety policy.";
         var candidates = snapshot.Tabs.Where(x =>
             x.Name.Equals(tabName, StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (candidates.Length != 1 ||
-            !UiNavigationPolicy.CanSelectTab(tabName, candidates[0].Name, "TabItem",
+        if (candidates.Length != 1)
+            return "Cannot select tab: No unique visible tab. Refresh the window inspector.";
+        if (!UiNavigationPolicy.CanSelectTab(tabName, candidates[0].Name, "TabItem",
                 candidates[0].Enabled, candidates[0].Offscreen,
                 snapshot.CapturedAt, DateTimeOffset.UtcNow, true, out var reason))
-            return "Cannot select tab: " + (candidates.Length != 1
-                ? "No unique visible tab. Refresh the window inspector." : reason);
+            return "Cannot select tab: " + reason;
 
         var epoch = _actionEpoch;
         var answer = System.Windows.MessageBox.Show(

@@ -66,8 +66,8 @@ public sealed class UiAutomationNavigator
             var id = SafeRead(() => item.Current.AutomationId) ?? "";
             var runtime = SafeRead(() => string.Join(".", item.GetRuntimeId())) ?? "";
             if (runtime.Length == 0) continue;
-            var enabled = SafeRead(() => item.Current.IsEnabled) ?? false;
-            var offscreen = SafeRead(() => item.Current.IsOffscreen) ?? true;
+            var enabled = SafeBool(() => item.Current.IsEnabled, false);
+            var offscreen = SafeBool(() => item.Current.IsOffscreen, true);
             tabs.Add(new UiTabInfo(name, id, runtime, enabled, offscreen));
             if (tabs.Count >= 50) break;
         }
@@ -102,8 +102,8 @@ public sealed class UiAutomationNavigator
             return "The tab changed or is ambiguous. Refresh inspection.";
 
         var tab = reObserved[0];
-        var enabled = SafeRead(() => tab.Current.IsEnabled) ?? false;
-        var offscreen = SafeRead(() => tab.Current.IsOffscreen) ?? true;
+        var enabled = SafeBool(() => tab.Current.IsEnabled, false);
+        var offscreen = SafeBool(() => tab.Current.IsOffscreen, true);
         var role = SafeRead(() => tab.Current.ControlType?.ProgrammaticName) ?? "";
         if (!UiNavigationPolicy.CanSelectTab(chosen.Name, SafeRead(() => tab.Current.Name),
             role == "ControlType.TabItem" ? "TabItem" : role,
@@ -145,6 +145,14 @@ public sealed class UiAutomationNavigator
                 child = SafeRead(() => walker.GetNextSibling(old));
             }
         }
+    }
+
+    private static bool SafeBool(Func<bool> read, bool fallback)
+    {
+        try { return read(); }
+        catch (Exception ex) when (ex is ElementNotAvailableException or
+            InvalidOperationException or COMException or UnauthorizedAccessException)
+        { return fallback; }
     }
 
     private static T? SafeRead<T>(Func<T> read)
