@@ -365,11 +365,11 @@ try
     Check(ObsReplayProtocol.Authenticate("test-password", "test-salt", "test-challenge")
             == "zBIloly70ANx+T9nUkQVuTCqTUuHtfrqEdn8XDQ3m/s=",
         "OBS WebSocket v5 challenge response follows official salted SHA256 scheme");
-    using (var state = System.Text.Json.JsonDocument.Parse(
+    using (var obsStatusPayload = System.Text.Json.JsonDocument.Parse(
         "{\"outputActive\":true,\"savedReplayPath\":\"C:\\\\Clips\\\\Replay.mkv\"}"))
     {
-        Check(ObsReplayProtocol.ReadReplayRunning(state.RootElement) == true &&
-              ObsReplayProtocol.ReadReplayPath(state.RootElement) ==
+        Check(ObsReplayProtocol.ReadReplayRunning(obsStatusPayload.RootElement) == true &&
+              ObsReplayProtocol.ReadReplayPath(obsStatusPayload.RootElement) ==
                   @"C:\Clips\Replay.mkv",
             "OBS replay status and local saved clip path are parsed explicitly");
     }
