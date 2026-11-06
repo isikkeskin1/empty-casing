@@ -289,5 +289,8 @@ public partial class SetupWindow : Window
         catch (Exception ex) { StatusText.Text = "Setup incomplete: " + ex.Message; }
     }
 
+    private void OpenInputSettings_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenInputSettings();
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

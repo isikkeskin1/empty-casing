@@ -69,12 +69,20 @@ public partial class ChatWindow : Window
     }
 
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
+    private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
+    public void FocusPrompt()
+    {
+        Show();
+        Activate();
+        PromptBox.Focus();
+    }
 
     public void SyncCapabilitySwitches()
     {
         _syncing = true;
         WatchCheck.IsChecked = App.Instance.Settings.WatchScreen;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
+        MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         _syncing = false;

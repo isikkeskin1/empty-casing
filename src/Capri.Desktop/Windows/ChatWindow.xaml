@@ -60,6 +60,7 @@
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <TextBlock Text="CHAT MODEL" Foreground="#92AABE" FontFamily="Consolas"
                    FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center"/>
@@ -67,6 +68,8 @@
         <Button Grid.Column="2" Content="SAVE" Click="SaveModel_Click"
                 Margin="8,0,0,0" Padding="10,5"/>
         <Button Grid.Column="3" Content="SET UP BRAIN" Click="SetupBrain_Click"
+                Margin="8,0,0,0" Padding="10,5"/>
+        <Button Grid.Column="4" Content="INPUTS" Click="OpenInputs_Click"
                 Margin="8,0,0,0" Padding="10,5"/>
       </Grid>
     </Border>
@@ -99,7 +102,7 @@
                     Background="#182334" Foreground="#121B29"/>
         </DockPanel>
         <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="Vision: chosen monitor, every 45s while watching. Ctrl+Alt+V toggles mic; say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
+                   Text="Vision: selected monitor, every 45s while watching. Customize hotkeys and microphone in INPUTS. Say 'Capri' before a command. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Actions require approval; no purchases."/>
       </StackPanel>
     </Border>
 

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -11,28 +10,14 @@ namespace Capri.Desktop;
 
 public partial class App : System.Windows.Application
 {
-    private const int HotkeyId = 0xCA91;
-    private const int VoiceHotkeyId = 0xCA92;
-    private const uint ModAlt = 0x0001;
-    private const uint VkV = 0x56;
-    private const int WmHotkey = 0x0312;
-    private const uint ModControl = 0x0002;
-    private const uint ModShift = 0x0004;
-    private const uint VkSpace = 0x20;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool RegisterHotKey(IntPtr handle, int id, uint modifiers, uint key);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool UnregisterHotKey(IntPtr handle, int id);
-
     private CompanionWindow? _companion;
     private ChatWindow? _chat;
     private SetupWindow? _setup;
+    private InputSettingsWindow? _inputSettings;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
-    private bool _registeredHotkey;
-    private bool _registeredVoiceHotkey;
+    private GlobalHotkeyService? _hotkeys;
+    public bool MicrophoneMuted { get; private set; }
     private SpeechService? _speech;
     private FishAudioClient? _fishVoice;
     private VoicePlaybackService? _voicePlayback;
@@ -56,7 +41,10 @@ public partial class App : System.Windows.Application
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
         _fishVoice = new FishAudioClient(Secrets);
-        _voicePlayback = new VoicePlaybackService(Dispatcher);
+        _voicePlayback = new VoicePlaybackService(Dispatcher)
+        {
+            SpeakerDeviceIndex = Settings.SpeakerDeviceIndex
+        };
         Reminders = new ReminderScheduler(Store, NotifyReminder);
         _speech = new SpeechService(text =>
             Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
@@ -80,7 +68,8 @@ public partial class App : System.Windows.Application
 
     private void ReceiveRecognizedSpeech(string recognized)
     {
-        if (!Settings.ListenToMicrophone) return;
+        if (!Settings.ListenToMicrophone || MicrophoneMuted ||
+            _voicePlayback?.IsPlaying == true) return;
         var text = recognized.Trim();
         var prefix = text.StartsWith("hey capri", StringComparison.OrdinalIgnoreCase) ? 9 :
                      text.StartsWith("capri", StringComparison.OrdinalIgnoreCase) ? 5 : 0;
@@ -100,21 +89,85 @@ public partial class App : System.Windows.Application
         if (!enabled)
         {
             Settings.ListenToMicrophone = false;
+            MicrophoneMuted = false;
             _speech.StopListening();
+            _chat?.SyncCapabilitySwitches();
             return;
         }
-
         try
         {
-            _speech.StartListening();
+            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            MicrophoneMuted = false;
             Settings.ListenToMicrophone = true;
-            _companion?.ShowReaction("Mic on. Say 'Capri' before your request.");
+            _companion?.ShowReaction("Mic on. Say 'Capri' before a request.");
+            _chat?.SyncCapabilitySwitches();
         }
         catch
         {
             Settings.ListenToMicrophone = false;
+            MicrophoneMuted = false;
+            _chat?.SyncCapabilitySwitches();
             throw;
         }
+    }
+
+    public void ToggleMicrophoneMute()
+    {
+        if (_speech is null || !Settings.ListenToMicrophone)
+        {
+            _companion?.ShowReaction("Turn on voice listening first.");
+            return;
+        }
+        if (MicrophoneMuted)
+        {
+            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            MicrophoneMuted = false;
+            _companion?.ShowReaction("Microphone unmuted.");
+        }
+        else
+        {
+            // Muting closes the audio capture device, not just the transcript callback.
+            _speech.StopListening();
+            MicrophoneMuted = true;
+            _companion?.ShowReaction("Microphone muted. No audio is being captured.");
+        }
+        _chat?.SyncCapabilitySwitches();
+    }
+
+    public void StopAllInputs()
+    {
+        SetWatchingEnabled(false);
+        SetMicrophoneEnabled(false);
+        Settings.EnableDesktopActions = false;
+        CancelVoiceOutput();
+        _chat?.SyncCapabilitySwitches();
+        _companion?.ShowReaction("Inputs off. Screen, mic, actions and speech stopped.");
+    }
+
+    public string ApplyInputSettings(InputShortcuts bindings, int microphone, int speaker)
+    {
+        if (!InputShortcuts.TryValidate(bindings, out var reason))
+            throw new ArgumentException(reason);
+        if (!AudioInputDevices.MicrophoneExists(microphone) ||
+            !AudioInputDevices.SpeakerExists(speaker))
+            throw new InvalidOperationException("One of the chosen audio devices is unavailable.");
+
+        var hotkeyWarning = _hotkeys?.Apply(bindings) ?? "Global hotkeys unavailable.";
+        if (_inputSettings?.IsVisible == true) _hotkeys?.Suspend();
+        var wasListening = Settings.ListenToMicrophone;
+        var wasMuted = MicrophoneMuted;
+        if (wasListening) SetMicrophoneEnabled(false);
+        Settings.MicrophoneDeviceIndex = microphone;
+        Settings.SpeakerDeviceIndex = speaker;
+        Settings.Shortcuts = bindings;
+        if (_voicePlayback is not null) _voicePlayback.SpeakerDeviceIndex = speaker;
+        Store.SaveSettings(Settings);
+        if (wasListening)
+        {
+            SetMicrophoneEnabled(true);
+            if (wasMuted) ToggleMicrophoneMute();
+        }
+        return hotkeyWarning;
     }
 
     public void SetWatchingEnabled(bool enabled)
@@ -300,31 +353,40 @@ public partial class App : System.Windows.Application
         if (_companion is null || _windowHandle != IntPtr.Zero) return;
         _windowHandle = new WindowInteropHelper(_companion).Handle;
         if (_windowHandle == IntPtr.Zero) return;
-        HwndSource.FromHwnd(_windowHandle)?.AddHook(OnWindowMessage);
-        _registeredHotkey = RegisterHotKey(_windowHandle, HotkeyId, ModControl | ModShift, VkSpace);
-        _registeredVoiceHotkey = RegisterHotKey(_windowHandle, VoiceHotkeyId, ModControl | ModAlt, VkV);
+        try
+        {
+            _hotkeys = new GlobalHotkeyService(_windowHandle, OnGlobalShortcut);
+            var error = _hotkeys.Apply(Settings.Shortcuts ?? new InputShortcuts());
+            if (!string.IsNullOrEmpty(error))
+                _companion.ShowReaction(error);
+        }
+        catch (Exception ex)
+        {
+            _companion.ShowReaction("Shortcuts could not start: " + ex.Message);
+        }
     }
 
-    private IntPtr OnWindowMessage(IntPtr handle, int message, IntPtr wparam, IntPtr lparam, ref bool handled)
+    private void OnGlobalShortcut(string action)
     {
-        if (message == WmHotkey && wparam.ToInt32() == HotkeyId)
+        switch (action)
         {
-            ToggleChat();
-            handled = true;
+            case nameof(InputShortcuts.OpenChat): ToggleChat(); break;
+            case nameof(InputShortcuts.ToggleMic):
+                try { SetMicrophoneEnabled(!Settings.ListenToMicrophone); }
+                catch (Exception ex) { _companion?.ShowReaction("Mic unavailable: " + ex.Message); }
+                break;
+            case nameof(InputShortcuts.MuteMic):
+                try { ToggleMicrophoneMute(); }
+                catch (Exception ex) { _companion?.ShowReaction("Mic error: " + ex.Message); }
+                break;
+            case nameof(InputShortcuts.FocusTyping):
+                ShowChat();
+                _chat?.FocusPrompt();
+                break;
+            case nameof(InputShortcuts.ToggleCompanion): ToggleCompanion(); break;
+            case nameof(InputShortcuts.BringHere): _companion?.BringNearPointer(); break;
+            case nameof(InputShortcuts.StopVoice): StopAllInputs(); break;
         }
-        else if (message == WmHotkey && wparam.ToInt32() == VoiceHotkeyId)
-        {
-            try { SetMicrophoneEnabled(!Settings.ListenToMicrophone); }
-            catch (Exception ex)
-            {
-                SetMicrophoneEnabled(false);
-                System.Windows.MessageBox.Show(ex.Message, "Capri microphone", MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-            _chat?.SyncCapabilitySwitches();
-            handled = true;
-        }
-        return IntPtr.Zero;
     }
 
     private void CreateTray()
@@ -332,6 +394,7 @@ public partial class App : System.Windows.Application
         var context = new System.Windows.Forms.ContextMenuStrip();
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
+        context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Show reminders", null, (_, _) => Dispatcher.Invoke(ShowReminderList));
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
@@ -373,6 +436,31 @@ public partial class App : System.Windows.Application
             ContextMenuStrip = context
         };
         _tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowChat);
+    }
+
+    public void OpenInputSettings()
+    {
+        if (_inputSettings is null)
+        {
+            _hotkeys?.Suspend();
+            _inputSettings = new InputSettingsWindow();
+            _inputSettings.Closed += (_, _) =>
+            {
+                _inputSettings = null;
+                try
+                {
+                    var message = _hotkeys?.Apply(Settings.Shortcuts ?? new InputShortcuts());
+                    if (!string.IsNullOrEmpty(message))
+                        _companion?.ShowReaction(message);
+                }
+                catch (Exception ex)
+                {
+                    _companion?.ShowReaction("Hotkeys unavailable: " + ex.Message);
+                }
+            };
+        }
+        _inputSettings.Show();
+        _inputSettings.Activate();
     }
 
     public void OpenCharacterFolder()
@@ -426,10 +514,7 @@ public partial class App : System.Windows.Application
         _voicePlayback?.Dispose();
         _fishVoice?.Dispose();
         _speech?.Dispose();
-        if (_registeredHotkey && _windowHandle != IntPtr.Zero)
-            UnregisterHotKey(_windowHandle, HotkeyId);
-        if (_registeredVoiceHotkey && _windowHandle != IntPtr.Zero)
-            UnregisterHotKey(_windowHandle, VoiceHotkeyId);
+        _hotkeys?.Dispose();
 
         Brain?.Dispose();
         if (_tray is not null)

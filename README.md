@@ -49,6 +49,10 @@ Select **LOOK NOW** to inspect the selected monitor once (choose from the monito
 
 Read [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md) for exact supported behavior, limitations and privacy details.
 
+## Input Control Center
+
+Open INPUTS in Mainframe or Input settings / hotkeys in the tray. Choose a real microphone, test its level for five seconds, pick Fish Audio's speaker and customize seven global shortcuts. Mic mute stops capture; STOP INPUTS ends mic, screen and speech and disables desktop actions. See [Input architecture](docs/INPUT_SYSTEMS.md).
+
 ## Build and verify
 
 ~~~powershell
