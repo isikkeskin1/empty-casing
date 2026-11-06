@@ -86,6 +86,20 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Session routines and conversation follow-ups
+
+Capri can now handle an entire local app-launch session in one voice/text command:
+
+- **"Capri, gaming mode"** opens Discord, Steam and Spotify.
+- **"Capri, Roblox mode"** opens Discord, Roblox home and Spotify.
+- **"Capri, Roblox dev mode"** opens the Creator Dashboard, VS Code and Spotify.
+- **"Capri, study mode"** opens VS Code, Notepad and Spotify.
+- **"Capri, open Discord, Steam and Spotify"** runs an exact two-to-four-app custom batch.
+
+Enable DESKTOP ACTIONS or HANDS-FREE first. A manual routine has one batch preview, not a new confirmation for every app. Every step is revalidated, and **STOP ALL** cancels any remaining launches. No scripts, account changes, purchases, messages or file modifications are part of these routines. See [Session Routines](docs/SESSION_ROUTINES.md).
+
+In INPUTS, enable optional voice follow-ups to keep a *sliding* 20-second conversation window open after each accepted follow-up. When voice interruption is also enabled, **"Capri stop all"** works while Capri is speaking. This is not yet streamed voice or always-on unrestricted computer control.
+
 ## Native Spotify + Roblox account connections (OAuth PKCE)
 
 Mainframe → **CONNECTIONS** links accounts through their official browser
