@@ -100,6 +100,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
               </Grid.RowDefinitions>
               <TextBlock Text="OPEN CHAT" Grid.Row="0" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="OpenChatKey" Grid.Row="0" Grid.Column="1"
@@ -122,8 +123,11 @@
               <TextBlock Text="BRING CAPRI HERE" Grid.Row="6" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="BringHereKey" Grid.Row="6" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
-              <TextBlock Text="STOP ALL INPUTS" Grid.Row="7" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBox x:Name="StopVoiceKey" Grid.Row="7" Grid.Column="1"
+              <TextBlock Text="INTERRUPT ACTIVE REPLY" Grid.Row="7" VerticalAlignment="Center" Margin="0,0,8,8"/>
+              <TextBox x:Name="StopReplyKey" Grid.Row="7" Grid.Column="1"
+                       KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
+              <TextBlock Text="STOP ALL INPUTS" Grid.Row="8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox x:Name="StopVoiceKey" Grid.Row="8" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" IsReadOnly="True"/>
             </Grid>
             <CheckBox x:Name="FollowUpsCheck"
@@ -134,7 +138,7 @@
             <CheckBox x:Name="VoiceInterruptCheck"
                       Content="Allow 'Capri, stop' to interrupt spoken output"
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>
-            <TextBlock Text="Voice interruption is OFF by default because speaker audio can echo into microphones. The STOP INPUTS shortcut works regardless."
+            <TextBlock Text="Voice interruption is OFF by default because speaker audio can echo into microphones. When enabled, 'Capri, cancel that' can stop a reply, but ordinary overheard speech cannot issue commands. The INTERRUPT REPLY shortcut always works."
                        Margin="21,3,0,0" Foreground="#8FA7B8" TextWrapping="Wrap" FontSize="11"/>
             <CheckBox x:Name="PettingCheck" Content="React to gentle mouse rubs over Capri"
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>
