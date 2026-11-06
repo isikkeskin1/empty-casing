@@ -215,6 +215,7 @@ public partial class ChatWindow : Window
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
         TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
+        QuietCheck.IsChecked = App.Instance.QuietModeEnabled;
         DanceCheck.IsChecked = App.Instance.Settings.DanceToSystemAudio;
         ActionsCheck.IsChecked = App.Instance.Settings.EnableDesktopActions;
         HandsFreeCheck.IsChecked = App.Instance.Settings.SkipActionConfirmations;
@@ -230,6 +231,43 @@ public partial class ChatWindow : Window
             "ACTIONS  /  DISARMED" : App.Instance.Settings.SkipActionConfirmations ?
             "ACTIONS  /  HANDS-FREE" : "ACTIONS  /  CONFIRM";
         _syncing = false;
+        UpdateLookoutStatus();
+    }
+
+    public void UpdateLookoutStatus()
+    {
+        LookoutStatusText.Text = App.Instance.LookoutStatus;
+    }
+
+    private void StartLookout_Click(object sender, RoutedEventArgs e)
+    {
+        var result = App.Instance.ArmScreenLookout(LookoutConditionBox.Text);
+        UpdateLookoutStatus();
+        UpdateStatus(result.StartsWith("Visual lookout armed", StringComparison.Ordinal)
+            ? "LOOKOUT ARMED" : "WATCH SCREEN REQUIRED",
+            result.StartsWith("Visual lookout armed", StringComparison.Ordinal)
+                ? Colors.LightGreen : Colors.Orange);
+        if (result.StartsWith("Visual lookout armed", StringComparison.Ordinal))
+            App.Instance.SetMood(CompanionMood.Thinking);
+        else
+            System.Windows.MessageBox.Show(result, "Capri — visual lookout",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void CancelLookout_Click(object sender, RoutedEventArgs e)
+    {
+        var result = App.Instance.CancelScreenLookout();
+        UpdateLookoutStatus();
+        UpdateStatus("LOOKOUT STOPPED", Colors.LightSkyBlue);
+        AppendNotification(result);
+    }
+
+    private void Quiet_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetQuietMode(QuietCheck.IsChecked == true);
+        UpdateStatus(QuietCheck.IsChecked == true ? "QUIET MODE" : "READY",
+            QuietCheck.IsChecked == true ? Colors.LightSkyBlue : Colors.LightGreen);
     }
 
     public void AppendNotification(string text) => Add("system", text);
@@ -325,6 +363,7 @@ public partial class ChatWindow : Window
             return;
         }
         App.Instance.SetWatchingEnabled(WatchCheck.IsChecked == true);
+        UpdateLookoutStatus();
     }
 
     private void Mic_Changed(object sender, RoutedEventArgs e)
