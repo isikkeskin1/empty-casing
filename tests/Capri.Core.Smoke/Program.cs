@@ -1062,7 +1062,7 @@ sealed class FakeHandler : HttpMessageHandler
                     "{\"message\":{\"content\":\"Hello \"},\"done\":false}\\n" +
                     "{\"message\":{\"content\":\"there, choom.\"},\"done\":false}\\n" +
                     "{\"message\":{\"content\":\"\"},\"done\":true}\\n"
-                    .Replace("\\\\n", "\\n"))
+                    .Replace("\\n", "\n"))
             };
         }
 
@@ -1123,7 +1123,7 @@ sealed class CloudFakeHandler : HttpMessageHandler
                     "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\\n\\n" +
                     "data: {\"choices\":[{\"delta\":{\"content\":\"Hey \"}}]}\\n\\n" +
                     "data: {\"choices\":[{\"delta\":{\"content\":\"from cloud.\"}}]}\\n\\n" +
-                    "data: [DONE]\\n\\n".Replace("\\\\n", "\\n"))
+                    "data: [DONE]\\n\\n".Replace("\\n", "\n"))
             };
         }
         SawVision |= json.Contains("\"model\":\"test-vision\"", StringComparison.Ordinal) &&
