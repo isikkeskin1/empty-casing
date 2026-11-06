@@ -47,7 +47,7 @@ public partial class ChatWindow : Window
             available ? Colors.LightGreen : Colors.Orange);
     }
 
-    private void UpdateStatus(string text, Color color)
+    private void UpdateStatus(string text, System.Windows.Media.Color color)
     {
         StatusDisplay.Text = text;
         StatusDisplay.Foreground = new SolidColorBrush(color);
@@ -62,7 +62,7 @@ public partial class ChatWindow : Window
         UpdateStatus("MODEL SAVED", Colors.LightSkyBlue);
     }
 
-    private void Prompt_KeyDown(object sender, KeyEventArgs e)
+    private void Prompt_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0)
         {
@@ -112,8 +112,8 @@ public partial class ChatWindow : Window
 
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show("Delete your locally saved conversation?", "Capri Desktop",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        if (System.Windows.MessageBox.Show("Delete your locally saved conversation?", "Capri Desktop",
+                System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
             return;
         Messages.Clear();
         App.Instance.Store.SaveHistory(Messages);

@@ -74,7 +74,7 @@ public partial class CompanionWindow : Window
             _ => ("IDLE", "#71DDF1")
         };
         StatusText.Text = "CAPRI // " + name;
-        StatusLight.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(brush)!);
+        StatusLight.Fill = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(brush)!);
         _frames?.SetState(mood switch
         {
             CompanionMood.Thinking => "think",
