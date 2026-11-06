@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using System.Windows.Threading;
 using Capri.Core;
