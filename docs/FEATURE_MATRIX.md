@@ -9,12 +9,13 @@ The original fan project has a broad feature set. This file tracks our independe
 | Cloud brain providers (4) | Implemented | Real-key and model compatibility QA |
 | Encrypted API keys | Implemented | Recovery/migration QA |
 | Windows TTS voice picker | Implemented | Voice/language pack testing |
+| Fish Audio TTS (free/pro model choice, optional voice ID) | In source | Playback and real-key device QA |
 | Animated desktop companion | Implemented | Mixed-DPI transparent hit testing |
 | Screen vision/reactions | Implemented, selected monitor | Redaction, multiple simultaneous monitors, game events |
 | Mic recognition + global toggle | Implemented | Selected mic, interruption, VAD, robust wake word |
 | App/URL/media actions | Limited, approval-gated | UI Automation, action history, hard stop |
 | Call mode, Discord/Zoom | Not implemented | Consent and speaker isolation |
-| Cloud custom TTS (Fish/ElevenLabs) | Not implemented | Provider security and licensing |
+| Additional cloud TTS (ElevenLabs/OpenAI) | Not implemented | Provider security and licensing |
 | Song selection, music mini-player | Not implemented | Media session integration |
 | Reminders and timers | Implemented: local relative scheduling | Absolute dates and OS background scheduler |
 | Game clips/live reactions | Not implemented | Event and capture pipeline |

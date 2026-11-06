@@ -37,8 +37,12 @@ public sealed class SecretStore
         Directory.CreateDirectory(_directory);
     }
 
+    private static string CredentialId(string provider) =>
+        string.Equals(provider, "fish", StringComparison.OrdinalIgnoreCase)
+            ? "fish" : ProviderCatalog.Get(provider).Id;
+
     private string FileFor(string provider) =>
-        Path.Combine(_directory, ProviderCatalog.Get(provider).Id + ".dpapi");
+        Path.Combine(_directory, CredentialId(provider) + ".dpapi");
 
     public void Save(string provider, string key)
     {

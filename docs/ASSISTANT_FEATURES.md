@@ -7,7 +7,7 @@ The independent Capri Desktop implementation now has a **functional first assist
 | Vision | Selected monitor screenshot on LOOK NOW | Continuous video; OCR-driven UI element grounding |
 | Proactive reactions | Selected local or cloud vision model every 45 seconds when enabled | Game-event hooks, accurate damage/health detection |
 | Microphone | Windows dictation with MIC ON or Ctrl+Alt+V; say "Capri" before a request | Voice activity detection, robust multilingual speaker-ID, call mode |
-| Voice output | Windows installed TTS voice if SPEAK REPLIES is on | Character-accurate voices, streaming, barge-in |
+| Voice output | Windows TTS or opt-in Fish Audio MP3 TTS | Additional providers, streaming, barge-in |
 | Actions | Approve per action: launch allowlisted applications, HTTPS URL, media keys | General clicking, typing, filesystem, remote messaging, buying |
 | Windows interaction | Perch, toss, follow app windows | Alpha-perfect hit testing, universal fullscreen behavior |
 | Timers/reminders | Relative timers and locally persisted reminders; tray notifications | OS service while Capri is closed; recurring calendar reminders |
@@ -46,3 +46,10 @@ The reference repository is useful for **behavioral inspiration**, not reusable 
 Commands accepted directly by the app (no AI provider call): "remind me in 10 minutes to stretch", "set a timer for 30 seconds", "list reminders" and "cancel reminder #1". Timers/reminders are persisted under local app data; when the app runs, a Windows tray notification and Capri reaction are displayed at the due time. Overdue reminders trigger when the app starts again. Windows may suppress notifications through Focus Assist.
 
 Select the monitor to watch in the Mainframe. Ctrl+Alt+V toggles microphone recognition. This toggle does not grant additional desktop permissions.
+
+
+## Fish Audio voice
+
+Choose Fish Audio in the voice panel and enter a newly generated API key. The default model is s2.1-pro-free; paid s2.1-pro is optional. The reference ID is optional and should name a voice you have permission to use. Capri sends JSON text to Fish's fixed HTTPS endpoint with an explicit model header and decodes the MP3 entirely in memory. No MP3 is saved. Fish may consume quotas or credits. Windows voice remains a fully local alternative.
+
+This does not create a voice chat call, clone anyone's voice, recognize spoken input through Fish, or enable a character-accurate licensed voice automatically.

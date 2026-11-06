@@ -142,6 +142,33 @@ try
             "cloud planner returns an allowlisted proposal");
         Check(await cloud.PlanActionAsync("buy something") is null,
             "cloud action planner blocks buying before network call");
+        vault.Save("fish", "fish-key-for-test-only");
+        Check(vault.HasKey("fish") && vault.Read("fish") == "fish-key-for-test-only",
+            "Fish API key encrypted with Windows per-user DPAPI");
+        var fishVaultBytes = File.ReadAllBytes(Path.Combine(directory, "credentials", "fish.dpapi"));
+        Check(!System.Text.Encoding.UTF8.GetString(fishVaultBytes).Contains("fish-key-for-test-only"),
+            "Fish API key is never stored in plaintext");
+        var fishFake = new FishMockHandler();
+        using var fishHttpClient = new HttpClient(fishFake);
+        using var fish = new FishAudioClient(vault, fishHttpClient);
+        var fishAudio = await fish.SynthesizeAsync("Hello choom!", FishAudioClient.FreeModel);
+        Check(fishAudio.Length == 96 && fishFake.SawFreeModel &&
+              fishFake.SawValidPayload && fishFake.SawBearer && fishFake.SawFixedHttps,
+            "Fish API request sends free model header, text and encrypted-store Bearer token");
+        await fish.SynthesizeAsync("Voice test.", FishAudioClient.FreeModel, "licensed-voice-123");
+        Check(fishFake.SawReferenceId, "optional Fish voice reference ID included in request");
+        Check(!FishAudioClient.IsSupportedModel("s2.1-unknown") &&
+              !FishAudioClient.IsValidReference("../../secrets"),
+            "unrecognized models and unsafe voice IDs rejected");
+        try
+        {
+            await fish.SynthesizeAsync("hello", "s2.1-unknown");
+            throw new Exception("Unsupported Fish model reached the network client.");
+        }
+        catch (ArgumentException) { /* Deliberately blocked. */ }
+        vault.Delete("fish");
+        Check(!vault.HasKey("fish"), "saved Fish API key can be deleted");
+
         vault.Delete("nvidia");
         Check(!vault.HasKey("nvidia"), "stored provider key can be deleted");
     }
@@ -244,6 +271,36 @@ sealed class CloudFakeHandler : HttpMessageHandler
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(response)
+        };
+    }
+}
+
+
+sealed class FishMockHandler : HttpMessageHandler
+{
+    public bool SawFixedHttps { get; private set; }
+    public bool SawFreeModel { get; private set; }
+    public bool SawBearer { get; private set; }
+    public bool SawValidPayload { get; private set; }
+    public bool SawReferenceId { get; private set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        SawFixedHttps = request.RequestUri?.ToString() == "https://api.fish.audio/v1/tts";
+        SawBearer = request.Headers.Authorization?.Scheme == "Bearer" &&
+            request.Headers.Authorization.Parameter == "fish-key-for-test-only";
+        SawFreeModel = request.Headers.TryGetValues("model", out var values) &&
+            values.Single() == FishAudioClient.FreeModel;
+        var payload = await request.Content!.ReadAsStringAsync(cancellationToken);
+        SawValidPayload |= payload.Contains("\"text\":\"Hello choom!\"", StringComparison.Ordinal) &&
+            payload.Contains("\"format\":\"mp3\"", StringComparison.Ordinal);
+        SawReferenceId |= payload.Contains("\"reference_id\":\"licensed-voice-123\"", StringComparison.Ordinal);
+        var audio = new byte[96];
+        audio[0] = (byte)'I'; audio[1] = (byte)'D'; audio[2] = (byte)'3';
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(audio)
         };
     }
 }

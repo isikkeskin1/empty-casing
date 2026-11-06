@@ -12,5 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="../Capri.Core/Capri.Core.csproj" />
     <PackageReference Include="System.Speech" Version="10.0.14" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 </Project>
