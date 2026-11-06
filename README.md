@@ -15,7 +15,7 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 - Opt-in watch mode: capture every 45 seconds and show brief AI reactions as a temporary character bubble
 - Windows microphone recognition: toggle MIC ON or use Ctrl+Alt+V, then start a request with **"Capri"**; native Windows text-to-speech output can be enabled separately
 - Approval-gated desktop actions: launch selected applications, open HTTPS pages and send media keys. No purchases, arbitrary clicks, command execution, typing, deletion or messaging
-- Per-user Windows installer, first-run brain and voice wizard, cloud keys encrypted using Windows DPAPI
+- Per-user Windows installer, first-run brain and voice wizard, optional Fish Audio speech output with encrypted cloud keys using Windows DPAPI
 - Windows CI builds a portable ZIP and installer executable
 
 **Not yet implemented:** seamless streamed voice conversation, character-specific voice, multi-monitor vision selection, game-event understanding, Discord call participation, general computer use, semantic memory or an updater. Current speech uses the Windows-installed recognizer and voice; current vision is a **single primary-monitor snapshot**, not a continuous video feed. The current action allowlist is deliberately limited and every action needs consent. See [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md).
@@ -26,7 +26,7 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 2. The first-launch **CAPRI // SETUP** wizard opens. Choose LOCAL — Ollama or an optional cloud provider.
 3. **Local:** click DOWNLOAD OLLAMA to visit the official download page, install Ollama, then click DOWNLOAD LOCAL MODELS for the text and vision models (defaults qwen3:4b and qwen3-vl:4b).
 4. **Cloud:** open the selected provider's official API-key page, paste your key, select the exact model ID, and optionally set a vision-capable model. Providers can charge or impose rate limits.
-5. Choose a Windows voice and preview it. Click TEST CONNECTION and SAVE & OPEN MAINFRAME. Cloud test requests may use credits.
+5. Under HER VOICE, choose a Windows voice or Fish Audio. Fish uses a separate API key and plays MP3 replies without writing audio to disk. Test the selected voice, then click TEST CONNECTION and SAVE & OPEN MAINFRAME.
 6. In Mainframe, enable mic, screen watch, speech output or desktop actions separately if desired. Purchasing and checkout remain blocked.
 
 The installer includes the .NET runtime, **not** Ollama, model weights, copyrighted animation assets, or cloud credits. Developer setup is described in [the guide](docs/SETUP.md).
@@ -43,7 +43,7 @@ The snap system only reads top-level window rectangles. It does not inspect your
 
 Select **LOOK NOW** to inspect the selected monitor once (choose from the monitor selector in Mainframe). For proactive remarks, opt into **WATCH SCREEN** in the Mainframe; screenshots go to your **selected local or cloud brain** (cloud requires consent), are not saved, and stop when you disable the toggle or exit the app. Reactions appear briefly over Capri. All monitoring starts off each launch.
 
-**MIC ON** uses Microsoft's installed Windows speech recognizer, not a cloud transcription endpoint provided by this app. Say "Capri, what's on my screen?" (while WATCH SCREEN is on) or "Capri, open notepad" (with DESKTOP ACTIONS enabled). Spoken recognition depends on the language pack you have installed. **SPEAK REPLIES** uses your system voice; it isn't an imitation of a voice actor.
+**Fish voice:** Open SET UP BRAIN / VOICE, choose CLOUD — Fish Audio, and enter a newly generated Fish API key. The free S2.1 model is a limited developer offer; selecting Pro may incur charges. An optional voice reference ID must be appropriately licensed. Spoken text is transmitted to Fish; MP3 playback remains in memory. **MIC ON** uses Microsoft's installed Windows speech recognizer, not a cloud transcription endpoint provided by this app. Say "Capri, what's on my screen?" (while WATCH SCREEN is on) or "Capri, open notepad" (with DESKTOP ACTIONS enabled). Spoken recognition depends on the language pack you have installed. **SPEAK REPLIES** uses your system voice; it isn't an imitation of a voice actor.
 
 **DESKTOP ACTIONS** currently accepts a small allowlist (notepad, calculator, explorer, edge, chrome, VS Code, Spotify, Discord, Steam, HTTPS web links, music controls). It asks you to confirm **each action** and supports no purchase or payment flow. Screen text never becomes a command. Do not treat this as unrestricted desktop control.
 

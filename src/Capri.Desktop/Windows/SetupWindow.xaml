@@ -92,13 +92,34 @@
           <StackPanel>
             <TextBlock Text="02   HER VOICE" Foreground="#7FE2EF" FontFamily="Consolas"
                        FontWeight="Bold" Margin="0,0,0,8"/>
-            <TextBlock Text="Uses installed Windows text-to-speech voices. No cloning or paid voice service is needed."
+            <TextBlock Text="Use a local Windows voice or opt into cloud Fish Audio. Fish receives the text Capri speaks; usage limits or charges may apply."
                        Foreground="#B4C7D7" TextWrapping="Wrap" Margin="0,0,0,8"/>
-            <DockPanel>
-              <Button Content="PREVIEW" DockPanel.Dock="Right" Click="PreviewVoice_Click"
-                      Margin="10,0,0,0"/>
+            <ComboBox x:Name="VoiceProviderBox" SelectionChanged="VoiceProvider_Changed"
+                      Padding="8" Margin="0,0,0,10" Background="#1D2940" Foreground="#111725"/>
+            <StackPanel x:Name="WindowsVoicePanel">
               <ComboBox x:Name="VoiceBox" Padding="8" Background="#1D2940" Foreground="#111725"/>
-            </DockPanel>
+            </StackPanel>
+            <StackPanel x:Name="FishVoicePanel" Visibility="Collapsed">
+              <Button Content="GET NEW FISH AUDIO API KEY" Click="GetFishKey_Click"
+                      HorizontalAlignment="Left" Margin="0,0,0,8"/>
+              <TextBlock Text="FISH API KEY (ENCRYPTED WITH WINDOWS DPAPI)"
+                         Foreground="#92ACBA" FontFamily="Consolas" FontSize="11"/>
+              <PasswordBox x:Name="FishKeyBox" Margin="0,5,0,5"/>
+              <TextBlock x:Name="FishSavedKeyText" Foreground="#7EDBC1" FontFamily="Consolas"
+                         FontSize="10" Margin="0,0,0,8"/>
+              <TextBlock Text="FISH MODEL" Foreground="#92ACBA" FontFamily="Consolas" FontSize="11"/>
+              <ComboBox x:Name="FishModelBox" Padding="8" Margin="0,4,0,8"
+                        Background="#1D2940" Foreground="#111725"/>
+              <TextBlock Text="VOICE REFERENCE ID (OPTIONAL)"
+                         Foreground="#92ACBA" FontFamily="Consolas" FontSize="11"/>
+              <TextBox x:Name="FishReferenceBox" Margin="0,5,0,8"/>
+              <TextBlock Text="Optional reference ID must be a voice you have permission to use. The free model is subject to availability and fair-use limits. Selecting PRO may incur charges."
+                         Foreground="#F0B6C7" FontSize="11" TextWrapping="Wrap"/>
+              <Button Content="DELETE SAVED FISH KEY" HorizontalAlignment="Left"
+                      Margin="0,10,0,0" Click="RemoveFishKey_Click"/>
+            </StackPanel>
+            <Button x:Name="PreviewVoiceButton" Content="TEST VOICE" Click="PreviewVoice_Click"
+                    HorizontalAlignment="Left" Margin="0,12,0,0"/>
             <CheckBox x:Name="SpeakOnCheck" Margin="0,12,0,0"
                       Content="Speak replies aloud after setup"/>
           </StackPanel>

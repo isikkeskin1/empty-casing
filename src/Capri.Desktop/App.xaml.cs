@@ -34,6 +34,9 @@ public partial class App : System.Windows.Application
     private bool _registeredHotkey;
     private bool _registeredVoiceHotkey;
     private SpeechService? _speech;
+    private FishAudioClient? _fishVoice;
+    private VoicePlaybackService? _voicePlayback;
+    private CancellationTokenSource? _voiceCts;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromSeconds(45) };
     private bool _watchBusy;
     private string _lastReaction = "";
@@ -52,6 +55,8 @@ public partial class App : System.Windows.Application
         Settings = Store.LoadSettings();
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
+        _fishVoice = new FishAudioClient(Secrets);
+        _voicePlayback = new VoicePlaybackService(Dispatcher);
         Reminders = new ReminderScheduler(Store, NotifyReminder);
         _speech = new SpeechService(text =>
             Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
@@ -126,9 +131,45 @@ public partial class App : System.Windows.Application
 
     public void PreviewVoice(string voice)
     {
-        if (_speech is null) return;
-        _speech.Speak("Hey, choom. Capri's online.", voice);
+        CancelVoiceOutput();
+        _speech?.Speak("Hey, choom. Capri's online.", voice);
     }
+
+    public Task PreviewFishVoiceAsync(string model, string referenceId) =>
+        SpeakFishAsync("Hey, choom. Capri's online. Ready to cause some trouble?",
+            model, referenceId);
+
+    private void CancelVoiceOutput()
+    {
+        _voiceCts?.Cancel();
+        _voiceCts?.Dispose();
+        _voiceCts = null;
+        _voicePlayback?.Stop();
+        _speech?.StopSpeaking();
+    }
+
+    private async Task SpeakFishAsync(string text, string model, string referenceId)
+    {
+        if (_fishVoice is null || _voicePlayback is null)
+            throw new InvalidOperationException("Fish Audio voice is not available.");
+        CancelVoiceOutput();
+        var cts = new CancellationTokenSource();
+        _voiceCts = cts;
+        var token = cts.Token;
+        try
+        {
+            var audio = await _fishVoice.SynthesizeAsync(
+                text.Length > 650 ? text[..650] : text, model, referenceId, token);
+            if (!token.IsCancellationRequested)
+                _voicePlayback.PlayMp3(audio);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // A newer reply or a stop command interrupted the request.
+        }
+    }
+
+    public void StopVoiceOutput() => CancelVoiceOutput();
 
     public void RefreshChatConfiguration() => _chat?.RefreshBrainConfiguration();
 
@@ -145,9 +186,31 @@ public partial class App : System.Windows.Application
 
     public void SpeakIfEnabled(string text)
     {
-        if (!Settings.SpeakReplies || _speech is null) return;
-        try { _speech.Speak(text, Settings.SpeechVoice); }
-        catch (Exception ex) { Debug.WriteLine("Speech output failed: " + ex.Message); }
+        if (!Settings.SpeakReplies || _speech is null || string.IsNullOrWhiteSpace(text)) return;
+        if (!string.Equals(Settings.VoiceProvider, "fish", StringComparison.Ordinal))
+        {
+            try
+            {
+                CancelVoiceOutput();
+                _speech.Speak(text, Settings.SpeechVoice);
+            }
+            catch (Exception ex) { Debug.WriteLine("Windows speech output failed: " + ex.Message); }
+            return;
+        }
+        _ = SpeakFishSafelyAsync(text);
+    }
+
+    private async Task SpeakFishSafelyAsync(string text)
+    {
+        try
+        {
+            await SpeakFishAsync(text, Settings.FishModel, Settings.FishReferenceId);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Fish speech output failed: " + ex.GetType().Name);
+            _companion?.ShowReaction("Fish voice unavailable. Check Voice Setup.");
+        }
     }
 
     public async Task<string> AskScreenAsync(string question)
@@ -359,6 +422,9 @@ public partial class App : System.Windows.Application
     {
         _watchTimer.Stop();
         Reminders?.Dispose();
+        CancelVoiceOutput();
+        _voicePlayback?.Dispose();
+        _fishVoice?.Dispose();
         _speech?.Dispose();
         if (_registeredHotkey && _windowHandle != IntPtr.Zero)
             UnregisterHotKey(_windowHandle, HotkeyId);

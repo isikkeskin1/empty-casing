@@ -25,3 +25,12 @@ The installer is not signed. A warning is not proof of malware, but it is not pr
 ## Reminder information
 
 Reminder text and due dates are stored unencrypted in %LOCALAPPDATA%\CapriDesktop\reminders.json (the same local directory used for ordinary chat history). Notifications can appear on the desktop or lock screen depending on Windows settings, so avoid writing highly sensitive secrets into reminders. No reminder text is transmitted to a cloud AI provider by the deterministic reminder engine.
+
+
+## Fish Audio (optional voice provider)
+
+When Fish Audio is selected with SPEAK REPLIES on, Capri sends reply, reminder or reaction text to https://api.fish.audio/v1/tts using a bearer token and a selected model header. TEST VOICE transmits a short fixed phrase. Fish sends MP3 bytes, decoded and played from memory using NAudio, not written to disk by Capri. Fish may process/retain text and may charge for a paid model.
+
+The Fish key is encrypted with the Windows user's DPAPI in the credentials folder as fish.dpapi, never in source files or plain settings. The Voice Setup DELETE SAVED FISH KEY button deletes the local copy; it does not revoke the key at Fish. Revoke any previously disclosed key on the Fish website.
+
+The endpoint is pinned and the app accepts only the s2.1-pro-free or s2.1-pro model headers. Input text, audio size and network duration are bounded. Voice reference IDs must refer to voices whose use is authorized.

@@ -34,3 +34,12 @@ Mainframe has a **WATCH MONITOR** picker. Choose Primary display or one of your 
 Set a timer by typing or saying "set a timer for 30 seconds" or "remind me in 10 minutes to stretch". Use "show reminders" for pending entries and "cancel reminder #2" to cancel one. Reminders are stored on your PC, displayed in Capri's chat/bubble and as Windows tray notifications. The app must be open to deliver live notifications; missed reminders are delivered after the next app launch.
 
 Ctrl+Alt+V toggles microphone recognition for the current session (if Windows language packs permit it); Ctrl+Shift+Space toggles the chat panel. Neither shortcut starts cloud screen watching.
+
+
+## Fish Audio cloud voice
+
+Open SET UP BRAIN / VOICE. Under HER VOICE select CLOUD — Fish Audio. Generate a NEW API key at https://fish.audio/app/api-keys and paste it into the Fish key field (separate from your chat-brain key). Choose S2.1 Pro Free (s2.1-pro-free) for the free developer tier, if eligible, or S2.1 Pro (s2.1-pro) for the potentially billed production tier. Fish documents the free offer through November 30, 2026, subject to fair use; verify current limits before testing.
+
+Optional voice reference ID: enter an ID only for a voice you have permission to use. If blank, Fish uses the default voice. TEST VOICE makes a real API call and may use quotas or paid credits. Turn on Speak replies aloud after setup and SAVE. Every spoken reply, reaction or reminder is then sent as text to Fish. Audio is played directly in memory.
+
+The key is encrypted for this Windows account in %LOCALAPPDATA%\CapriDesktop\credentials\fish.dpapi. DELETE SAVED FISH KEY removes the local encrypted copy, not the key from Fish's servers. Revoke a disclosed key and generate another. This feature does not record or transmit microphone audio to Fish and does not provide voice cloning.

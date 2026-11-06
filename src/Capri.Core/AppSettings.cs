@@ -10,6 +10,9 @@ public sealed class AppSettings
     public bool SetupCompleted { get; set; }
     public int ScreenIndex { get; set; } = -1;
     public string SpeechVoice { get; set; } = "";
+    public string VoiceProvider { get; set; } = "windows";
+    public string FishModel { get; set; } = "s2.1-pro-free";
+    public string FishReferenceId { get; set; } = "";
     public bool WatchScreen { get; set; }
     public bool ListenToMicrophone { get; set; }
     public bool SpeakReplies { get; set; }

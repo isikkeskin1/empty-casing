@@ -46,6 +46,15 @@ public partial class SetupWindow : Window
         VoiceBox.SelectedIndex = Enumerable.Range(0, VoiceBox.Items.Count).FirstOrDefault(i =>
             (string)((ComboBoxItem)VoiceBox.Items[i]).Tag == _settings.SpeechVoice);
 
+        VoiceProviderBox.Items.Add(new ComboBoxItem { Content = "LOCAL — Windows built-in voice", Tag = "windows" });
+        VoiceProviderBox.Items.Add(new ComboBoxItem { Content = "CLOUD — Fish Audio", Tag = "fish" });
+        VoiceProviderBox.SelectedIndex = _settings.VoiceProvider == "fish" ? 1 : 0;
+        FishModelBox.Items.Add(new ComboBoxItem { Content = "S2.1 Pro Free — developer tier", Tag = FishAudioClient.FreeModel });
+        FishModelBox.Items.Add(new ComboBoxItem { Content = "S2.1 Pro — paid tier", Tag = FishAudioClient.ProModel });
+        FishModelBox.SelectedIndex = _settings.FishModel == FishAudioClient.ProModel ? 1 : 0;
+        FishReferenceBox.Text = _settings.FishReferenceId;
+        UpdateVoiceProvider();
+
         _loading = false;
         UpdateProvider();
         Closed += (_, _) =>
@@ -57,6 +66,54 @@ public partial class SetupWindow : Window
 
     private string SelectedProvider =>
         (ProviderBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "local";
+
+    private string SelectedVoiceProvider =>
+        (VoiceProviderBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "windows";
+
+    private string SelectedFishModel =>
+        (FishModelBox.SelectedItem as ComboBoxItem)?.Tag as string ?? FishAudioClient.FreeModel;
+
+    private string SelectedFishReference => FishReferenceBox.Text.Trim();
+
+    private void UpdateVoiceProvider()
+    {
+        var fish = SelectedVoiceProvider == "fish";
+        WindowsVoicePanel.Visibility = fish ? Visibility.Collapsed : Visibility.Visible;
+        FishVoicePanel.Visibility = fish ? Visibility.Visible : Visibility.Collapsed;
+        FishSavedKeyText.Text = _secrets.HasKey(FishAudioClient.KeyId)
+            ? "Encrypted key saved for this Windows account. Leave blank to keep it."
+            : "No Fish Audio key saved. Generate a NEW key and enter it here.";
+    }
+
+    private void VoiceProvider_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || FishVoicePanel is null || WindowsVoicePanel is null) return;
+        UpdateVoiceProvider();
+    }
+
+    private void SaveFishKeyIfEntered()
+    {
+        if (string.IsNullOrWhiteSpace(FishKeyBox.Password)) return;
+        _secrets.Save(FishAudioClient.KeyId, FishKeyBox.Password);
+        FishKeyBox.Clear();
+        UpdateVoiceProvider();
+    }
+
+    private void GetFishKey_Click(object sender, RoutedEventArgs e) =>
+        OpenOfficialLink("https://fish.audio/app/api-keys");
+
+    private void RemoveFishKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (System.Windows.MessageBox.Show(
+                "Delete the locally saved Fish Audio key? This does not revoke it on Fish Audio.",
+                "Capri — remove Fish key", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        _secrets.Delete(FishAudioClient.KeyId);
+        FishKeyBox.Clear();
+        UpdateVoiceProvider();
+        StatusText.Text = "Locally stored Fish Audio key deleted. Revoke it separately on Fish Audio if needed.";
+    }
 
     private void UpdateProvider()
     {
@@ -90,7 +147,20 @@ public partial class SetupWindow : Window
         _settings.CloudTextModel = CloudModelBox.Text.Trim();
         _settings.CloudVisionModel = CloudVisionBox.Text.Trim();
         _settings.SpeechVoice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+        _settings.VoiceProvider = SelectedVoiceProvider;
+        _settings.FishModel = SelectedFishModel;
+        _settings.FishReferenceId = SelectedFishReference;
         _settings.SpeakReplies = SpeakOnCheck.IsChecked == true;
+        if (_settings.VoiceProvider == "fish")
+        {
+            if (!FishAudioClient.IsSupportedModel(_settings.FishModel) ||
+                !FishAudioClient.IsValidReference(_settings.FishReferenceId))
+                throw new InvalidOperationException("Invalid Fish voice model or reference ID.");
+            SaveFishKeyIfEntered();
+            if (!_secrets.HasKey(FishAudioClient.KeyId))
+                throw new InvalidOperationException(
+                    "Enter a new Fish Audio key before selecting the cloud voice.");
+        }
         if (string.IsNullOrWhiteSpace(_settings.OllamaModel) ||
             string.IsNullOrWhiteSpace(_settings.VisionModel) ||
             (!ProviderCatalog.IsLocal(SelectedProvider) && string.IsNullOrWhiteSpace(_settings.CloudTextModel)))
@@ -178,15 +248,32 @@ public partial class SetupWindow : Window
         finally { TestButton.IsEnabled = true; }
     }
 
-    private void PreviewVoice_Click(object sender, RoutedEventArgs e)
+    private async void PreviewVoice_Click(object sender, RoutedEventArgs e)
     {
+        PreviewVoiceButton.IsEnabled = false;
         try
         {
-            var voice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
-            App.Instance.PreviewVoice(voice);
-            StatusText.Text = "Playing Windows voice preview.";
+            if (SelectedVoiceProvider == "fish")
+            {
+                if (!FishAudioClient.IsSupportedModel(SelectedFishModel) ||
+                    !FishAudioClient.IsValidReference(SelectedFishReference))
+                    throw new InvalidOperationException("Select a supported Fish model and a valid voice reference ID.");
+                SaveFishKeyIfEntered();
+                if (!_secrets.HasKey(FishAudioClient.KeyId))
+                    throw new InvalidOperationException("Enter a new Fish Audio API key.");
+                StatusText.Text = "Requesting Fish voice preview (text sent to Fish Audio)...";
+                await App.Instance.PreviewFishVoiceAsync(SelectedFishModel, SelectedFishReference);
+                StatusText.Text = "Fish voice preview playing. The speech request may count toward your quota.";
+            }
+            else
+            {
+                var voice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+                App.Instance.PreviewVoice(voice);
+                StatusText.Text = "Playing local Windows voice preview.";
+            }
         }
         catch (Exception ex) { StatusText.Text = "Voice preview failed: " + ex.Message; }
+        finally { PreviewVoiceButton.IsEnabled = true; }
     }
 
     private void Finish_Click(object sender, RoutedEventArgs e)
