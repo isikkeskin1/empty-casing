@@ -140,6 +140,11 @@
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>
             <TextBlock Text="Voice interruption is OFF by default because speaker audio can echo into microphones. When enabled, 'Capri, cancel that' can stop a reply, but ordinary overheard speech cannot issue commands. The INTERRUPT REPLY shortcut always works."
                        Margin="21,3,0,0" Foreground="#8FA7B8" TextWrapping="Wrap" FontSize="11"/>
+            <CheckBox x:Name="OpenChatForVoiceCheck"
+                      Content="Open the full chat window for spoken requests"
+                      Margin="0,12,0,0" Foreground="#C7E2E9"/>
+            <TextBlock Text="OFF by default: Capri stays on the desktop overlay instead of switching focus away from your game. If spoken replies are disabled, the chat opens to show the answer."
+                       Margin="21,3,0,0" Foreground="#8FA7B8" TextWrapping="Wrap" FontSize="11"/>
             <CheckBox x:Name="PettingCheck" Content="React to gentle mouse rubs over Capri"
                       Margin="0,12,0,0" Foreground="#C7E2E9"/>
           </StackPanel>
