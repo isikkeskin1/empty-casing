@@ -45,7 +45,7 @@
                      TextWrapping="Wrap" Margin="0,8,0,10" Foreground="#DBBDCC"/>
           <CheckBox x:Name="InformedCheck"
                     Content="I told call participants Capri is an AI and obtained permission to listen/respond."
-                    Foreground="#F3D4DF" TextWrapping="Wrap"
+                    Foreground="#F3D4DF"
                     Margin="0,0,0,2"/>
         </StackPanel>
       </Border>
