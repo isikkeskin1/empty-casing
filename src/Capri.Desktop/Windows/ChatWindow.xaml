@@ -1,216 +1,434 @@
 <Window x:Class="Capri.Desktop.Windows.ChatWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="620" Height="800" MinWidth="520" MinHeight="630" Background="#0C101A"
-        Foreground="#E1EBF7" Title="Capri Desktop — Mainframe"
-        WindowStartupLocation="CenterScreen">
-  <Window.Resources>
-    <SolidColorBrush x:Key="BorderTone" Color="#31404F"/>
-    <Style TargetType="Button">
-      <Setter Property="Foreground" Value="#E5F7FA"/>
-      <Setter Property="Background" Value="#233142"/>
-      <Setter Property="BorderBrush" Value="#52647B"/>
-      <Setter Property="Padding" Value="11,6"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="FontFamily" Value="Consolas"/>
-      <Setter Property="FontSize" Value="12"/>
-    </Style>
-    <Style TargetType="TextBox">
-      <Setter Property="Foreground" Value="#F2F7FA"/>
-      <Setter Property="Background" Value="#182334"/>
-      <Setter Property="BorderBrush" Value="#405467"/>
-      <Setter Property="Padding" Value="9"/>
-      <Setter Property="CaretBrush" Value="#FB82A8"/>
-    </Style>
-  </Window.Resources>
-
-  <Grid Margin="20">
+        Title="Capri — Control Deck" Width="1040" Height="760"
+        MinWidth="780" MinHeight="620" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource CapriBaseBrush}"
+        Foreground="{StaticResource CapriTextBrush}"
+        FontFamily="Segoe UI" FontSize="13"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <Grid Margin="18">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <Grid Margin="0,0,0,15">
+    <!-- Brand header, with quiet status and a single prominent Setup entrypoint. -->
+    <Grid Margin="0,0,0,16">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <StackPanel>
-        <TextBlock Text="CAPRI" FontFamily="Consolas" FontSize="34"
-                   FontWeight="Bold" Foreground="#FA8EB3"/>
-        <TextBlock Text="DESKTOP MAINFRAME  /  INDEPENDENT FAN BUILD"
-                   FontFamily="Consolas" FontSize="10" Foreground="#9FA9B8"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="CAPRI" FontFamily="Bahnschrift SemiCondensed" FontSize="36"
+                     FontWeight="Bold" Foreground="{StaticResource CapriYellowBrush}"/>
+          <TextBlock Text=" // CONTROL DECK" FontFamily="Consolas" FontSize="13"
+                     Margin="12,15,0,0" Foreground="{StaticResource CapriCyanBrush}"/>
+        </StackPanel>
+        <TextBlock Text="YOUR DESKTOP COMPANION  •  LOCAL PRESENCE / CONNECTED TOOLS"
+                   Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas" FontSize="10"/>
       </StackPanel>
-      <Border Grid.Column="1" VerticalAlignment="Center" Padding="9,6"
-              Background="#1C2633" CornerRadius="4">
-        <TextBlock x:Name="StatusDisplay" Text="CHECKING OLLAMA"
-                   FontFamily="Consolas" FontSize="10" Foreground="#F1CFA0"/>
+      <Border Grid.Column="1" VerticalAlignment="Center"
+              BorderBrush="{StaticResource CapriTrimBrush}" BorderThickness="1"
+              Background="{StaticResource CapriPanelBrush}"
+              Padding="13,10" Margin="0,0,10,0" CornerRadius="0,6,0,0">
+        <TextBlock x:Name="StatusDisplay" Text="CHECKING BRAIN" FontFamily="Consolas"
+                   FontSize="11" Foreground="{StaticResource CapriYellowBrush}"/>
       </Border>
+      <Button Grid.Column="2" Content="SET UP BRAIN" Click="SetupBrain_Click"
+              Style="{StaticResource CapriButton}" VerticalAlignment="Center"
+              ToolTip="Choose a local or cloud model and configure voice."/>
     </Grid>
 
-    <Border Grid.Row="1" BorderBrush="{StaticResource BorderTone}" BorderThickness="1"
-            Margin="0,0,0,12" Padding="10">
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="CHAT MODEL" Foreground="#92AABE" FontFamily="Consolas"
-                   FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center"/>
-        <TextBox x:Name="ModelBox" Grid.Column="1" MinWidth="100" Padding="6,5"/>
-        <Button Grid.Column="2" Content="SAVE" Click="SaveModel_Click"
-                Margin="8,0,0,0" Padding="10,5"/>
-        <Button Grid.Column="3" Content="SET UP BRAIN" Click="SetupBrain_Click"
-                Margin="8,0,0,0" Padding="10,5"/>
-        <Button Grid.Column="4" Content="INPUTS" Click="OpenInputs_Click"
-                Margin="8,0,0,0" Padding="10,5"/>
-      </Grid>
-    </Border>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="200"/>
+        <ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
 
-    <Border Grid.Row="2" BorderBrush="{StaticResource BorderTone}" BorderThickness="1"
-            Margin="0,0,0,12" Padding="10" Background="#121D2B">
-      <StackPanel>
-        <DockPanel>
-          <TextBlock Text="VISION MODEL" VerticalAlignment="Center" Foreground="#92AABE"
-                     FontFamily="Consolas" FontSize="11" Margin="0,0,10,0"/>
-          <Button Content="LOOK NOW" DockPanel.Dock="Right" Click="Look_Click"
-                  Padding="10,5" Margin="8,0,0,0"/>
-          <TextBox x:Name="VisionModelBox" MinWidth="100" Padding="7,5"/>
+      <!-- Static sidebar: navigation stays available at every screen height. -->
+      <Border Grid.Column="0" Style="{StaticResource CapriPanel}" Padding="12">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Bottom">
+            <Border BorderBrush="#3D5962" BorderThickness="0,1,0,0" Padding="2,13,2,9">
+              <StackPanel>
+                <TextBlock Text="/// SYSTEM STATE" Style="{StaticResource CapriLabel}"
+                           Foreground="{StaticResource CapriYellowBrush}" Margin="0,0,0,8"/>
+                <TextBlock x:Name="QuickMicState" Text="MIC  /  OFF"
+                           Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas"
+                           FontSize="11" Margin="0,0,0,5"/>
+                <TextBlock x:Name="QuickSenseState" Text="SENSE  /  OFF"
+                           Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas"
+                           FontSize="11" Margin="0,0,0,5"/>
+                <TextBlock x:Name="QuickActionsState" Text="ACTIONS  /  DISARMED"
+                           Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas"
+                           FontSize="11" Margin="0,0,0,7"/>
+                <TextBlock Text="Nothing listens or watches automatically at startup."
+                           Style="{StaticResource CapriSubtext}" FontSize="10"/>
+              </StackPanel>
+            </Border>
+            <Button Content="STOP ALL · DISARM" Click="StopInputs_Click"
+                    Style="{StaticResource CapriDangerButton}"
+                    Margin="0,12,0,0"
+                    ToolTip="Immediately turn off microphone, screen watch and desktop actions."/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Text="/// MODULES" Style="{StaticResource CapriLabel}"
+                       Margin="5,5,0,16"/>
+            <Button x:Name="NavChat" Content="01   Chat" Tag="CHAT" Click="Navigate_Click"
+                    Style="{StaticResource CapriNavActiveButton}"/>
+            <Button x:Name="NavModes" Content="02   Quick modes" Tag="MODES" Click="Navigate_Click"
+                    Style="{StaticResource CapriNavButton}"/>
+            <Button x:Name="NavControls" Content="03   Senses &amp; control"
+                    Tag="CONTROLS" Click="Navigate_Click"
+                    Style="{StaticResource CapriNavButton}"/>
+            <Button x:Name="NavConnect" Content="04   Apps &amp; tools"
+                    Tag="CONNECT" Click="Navigate_Click"
+                    Style="{StaticResource CapriNavButton}"/>
+            <TextBlock Text="TIP  •  Double-click Capri on your desktop to return to chat."
+                       Margin="5,22,4,0" Style="{StaticResource CapriSubtext}"
+                       FontSize="11"/>
+          </StackPanel>
         </DockPanel>
-        <WrapPanel Margin="0,10,0,0">
-          <CheckBox x:Name="WatchCheck" Content="WATCH SCREEN" Margin="0,0,18,8"
-                    Checked="Watch_Changed" Unchecked="Watch_Changed"/>
-          <CheckBox x:Name="ContextCheck" Content="CONTEXT SENSE · APP + MUSIC"
-                    Margin="0,0,18,8" Foreground="#86DDD5"
-                    ToolTip="Opt-in: include the active app process and Windows Now Playing title in regular chat-model requests, even with a cloud brain."
-                    Checked="Context_Changed" Unchecked="Context_Changed"/>
-          <CheckBox x:Name="PresenceCheck" Content="LIVE PRESENCE · LOCAL"
-                    Margin="0,0,18,8" Foreground="#F9B4D1"
-                    ToolTip="Per-session opt-in to watch process and media changes every 20 seconds. A linked Spotify account is polled only when Windows has no song metadata. Local reactions and temporary RAM memory; nothing is sent to a model unless CONTEXT SENSE is also on and you send a chat request."
-                    Checked="Presence_Changed" Unchecked="Presence_Changed"/>
-          <Button x:Name="TalkOnceButton" Content="TALK ONCE" Click="TalkOnce_Click"
-                  Margin="0,0,12,8" Padding="8,3"/>
-          <Button Content="STOP VOICE" Click="StopVoice_Click"
-                  Margin="0,0,12,8" Padding="8,3"/>
-          <CheckBox x:Name="MicCheck" Content="MIC ON" Margin="0,0,18,8"
-                    Checked="Mic_Changed" Unchecked="Mic_Changed"/>
-          <CheckBox x:Name="DanceCheck" Content="DANCE TO AUDIO" Margin="0,0,18,8"
-                    Checked="Dance_Changed" Unchecked="Dance_Changed"/>
-          <CheckBox x:Name="SpeakCheck" Content="SPEAK REPLIES" Margin="0,0,18,8"
-                    Checked="Speak_Changed" Unchecked="Speak_Changed"/>
-          <CheckBox x:Name="ActionsCheck" Content="DESKTOP ACTIONS" Margin="0,0,0,8"
-                    Checked="Actions_Changed" Unchecked="Actions_Changed"/>
-          <CheckBox x:Name="HandsFreeCheck" Content="HANDS-FREE · NO POPUPS"
-                    Margin="12,0,0,8" Foreground="#86E7CD"
-                    Checked="HandsFree_Changed" Unchecked="HandsFree_Changed"/>
-          <Button Content="STOP ALL" Click="StopInputs_Click"
-                  Margin="10,0,0,8" Background="#78304A"
-                  BorderBrush="#DD6787" Padding="8,3"/>
-          <Button Content="WINDOW CONTROLS" Click="OpenUiInspector_Click"
-                  Margin="10,0,0,8" Padding="8,3"/>
-          <Button Content="AUTO TASK" Click="OpenAutoTask_Click"
-                  Margin="10,0,0,8" Background="#24564D" Padding="8,3"/>
-          <Button Content="ROUTINES" Click="ListRoutines_Click"
-                  Margin="10,0,0,8" Background="#355B51" Padding="8,3"
-                  ToolTip="Try: gaming mode, Roblox mode, Roblox dev mode, study mode."/>
-          <Button Content="GAMES" Click="OpenGames_Click"
-                  Margin="10,0,0,8" Padding="8,3"/>
-          <Button Content="NOW PLAYING" Click="OpenNowPlaying_Click"
-                  Margin="10,0,0,8" Padding="8,3"/>
-          <Button Content="VOICE CALL" Click="OpenCallCompanion_Click"
-                  Margin="10,0,0,8" Padding="8,3" Background="#543A6D"/>
-          <Button Content="CONNECTIONS" Click="OpenConnections_Click"
-                  Margin="10,0,0,8" Padding="8,3"
-                  Background="#1E5B68" BorderBrush="#70CBDA"/>
-          <Button Content="GAME HELP" Click="GameHelp_Click"
-                  Margin="10,0,0,8" Background="#364E67" Padding="8,3"/>
-        </WrapPanel>
-        <DockPanel Margin="0,4,0,10">
-          <TextBlock Text="WATCH MONITOR" VerticalAlignment="Center" Foreground="#92ACBA"
-                     FontSize="10" FontFamily="Consolas" Margin="0,0,10,0"/>
-          <ComboBox x:Name="ScreenCombo" SelectionChanged="Screen_Changed"
-                    MinWidth="190" MaxWidth="350" Padding="6,4"
-                    Background="#182334" Foreground="#121B29"/>
-        </DockPanel>
-        <DockPanel Margin="0,2,0,10">
-          <TextBlock Text="WATCH EVERY" VerticalAlignment="Center" Foreground="#92ACBA"
-                     FontSize="10" FontFamily="Consolas" Margin="0,0,10,0"/>
-          <ComboBox x:Name="WatchIntervalBox" SelectionChanged="WatchInterval_Changed"
-                    MinWidth="145" Padding="6,4"
-                    Background="#182334" Foreground="#121B29"/>
-        </DockPanel>
-        <TextBlock Foreground="#849CAB" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"
-                   Text="DANCE TO AUDIO monitors system playback levels (including calls) only while enabled and never stores audio. TALK ONCE listens for one request without the Capri prefix (20-second timeout). For continuous listening, say 'Capri' before requests. Optional 20-second follow-ups and voice interruption are in INPUTS. Vision skips unchanged screens. Try: 'remind me in 10 minutes to stretch' or 'set a timer for 30 seconds'. Say 'gaming mode', 'Roblox dev mode' or 'study mode' to launch a validated session routine. HANDS-FREE skips the single routine preview and per-action warnings for supported commands and auto tasks; it arms DESKTOP ACTIONS when switched on. Startup and STOP ALL disarm execution. Purchases, credentials, sending and destructive actions stay blocked."/>
-      </StackPanel>
-    </Border>
+      </Border>
 
-    <Border Grid.Row="3" BorderBrush="{StaticResource BorderTone}" BorderThickness="1"
-            Background="#111927" CornerRadius="4">
-      <ScrollViewer x:Name="TranscriptScroll" VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding Messages}" Margin="12">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border x:Name="MessageBackground" Background="#1A2937"
-                      BorderBrush="#38485C" BorderThickness="1" CornerRadius="6"
-                      Padding="11" Margin="0,0,20,11">
+      <Grid Grid.Column="2">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Margin="1,0,0,12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+            <TextBlock x:Name="PageTitle" Text="Talk to Capri"
+                       FontFamily="Bahnschrift SemiCondensed" FontSize="23"
+                       FontWeight="SemiBold" Foreground="{StaticResource CapriTextBrush}"/>
+            <TextBlock x:Name="PageSubtitle"
+                       Text="Ask a question, launch a task or just talk. Capri is here."
+                       Foreground="{StaticResource CapriMutedBrush}" FontSize="11"/>
+          </StackPanel>
+          <Button Grid.Column="1" Content="TALK ONCE" Click="TalkOnce_Click"
+                  x:Name="TalkOnceButton" Style="{StaticResource CapriPrimaryButton}"
+                  VerticalAlignment="Center" Margin="12,0,0,0"
+                  ToolTip="Listen for one request; no wake word needed."/>
+        </Grid>
+
+        <!-- The chat transcript is never recreated when switching modules. -->
+        <Border x:Name="ChatPage" Grid.Row="1" Style="{StaticResource CapriPanel}"
+                Padding="8,13,8,8">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <DockPanel Margin="10,0,10,12">
+              <TextBlock Text="/// LIVE TRANSCRIPT" Style="{StaticResource CapriLabel}"/>
+              <TextBlock DockPanel.Dock="Right" Text="LOCAL HISTORY" FontFamily="Consolas"
+                         Foreground="{StaticResource CapriMutedBrush}" FontSize="10"
+                         HorizontalAlignment="Right"/>
+            </DockPanel>
+            <ScrollViewer x:Name="TranscriptScroll" Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Messages}" Margin="10,0,10,5">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border x:Name="MessageBackground" Background="#182B39"
+                            BorderBrush="#426674" BorderThickness="1"
+                            CornerRadius="0,8,0,0" Padding="13,11"
+                            Margin="0,0,28,12">
+                      <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                          <TextBlock Text="{Binding DisplayRole}" FontFamily="Consolas"
+                                     FontSize="10" FontWeight="Bold"
+                                     Foreground="{StaticResource CapriCyanBrush}"/>
+                          <TextBlock Text="{Binding DisplayTime}"
+                                     DockPanel.Dock="Right" FontFamily="Consolas"
+                                     FontSize="10" Foreground="{StaticResource CapriMutedBrush}"
+                                     HorizontalAlignment="Right"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                   FontSize="13" LineHeight="20"/>
+                      </StackPanel>
+                    </Border>
+                    <DataTemplate.Triggers>
+                      <DataTrigger Binding="{Binding Role}" Value="user">
+                        <Setter TargetName="MessageBackground" Property="Background" Value="#2C2336"/>
+                        <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#795375"/>
+                        <Setter TargetName="MessageBackground" Property="Margin" Value="28,0,0,12"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Role}" Value="system">
+                        <Setter TargetName="MessageBackground" Property="Background" Value="#33242C"/>
+                        <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#905C69"/>
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+
+        <!-- Dedicated, readable launch cards instead of an intimidating wall of controls. -->
+        <ScrollViewer x:Name="ModesPage" Grid.Row="1" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,14">
+              <StackPanel>
+                <TextBlock Text="/// ONE COMMAND, MULTIPLE APPS" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Pick a setup and Capri opens the apps for you. Your computer remains in control."
+                           Style="{StaticResource CapriSubtext}" Margin="0,7,0,0"/>
+              </StackPanel>
+            </Border>
+            <WrapPanel>
+              <Border Style="{StaticResource CapriPanel}" Width="282" Margin="0,0,12,12">
                 <StackPanel>
-                  <DockPanel Margin="0,0,0,7">
-                    <TextBlock Text="{Binding DisplayRole}" DockPanel.Dock="Left"
-                               FontFamily="Consolas" FontSize="10" FontWeight="Bold"
-                               Foreground="#FA8EB3"/>
-                    <TextBlock Text="{Binding DisplayTime}" Foreground="#8A9AAB"
-                               FontFamily="Consolas" FontSize="10" HorizontalAlignment="Right"/>
-                  </DockPanel>
-                  <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13"
-                             LineHeight="19"/>
+                  <TextBlock Text="GAMING SESSION" FontSize="18" FontWeight="Bold"
+                             Foreground="{StaticResource CapriYellowBrush}"/>
+                  <TextBlock Text="Discord  +  Steam  +  Spotify"
+                             Style="{StaticResource CapriSubtext}" Margin="0,8,0,18"/>
+                  <Button Content="START GAMING" Tag="gaming mode" Click="LaunchRoutine_Click"
+                          Style="{StaticResource CapriPrimaryButton}"/>
                 </StackPanel>
               </Border>
-              <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Role}" Value="user">
-                  <Setter TargetName="MessageBackground" Property="Background" Value="#292337"/>
-                  <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#5D486F"/>
-                  <Setter TargetName="MessageBackground" Property="Margin" Value="20,0,0,11"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Role}" Value="system">
-                  <Setter TargetName="MessageBackground" Property="Background" Value="#332027"/>
-                  <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#6C4351"/>
-                </DataTrigger>
-              </DataTemplate.Triggers>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
-    </Border>
+              <Border Style="{StaticResource CapriPanel}" Width="282" Margin="0,0,12,12">
+                <StackPanel>
+                  <TextBlock Text="ROBLOX SESSION" FontSize="18" FontWeight="Bold"
+                             Foreground="{StaticResource CapriYellowBrush}"/>
+                  <TextBlock Text="Discord  +  Roblox home  +  Spotify"
+                             Style="{StaticResource CapriSubtext}" Margin="0,8,0,18"/>
+                  <Button Content="OPEN ROBLOX MODE" Tag="roblox mode"
+                          Click="LaunchRoutine_Click" Style="{StaticResource CapriPrimaryButton}"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource CapriPanel}" Width="282" Margin="0,0,12,12">
+                <StackPanel>
+                  <TextBlock Text="ROBLOX DEVELOPMENT" FontSize="18" FontWeight="Bold"
+                             Foreground="{StaticResource CapriCyanBrush}"/>
+                  <TextBlock Text="Creator Dashboard  +  VS Code  +  Spotify"
+                             Style="{StaticResource CapriSubtext}" Margin="0,8,0,18"/>
+                  <Button Content="START BUILDING" Tag="roblox dev mode"
+                          Click="LaunchRoutine_Click" Style="{StaticResource CapriPrimaryButton}"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource CapriPanel}" Width="282" Margin="0,0,12,12">
+                <StackPanel>
+                  <TextBlock Text="FOCUS SESSION" FontSize="18" FontWeight="Bold"
+                             Foreground="{StaticResource CapriCyanBrush}"/>
+                  <TextBlock Text="VS Code  +  Notepad  +  Spotify"
+                             Style="{StaticResource CapriSubtext}" Margin="0,8,0,18"/>
+                  <Button Content="LOCK IN" Tag="study mode" Click="LaunchRoutine_Click"
+                          Style="{StaticResource CapriPrimaryButton}"/>
+                </StackPanel>
+              </Border>
+            </WrapPanel>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,2,0,12">
+              <StackPanel>
+                <TextBlock Text="/// BEFORE YOU LAUNCH" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Turn on Desktop Actions in Senses &amp; Control. Regular mode asks once for the whole routine; Hands-free skips routine approval. STOP ALL always cancels any remaining steps. The cards open apps; they don't silently join calls or start music."
+                           Style="{StaticResource CapriSubtext}" Margin="0,9,0,14"/>
+                <Button Content="VIEW CONTROL SETTINGS" Tag="CONTROLS" Click="Navigate_Click"
+                        Style="{StaticResource CapriButton}" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
 
-    <Grid Grid.Row="4" Margin="0,12,0,8">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <TextBox x:Name="PromptBox" AcceptsReturn="True" TextWrapping="Wrap"
-               MinHeight="64" MaxHeight="135" VerticalScrollBarVisibility="Auto"
-               KeyDown="Prompt_KeyDown"/>
-      <Button x:Name="SendButton" Grid.Column="1" Width="100"
-              Content="SEND ↗" FontWeight="SemiBold" Margin="10,0,0,0"
-              Click="Send_Click"/>
+        <!-- Explicitly grouped permission switches; no endless all-in-one toolbar. -->
+        <ScrollViewer x:Name="ControlsPage" Grid.Row="1" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// VOICE" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Talk naturally. Microphone access stays off until you enable it."
+                           Style="{StaticResource CapriSubtext}" Margin="0,5,0,13"/>
+                <WrapPanel>
+                  <CheckBox x:Name="MicCheck" Content="Microphone on" Style="{StaticResource CapriToggle}"
+                            Checked="Mic_Changed" Unchecked="Mic_Changed"/>
+                  <CheckBox x:Name="SpeakCheck" Content="Speak replies" Style="{StaticResource CapriToggle}"
+                            Checked="Speak_Changed" Unchecked="Speak_Changed"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="STOP SPEAKING" Click="StopVoice_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                  <Button Content="VOICE INPUT SETTINGS" Click="OpenInputs_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                  <Button Content="CALL COMPANION" Click="OpenCallCompanion_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// PRESENCE &amp; VISION" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Choose exactly what Capri notices. Screen shots sent to a cloud model require separate permission."
+                           Style="{StaticResource CapriSubtext}" Margin="0,5,0,13"/>
+                <WrapPanel>
+                  <CheckBox x:Name="WatchCheck" Content="Watch screen" Style="{StaticResource CapriToggle}"
+                            Checked="Watch_Changed" Unchecked="Watch_Changed"/>
+                  <CheckBox x:Name="PresenceCheck" Content="Live presence (local)"
+                            ToolTip="Detect app/music changes. Metadata stays local unless Context Sense is also enabled for chat."
+                            Style="{StaticResource CapriToggle}"
+                            Checked="Presence_Changed" Unchecked="Presence_Changed"/>
+                  <CheckBox x:Name="ContextCheck" Content="Share app/music context with brain"
+                            ToolTip="Opt in to include foreground process and media metadata in chat, including with your cloud brain."
+                            Style="{StaticResource CapriToggle}"
+                            Checked="Context_Changed" Unchecked="Context_Changed"/>
+                  <CheckBox x:Name="DanceCheck" Content="React to system audio"
+                            Style="{StaticResource CapriToggle}"
+                            Checked="Dance_Changed" Unchecked="Dance_Changed"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,10">
+                  <Button Content="LOOK NOW" Click="Look_Click"
+                          Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,8"/>
+                  <Button Content="GAME HELP" Click="GameHelp_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <StackPanel Margin="0,0,13,12">
+                    <TextBlock Text="WATCH MONITOR" Style="{StaticResource CapriLabel}" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="ScreenCombo" SelectionChanged="Screen_Changed"
+                              MinWidth="215" Padding="7,7" Background="#182A39"/>
+                  </StackPanel>
+                  <StackPanel Margin="0,0,0,12">
+                    <TextBlock Text="CHECK EVERY" Style="{StaticResource CapriLabel}" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="WatchIntervalBox" SelectionChanged="WatchInterval_Changed"
+                              MinWidth="175" Padding="7,7" Background="#182A39"/>
+                  </StackPanel>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// DESKTOP CONTROL" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Allow safe launches, media controls and bounded navigation. Hands-free skips repeat approval for supported actions."
+                           Style="{StaticResource CapriSubtext}" Margin="0,5,0,13"/>
+                <WrapPanel>
+                  <CheckBox x:Name="ActionsCheck" Content="Desktop actions"
+                            Style="{StaticResource CapriToggle}"
+                            Checked="Actions_Changed" Unchecked="Actions_Changed"/>
+                  <CheckBox x:Name="HandsFreeCheck" Content="Hands-free · no popups"
+                            Style="{StaticResource CapriToggle}"
+                            Checked="HandsFree_Changed" Unchecked="HandsFree_Changed"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="WINDOW CONTROLS" Click="OpenUiInspector_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                  <Button Content="AUTO TASK" Click="OpenAutoTask_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+                  <Button Content="STOP ALL" Click="StopInputs_Click"
+                          Style="{StaticResource CapriDangerButton}" Margin="0,0,9,8"/>
+                </WrapPanel>
+                <TextBlock Text="Purchases, messages, credentials, arbitrary commands and deletion are not granted by Hands-free."
+                           Style="{StaticResource CapriSubtext}" Margin="0,5,0,0" FontSize="11"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// MODEL CONFIGURATION" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Edit model names without reopening the setup wizard."
+                           Style="{StaticResource CapriSubtext}" Margin="0,5,0,14"/>
+                <TextBlock Text="CHAT MODEL" Style="{StaticResource CapriLabel}" Margin="0,0,0,5"/>
+                <TextBox x:Name="ModelBox" Style="{StaticResource CapriInput}" Margin="0,0,0,12"/>
+                <TextBlock Text="VISION MODEL" Style="{StaticResource CapriLabel}" Margin="0,0,0,5"/>
+                <TextBox x:Name="VisionModelBox" Style="{StaticResource CapriInput}" Margin="0,0,0,12"/>
+                <WrapPanel>
+                  <Button Content="SAVE MODEL NAMES" Click="SaveModel_Click"
+                          Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,0"/>
+                  <Button Content="SET UP BRAIN" Click="SetupBrain_Click"
+                          Style="{StaticResource CapriButton}"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Connections remain separate OAuth windows, shown as clear entry points. -->
+        <ScrollViewer x:Name="ConnectionsPage" Grid.Row="1" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// CONNECTED ACCOUNTS" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Connect your own Spotify and Roblox accounts through official authorization."
+                           Style="{StaticResource CapriSubtext}" Margin="0,8,0,15"/>
+                <Button Content="OPEN SPOTIFY &amp; ROBLOX CONNECTIONS"
+                        Click="OpenConnections_Click" Style="{StaticResource CapriPrimaryButton}"
+                        HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// MUSIC" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="See what is playing in Windows and control compatible media sessions."
+                           Style="{StaticResource CapriSubtext}" Margin="0,8,0,15"/>
+                <Button Content="OPEN NOW PLAYING" Click="OpenNowPlaying_Click"
+                        Style="{StaticResource CapriButton}" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// GAMES" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Browse installed Steam games and get screenshot-based guidance."
+                           Style="{StaticResource CapriSubtext}" Margin="0,8,0,15"/>
+                <Button Content="OPEN GAME CENTER" Click="OpenGames_Click"
+                        Style="{StaticResource CapriButton}" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CapriPanel}" Margin="0,0,0,13">
+              <StackPanel>
+                <TextBlock Text="/// TOOLS" Style="{StaticResource CapriLabel}"/>
+                <TextBlock Text="Review a selected text file or check local reminders."
+                           Style="{StaticResource CapriSubtext}" Margin="0,8,0,15"/>
+                <WrapPanel>
+                  <Button Content="READ FILE" Click="ReadFile_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
+                  <Button Content="REMINDERS" Click="ShowReminders_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
+                  <Button Content="ROUTINE COMMANDS" Click="ListRoutines_Click"
+                          Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Permanent chat composer so switching modules never loses the prompt. -->
+        <Grid Grid.Row="2" Margin="0,12,0,9">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBox x:Name="PromptBox" Style="{StaticResource CapriInput}"
+                   AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" MaxHeight="135"
+                   VerticalScrollBarVisibility="Auto" KeyDown="Prompt_KeyDown"
+                   ToolTip="Type a message or request. Enter to send, Shift+Enter for a newline."/>
+          <Button x:Name="SendButton" Grid.Column="1" Content="SEND  ›"
+                  Style="{StaticResource CapriPrimaryButton}" Width="114"
+                  Margin="10,0,0,0" FontSize="13" Click="Send_Click"/>
+        </Grid>
+        <DockPanel Grid.Row="3">
+          <Button DockPanel.Dock="Right" Content="CLEAR CHAT" Click="Clear_Click"
+                  Style="{StaticResource CapriButton}" Padding="10,5" MinHeight="28"
+                  FontSize="10"/>
+          <TextBlock Text="ENTER TO SEND  /  SHIFT+ENTER NEW LINE   •   PRESS STOP ALL TO REVOKE CONTROL"
+                     Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas"
+                     FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+      </Grid>
     </Grid>
-    <DockPanel Grid.Row="5">
-      <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="CLEAR CHAT"
-              Click="Clear_Click" FontSize="10" Padding="7,4"/>
-      <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="REMINDERS"
-              Click="ShowReminders_Click" Margin="0,0,8,0" FontSize="10" Padding="7,4"/>
-      <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Content="READ FILE"
-              Click="ReadFile_Click" Margin="0,0,8,0" FontSize="10" Padding="7,4"/>
-      <TextBlock Text="ENTER SENDS   /   SHIFT+ENTER NEW LINE"
-                 VerticalAlignment="Center" Foreground="#8293A6"
-                 FontFamily="Consolas" FontSize="10"/>
-    </DockPanel>
   </Grid>
 </Window>

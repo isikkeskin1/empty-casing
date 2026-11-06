@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Capri — Autonomous Window Control" Width="710" Height="785"
         MinWidth="570" MinHeight="690" WindowStartupLocation="CenterOwner"
-        Background="#0C1421" Foreground="#E5F3FC">
+        Background="{StaticResource CapriBaseBrush}" Foreground="#E5F3FC">
   <Window.Resources>
-    <Style TargetType="Button">
+    <Style TargetType="Button" BasedOn="{StaticResource CapriButton}">
       <Setter Property="Background" Value="#24344B"/>
       <Setter Property="Foreground" Value="#F4F6FA"/>
       <Setter Property="BorderBrush" Value="#577087"/>
@@ -34,7 +34,7 @@
     </StackPanel>
     <StackPanel>
       <Border Background="#172337" BorderBrush="#3F5872" BorderThickness="1"
-              CornerRadius="5" Padding="12" Margin="0,0,0,12">
+              CornerRadius="0,7,0,0" Padding="12" Margin="0,0,0,12">
         <StackPanel>
           <TextBlock Text="TARGET APPLICATION" Foreground="#91B6CA"
                      FontFamily="Consolas" FontSize="11"/>

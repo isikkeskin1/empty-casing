@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Capri — Voice Call Companion" Width="585" Height="630"
         MinWidth="505" MinHeight="540"
-        Background="#0E1725" Foreground="#E4F2FC"
+        Background="{StaticResource CapriBaseBrush}" Foreground="#E4F2FC"
         WindowStartupLocation="CenterOwner">
   <Window.Resources>
-    <Style TargetType="Button">
+    <Style TargetType="Button" BasedOn="{StaticResource CapriButton}">
       <Setter Property="Background" Value="#26374C"/>
       <Setter Property="Foreground" Value="#E8F4FA"/>
       <Setter Property="BorderBrush" Value="#5A7B8D"/>
@@ -17,12 +17,12 @@
   </Window.Resources>
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="24">
-      <TextBlock Text="CAPRI // CALL COMPANION" Foreground="#FD8DB2"
+      <TextBlock Text="CAPRI // CALL COMPANION" Foreground="{StaticResource CapriYellowBrush}"
                  FontWeight="Bold" FontFamily="Consolas" FontSize="24"/>
       <TextBlock Text="Let Capri join the conversation through your configured virtual mic. Real call audio, not fake call buttons."
                  TextWrapping="Wrap" Foreground="#A7C4D1" Margin="0,8,0,14"/>
       <Border Background="#16263B" BorderBrush="#496F86"
-              BorderThickness="1" Padding="14" CornerRadius="5">
+              BorderThickness="1" Padding="14" CornerRadius="0,7,0,0">
         <StackPanel>
           <TextBlock Text="AUDIO ROUTING" Foreground="#80E1D0"
                      FontWeight="Bold" FontFamily="Consolas"/>
@@ -37,7 +37,7 @@
         </StackPanel>
       </Border>
       <Border Margin="0,13,0,0" BorderBrush="#7D5160" BorderThickness="1"
-              Background="#291D2B" Padding="13" CornerRadius="5">
+              Background="#291D2B" Padding="13" CornerRadius="0,7,0,0">
         <StackPanel>
           <TextBlock Text="CALL CONSENT" Foreground="#FFC8D5"
                      FontWeight="Bold" FontFamily="Consolas"/>

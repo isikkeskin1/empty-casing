@@ -86,6 +86,12 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Capri Control Deck — cyberpunk UI refresh
+
+The desktop Mainframe now uses a consistent Capri-inspired **dark / neon-yellow / cyan / pink** visual language, guided by the owner's reference video. The chat-first layout has a permanent composer, accessible navigation rail, large routine cards, grouped opt-in controls, and a dedicated apps/tools page. Capri's floating desktop character has a small angular speech card with **TALK TO ME** and dismiss actions; the first button activates Talk Once or opens chat if Windows speech isn't configured.
+
+Find the reusable palette and control templates in `src/Capri.Desktop/Themes/CapriTheme.xaml` and read [Control Deck UI guide](docs/CONTROL_DECK_UI.md) for workflow, accessibility and limitations. This is original WPF styling; character art or videos from the reference are not bundled.
+
 ## Session routines and conversation follow-ups
 
 Capri can now handle an entire local app-launch session in one voice/text command:
