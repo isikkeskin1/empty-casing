@@ -29,6 +29,8 @@ public sealed class AppSettings
     public bool EnableSituationalContext { get; set; }
     // Private notes are never injected into cloud/local brain prompts until opt-in.
     public bool UsePersonalMemoryInReplies { get; set; }
+    // Only the provider explicitly consented to may receive saved notes.
+    public string MemoryCloudProviderConsent { get; set; } = "";
     // Show explicit game help as a no-focus HUD for ~30 seconds, never permanent watching.
     public bool ShowGameCoachHud { get; set; } = true;
     public bool ListenToMicrophone { get; set; }
