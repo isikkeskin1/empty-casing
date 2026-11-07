@@ -1,7 +1,7 @@
 <Window x:Class="Capri.Desktop.Windows.ConnectionsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Capri — Connected Accounts" Width="775" Height="820"
+        Title="Capri — Apps &amp; Connections" Width="775" Height="820"
         MinWidth="650" MinHeight="620" Background="{StaticResource CapriBaseBrush}"
         Foreground="#E9F4FA" WindowStartupLocation="CenterOwner">
   <Window.Resources>
@@ -22,28 +22,37 @@
   </Window.Resources>
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="25">
-      <TextBlock Text="CAPRI // CONNECTIONS" FontFamily="Consolas" FontSize="25"
+      <TextBlock Text="CAPRI // APPS &amp; CONNECTIONS" FontFamily="Consolas" FontSize="25"
                  FontWeight="Bold" Foreground="{StaticResource CapriYellowBrush}"/>
-      <TextBlock Text="Authorize your own accounts in the browser. Capri never asks for passwords, Roblox cookies, or embedded client secrets."
+      <TextBlock Text="Use your apps immediately on this PC. When Capri has an official provider registration, Connect opens Spotify or Roblox sign-in in your browser. You never paste access tokens or cookies."
                  TextWrapping="Wrap" Foreground="#A3BECA" Margin="0,6,0,16"/>
 
       <Border Background="#16263A" BorderBrush="#41697B"
               BorderThickness="1" Padding="15" CornerRadius="0,7,0,0">
         <StackPanel>
-          <TextBlock Text="SPOTIFY // PREMIUM &amp; DEVELOPER APP"
+          <TextBlock Text="SPOTIFY // MUSIC"
                      Foreground="#84E0B6" FontWeight="Bold" FontFamily="Consolas" FontSize="14"/>
-          <TextBlock Text="Register your own Spotify developer app. Add EXACT redirect URL: http://127.0.0.1:18441/oauth/spotify/ . Spotify Development Mode has Premium and user limits."
+          <TextBlock Text="Control Spotify running on your PC without an account link. For track search, queue and full Spotify Web API access, authorize Capri in your browser when the publisher's Spotify app is configured."
                      TextWrapping="Wrap" Foreground="#A9BFCE" FontSize="11"
-                     Margin="0,9,0,6"/>
-          <TextBlock Text="Spotify Client ID (public identifier, not a secret)"
-                     FontSize="11" Foreground="#9EBACC"/>
-          <TextBox x:Name="SpotifyIdBox" Margin="0,5,0,10"/>
+                     Margin="0,9,0,8"/>
           <WrapPanel>
-            <Button Content="SAVE CLIENT ID" Click="SaveIds_Click"/>
-            <Button x:Name="ConnectSpotifyButton" Content="CONNECT SPOTIFY"
+            <Button x:Name="ConnectSpotifyButton" Content="CONNECT SPOTIFY ACCOUNT"
                     Click="ConnectSpotify_Click" Background="#23624E"/>
-            <Button Content="UNLINK SPOTIFY" Click="UnlinkSpotify_Click"/>
+            <Button Content="OPEN SPOTIFY ON THIS PC" Click="OpenSpotifyLocal_Click"/>
+            <Button Content="UNLINK" Click="UnlinkSpotify_Click"/>
           </WrapPanel>
+          <Expander Header="Advanced — developer OAuth setup (optional)"
+                    Foreground="#9EBACC" Margin="0,4,0,10">
+            <StackPanel Margin="8,8,0,0">
+              <TextBlock Text="Only Capri's publisher needs to register an OAuth app. If you're developing your own build, the Spotify app's public client ID and redirect are configured here. Never enter a token or secret."
+                         TextWrapping="Wrap" FontSize="11"/>
+              <TextBlock Text="Registered redirect: http://127.0.0.1:18441/oauth/spotify/"
+                         FontFamily="Consolas" FontSize="10" Margin="0,8,0,4"/>
+              <TextBox x:Name="SpotifyIdBox" Margin="0,5,0,9"/>
+              <Button Content="SAVE DEVELOPER CLIENT ID" Click="SaveIds_Click"
+                      HorizontalAlignment="Left"/>
+            </StackPanel>
+          </Expander>
           <TextBlock x:Name="SpotifyAccountText" Text="Not linked."
                      Foreground="#CDE4F0" Margin="0,4,0,11" TextWrapping="Wrap"/>
           <WrapPanel>
@@ -75,21 +84,30 @@
               BorderBrush="#5862A0" BorderThickness="1"
               Padding="15" CornerRadius="0,7,0,0">
         <StackPanel>
-          <TextBlock Text="ROBLOX // OFFICIAL OPEN CLOUD IDENTITY"
+          <TextBlock Text="ROBLOX // GAMES &amp; ACCOUNT"
                      Foreground="#B9B4FA" FontWeight="Bold" FontFamily="Consolas" FontSize="14"/>
-          <TextBlock Text="Register an OAuth app in Roblox Creator Dashboard, enable openid + profile, and add EXACT redirect URL: http://127.0.0.1:18442/oauth/roblox/ . Account connection exposes identity, not unlimited in-game controls."
+          <TextBlock Text="Launch Roblox games without providing cookies or tokens. Sign in through Roblox's own browser to authorize Capri profile access when the official OAuth app is configured."
                      TextWrapping="Wrap" Foreground="#A9BFCE" FontSize="11"
-                     Margin="0,9,0,6"/>
-          <TextBlock Text="Roblox OAuth Client ID (public identifier)"
-                     FontSize="11" Foreground="#9EBACC"/>
-          <TextBox x:Name="RobloxIdBox" Margin="0,5,0,10"/>
+                     Margin="0,9,0,8"/>
           <WrapPanel>
-            <Button Content="SAVE CLIENT ID" Click="SaveIds_Click"/>
-            <Button Content="CONNECT ROBLOX" Click="ConnectRoblox_Click"
+            <Button Content="CONNECT ROBLOX ACCOUNT" Click="ConnectRoblox_Click"
                     Background="#514682"/>
-            <Button Content="UNLINK ROBLOX" Click="UnlinkRoblox_Click"/>
-            <Button Content="SHOW MY PROFILE" Click="RobloxProfile_Click"/>
+            <Button Content="OPEN ROBLOX" Click="OpenRobloxLocal_Click"/>
+            <Button Content="UNLINK" Click="UnlinkRoblox_Click"/>
+            <Button Content="MY PROFILE" Click="RobloxProfile_Click"/>
           </WrapPanel>
+          <Expander Header="Advanced — developer OAuth setup (optional)"
+                    Foreground="#A9BFCE" Margin="0,4,0,10">
+            <StackPanel Margin="8,8,0,0">
+              <TextBlock Text="Only the publisher registers this OAuth client. Developer builds may provide a public client ID with openid + profile permissions. Do not enter a cookie, secret or personal token."
+                         TextWrapping="Wrap" FontSize="11"/>
+              <TextBlock Text="Registered redirect: http://127.0.0.1:18442/oauth/roblox/"
+                         FontFamily="Consolas" FontSize="10" Margin="0,8,0,4"/>
+              <TextBox x:Name="RobloxIdBox" Margin="0,5,0,9"/>
+              <Button Content="SAVE DEVELOPER CLIENT ID" Click="SaveIds_Click"
+                      HorizontalAlignment="Left"/>
+            </StackPanel>
+          </Expander>
           <TextBlock x:Name="RobloxAccountText" Text="Not linked."
                      Foreground="#D6DAF6" TextWrapping="Wrap"
                      Margin="0,2,0,11"/>
@@ -104,7 +122,7 @@
                      Margin="0,9,0,0"/>
         </StackPanel>
       </Border>
-      <TextBlock x:Name="StatusText" Text="Connect accounts separately. Access and refresh tokens are stored encrypted using Windows DPAPI."
+      <TextBlock x:Name="StatusText" Text="Account sign-in is handled by official Spotify/Roblox pages. Capri stores OAuth credentials encrypted for this Windows user. Local app use does not require account linking."
                  TextWrapping="Wrap" Foreground="#B7D5E3" Margin="0,15,0,8"/>
       <Button x:Name="CancelConnectButton" Content="CANCEL CURRENT LOGIN"
               Click="CancelConnect_Click" IsEnabled="False"
