@@ -29,6 +29,24 @@ try
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
     Check(store.LoadSettings().OverlayLeft == 101, "settings persist");
+    settings.OverlayScale = 1.25;
+    store.SaveSettings(settings);
+    Check(Math.Abs(store.LoadSettings().OverlayScale - 1.25) < 0.001,
+        "companion size persists between launches");
+    Check(CompanionCommandPolicy.Parse("ride my cursor") == CompanionCommand.RideCursor &&
+          CompanionCommandPolicy.Parse("hop off") == CompanionCommand.HopOff &&
+          CompanionCommandPolicy.Parse("come here") == CompanionCommand.ComeHere &&
+          CompanionCommandPolicy.Parse("go to sleep") == CompanionCommand.Sleep &&
+          CompanionCommandPolicy.Parse("wake up") == CompanionCommand.Wake &&
+          CompanionCommandPolicy.Parse("please clone yourself and steal my cursor") ==
+              CompanionCommand.None,
+        "explicit overlay movement/sleep commands don't trigger arbitrary cursor jobs");
+    Check(MediaMetadataPolicy.IsSpotifyWindowsSession(
+              new NowPlayingInfo("song", "artist", "Spotify.exe", true)) &&
+          !MediaMetadataPolicy.IsSpotifyWindowsSession(
+              new NowPlayingInfo("video", "artist", "chrome.exe", true)) &&
+          !MediaMetadataPolicy.IsSpotifyWindowsSession(null),
+        "Spotify-specific local media commands must never control unrelated players");
 
     var turns = new[]
     {
