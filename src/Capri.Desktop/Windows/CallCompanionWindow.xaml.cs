@@ -16,6 +16,16 @@ public partial class CallCompanionWindow : Window
         CallIncomingBox.SelectedItem = CallIncomingBox.Items.Cast<ComboBoxItem>()
             .FirstOrDefault(item => item.Tag is string id && id == chosen)
             ?? CallIncomingBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
+        var callOutput = App.Instance.CallVirtualSpeakerIndex;
+        foreach (var device in AudioInputDevices.Speakers())
+            CallOutgoingBox.Items.Add(new ComboBoxItem
+            {
+                Content = device.Name + (device.Index == -1 ? " (not valid for virtual mic)" : ""),
+                Tag = device.Index
+            });
+        CallOutgoingBox.SelectedItem = CallOutgoingBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is int index && index == callOutput)
+            ?? CallOutgoingBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
         IncludeRealMicCheck.IsChecked = App.Instance.Settings.CallIncludeRealMicrophone;
         Loaded += (_, _) => RefreshState();
         Closed += (_, _) => App.Instance.StopCallCompanionMode();
@@ -25,11 +35,13 @@ public partial class CallCompanionWindow : Window
     {
         var settings = App.Instance.Settings;
         var speakers = AudioInputDevices.Speakers();
-        var selected = speakers.FirstOrDefault(x => x.Index == settings.SpeakerDeviceIndex);
-        OutputDeviceText.Text = "OUTGOING: " + (selected?.Name ?? "(no configured output)") +
-            " (selected Fish voice playback device)";
+        var selected = speakers.FirstOrDefault(x => x.Index == App.Instance.CallVirtualSpeakerIndex);
+        var everyday = speakers.FirstOrDefault(x => x.Index == settings.SpeakerDeviceIndex);
+        OutputDeviceText.Text = "CALL OUTGOING: " + (selected?.Name ?? "(not configured)") +
+            "  •  NORMAL VOICE: " + (everyday?.Name ?? "Windows default");
         var active = App.Instance.CallCompanionActive;
         CallIncomingBox.IsEnabled = !active;
+        CallOutgoingBox.IsEnabled = !active;
         IncludeRealMicCheck.IsEnabled = !active;
         StartButton.IsEnabled = !active;
         StopButton.IsEnabled = active;
@@ -56,6 +68,7 @@ public partial class CallCompanionWindow : Window
             }
             App.Instance.ConfigureCallRouting(
                 (CallIncomingBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "",
+                (CallOutgoingBox.SelectedItem as ComboBoxItem)?.Tag is int output ? output : -1,
                 IncludeRealMicCheck.IsChecked == true);
             StatusText.Text = App.Instance.StartCallCompanionMode(true);
         }
