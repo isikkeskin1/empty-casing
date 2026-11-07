@@ -25,6 +25,8 @@ public partial class ChatWindow : Window
     {
         InitializeComponent();
         DataContext = this;
+        StateChanged += (_, _) => MaximizeWindowButton.Content =
+            WindowState == System.Windows.WindowState.Maximized ? "❐" : "□";
         InitializeScreenOptions();
         InitializeWatchIntervals();
         RefreshBrainConfiguration();
@@ -192,6 +194,16 @@ public partial class ChatWindow : Window
         VisionModelBox.Text = App.Instance.Brain.IsLocal ? settings.VisionModel : settings.CloudVisionModel;
         _ = CheckBrainAsync();
     }
+
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = System.Windows.WindowState.Minimized;
+
+    private void ToggleMaximizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == System.Windows.WindowState.Maximized
+            ? System.Windows.WindowState.Normal
+            : System.Windows.WindowState.Maximized;
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
 
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenUpdates_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUpdatesCenter();
