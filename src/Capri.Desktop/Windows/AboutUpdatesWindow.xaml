@@ -30,7 +30,7 @@
                        Foreground="{StaticResource CapriCyanBrush}"
                        FontFamily="Consolas" FontSize="20" FontWeight="Bold"
                        Margin="0,8,0,10"/>
-            <TextBlock Text="Capri checks official GitHub Releases every three hours, safely downloads verified updates and lets you restart into the new version. No unverified installer runs."
+            <TextBlock Text="Capri checks for new GitHub releases shortly after startup, then every 10 minutes. Installed copies can install verified updates automatically while idle or on exit, without disturbing active work."
                        Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
                        Margin="0,0,0,13"/>
             <CheckBox x:Name="AutoUpdateCheck"
@@ -38,6 +38,15 @@
                       Style="{StaticResource CapriToggle}"
                       Checked="AutoUpdate_Changed" Unchecked="AutoUpdate_Changed"
                       Margin="0,0,0,7"/>
+            <CheckBox x:Name="AutoInstallCheck"
+                      Content="Automatically install updates when safely idle or when I quit Capri"
+                      Style="{StaticResource CapriToggle}"
+                      Checked="AutoInstall_Changed" Unchecked="AutoInstall_Changed"
+                      Margin="0,0,0,7"/>
+            <TextBlock x:Name="AutoInstallExplanation"
+                       Text="Automatic installation works with the standard per-user Capri installation. Portable builds require manual updating. Capri won't restart during an active conversation or game."
+                       Style="{StaticResource CapriSubtext}" FontSize="11"
+                       TextWrapping="Wrap" Margin="22,0,0,13"/>
             <WrapPanel>
               <Button x:Name="CheckButton" Content="CHECK FOR UPDATES"
                       Click="CheckUpdates_Click" Style="{StaticResource CapriPrimaryButton}"
@@ -54,7 +63,7 @@
             <TextBlock x:Name="UpdateStatus" Text="Press CHECK FOR UPDATES to contact official GitHub releases."
                        Foreground="{StaticResource CapriCyanBrush}"
                        TextWrapping="Wrap" Margin="0,7,0,0"/>
-            <TextBlock Text="New main-branch releases include the installer, portable ZIP and SHA-256. Installation starts only after Restart to update; builds remain unsigned until code signing is configured. Preview Actions artifacts expire."
+            <TextBlock Text="Automatic installation only runs from GitHub release assets after a full size + SHA-256 check. The installer is not yet Authenticode-signed; SHA-256 metadata is not a publisher signature. Use the checkbox above to turn unattended installation off."
                        Style="{StaticResource CapriSubtext}" FontSize="11"
                        TextWrapping="Wrap" Margin="0,11,0,0"/>
           </StackPanel>
@@ -66,7 +75,7 @@
                        Text="Checking seven animated states…"
                        Foreground="{StaticResource CapriCyanBrush}"
                        FontFamily="Consolas" FontSize="12" Margin="0,9,0,8"/>
-            <TextBlock Text="The original animation pack is private, so public builds don't redistribute it. Select Capri-Animation-Pack-v0.2.zip once to install all seven animations, then Capri loads them automatically on every launch."
+            <TextBlock Text="Seven default character animations ship with Capri. You only need Import Animation Pack to override those frames with your own local ZIP; your imported art is preserved during updates."
                        Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
                        Margin="0,0,0,12"/>
             <WrapPanel>
