@@ -12,6 +12,9 @@ public sealed class AppSettings
     public int ObsWebSocketPort { get; set; } = 4455;
     public string CloudTextModel { get; set; } = "meta/llama-3.1-70b-instruct";
     public string CloudVisionModel { get; set; } = "";
+    // Automatically fetch validated stable updates in the background; for
+    // installed copies, apply the staged update when Capri exits.
+    public bool AutomaticUpdates { get; set; } = true;
     public bool SetupCompleted { get; set; }
     public int ScreenIndex { get; set; } = -1;
     public int WatchIntervalSeconds { get; set; } = 45;
