@@ -57,6 +57,18 @@
             <TextBlock Text="01  MICROPHONE INPUT" Foreground="#7FE2EF"
                        FontFamily="Consolas" FontWeight="Bold" Margin="0,0,0,10"/>
             <ComboBox x:Name="MicBox" Margin="0,0,0,10"/>
+            <TextBlock Text="RECOGNITION ENGINE" Foreground="#A8C9DA"
+                       FontSize="11" FontFamily="Consolas" Margin="0,0,0,5"/>
+            <ComboBox x:Name="RecognitionModeBox" Margin="0,0,0,8">
+              <ComboBoxItem Content="Windows SAPI — continuous MIC ON + wake word" Tag="windows"/>
+              <ComboBoxItem Content="Whisper local — multilingual Talk Once (no wake word)" Tag="whisper"/>
+            </ComboBox>
+            <TextBlock x:Name="WhisperModelStatus" Text="Whisper multilingual model: not installed"
+                       Foreground="#94BECE" FontSize="11" Margin="0,0,0,5"/>
+            <Button x:Name="InstallWhisperButton" Content="INSTALL VERIFIED 148 MB WHISPER MODEL"
+                    Click="InstallWhisper_Click" HorizontalAlignment="Left" Margin="0,0,0,11"/>
+            <TextBlock Text="Whisper records up to 6 seconds only when you press Talk Once; transcribes locally without sending audio to cloud. Requires Windows 11 x64, compatible CPU and Microsoft VC++ runtime. Windows hands-free listening remains a separate option."
+                       TextWrapping="Wrap" Foreground="#8FA7B8" FontSize="11" Margin="0,0,0,11"/>
             <TextBlock Text="WINDOWS RECOGNITION LANGUAGE" Foreground="#A8C9DA"
                        FontSize="11" FontFamily="Consolas" Margin="0,0,0,5"/>
             <ComboBox x:Name="SpeechLanguageBox" Margin="0,0,0,7"/>
