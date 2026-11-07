@@ -32,6 +32,9 @@ public sealed class AppSettings
     // Select the Windows render endpoint used by Discord voice OUTPUT.
     // Empty means default Windows speakers. Capture never starts automatically.
     public string CallIncomingSpeakerId { get; set; } = "";
+    // -2 means use the previous Capri speaker selection for compatibility;
+    // new call setups pick a dedicated, non-default virtual speaker endpoint.
+    public int CallOutgoingSpeakerIndex { get; set; } = -2;
     // Mix the owner's real microphone with Fish TTS into the selected
     // non-default virtual audio cable, but ONLY when Call Mode is armed.
     public bool CallIncludeRealMicrophone { get; set; }
