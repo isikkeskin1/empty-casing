@@ -35,7 +35,7 @@ The installer includes .NET and **all seven default character animation states**
 
 **Reminders and timers:** Try "remind me in 10 minutes to stretch", "set a timer for 30 seconds", "show reminders" or "cancel reminder #1" in the Mainframe or by voice. Reminders are stored locally and fire while Capri is running (or upon reopening if overdue). They are not cloud calendar events.
 
-**Controls:** drag the floating character to move it; double-click to open chat; Ctrl+Shift+Space toggles chat. **Drop near another app's top edge** to perch on its window; she follows that window while it moves and detaches if it's minimized or closed. **Flick her quickly** to toss her around the screen with damped bouncing. Right-click her or use the tray to select **Perch on frontmost window**, **Detach from window**, or any manual animation preview. Music-perch is still a visual preview; beat synchronization isn't implemented.
+**Controls:** drag or quickly toss Capri; double-click to sleep/wake. Shift-drop sits anywhere; Ctrl-drop attaches to a nearby window edge with the existing perch pose. Right-click → Size scales the overlay from 50% to 160% and saves the choice, including positions on secondary monitors. Type **"ride my cursor"** and press **Ctrl+Alt+C** to hop off (or bring her here when she isn't riding). **Ctrl+Alt+H** hides/shows; **Ctrl+Alt+T** focuses chat; **Ctrl+Alt+P** toggles Quiet Mode. Open chat with Ctrl+Shift+Space or the companion context menu. Smooth cursor ride, click-through, and mixed-DPI placement need Windows QA; no global Esc hook, distinct hang frame, or chaos clones have been shipped. Read [interaction parity](docs/INTERACTION_AND_CONNECTION_PARITY.md).
 
 The snap system only reads top-level window rectangles. It does not inspect your app contents or take control of other windows. High-DPI multi-monitor placement and fullscreen game behavior need manual Windows testing.
 
@@ -186,14 +186,9 @@ In INPUTS, enable optional voice follow-ups to keep a *sliding* 20-second conver
 
 ## Native Spotify + Roblox account connections (OAuth PKCE)
 
-Mainframe → **CONNECTIONS** links accounts through their official browser
-authorization pages. Register your own Spotify/Roblox OAuth application,
-enter each *public client ID*, and whitelist the exact localhost redirect
-shown in CONNECTIONS. Capri uses authorization-code **PKCE with a random
-state**, a one-shot listener on 127.0.0.1, and Windows **DPAPI-encrypted**
-access and refresh tokens. Client secrets, passwords and Roblox session
-cookies are never needed. Connection requires actual permission from each
-provider, and neither service is considered connected before OAuth succeeds.
+Mainframe → **CONNECTIONS** offers **Connect Spotify Account** and **Connect Roblox Account** via each provider's own browser-hosted OAuth authorization. Regular users never paste cookies, tokens, or developer client IDs. Capri's publisher must register the OAuth apps ONCE, whitelist the loopback callback URLs and set the non-secret GitHub repository variables `CAPRI_SPOTIFY_CLIENT_ID` and `CAPRI_ROBLOX_CLIENT_ID` for a consumer release. Until those public app IDs are configured and authorized by the providers, account linking is unavailable; the app explains this without pretending sign-in succeeded. An optional Advanced area supports developers with their own app registrations.
+
+Without OAuth, users can **open Spotify** and use Windows local media sessions for basic playback, and **open Roblox / launch experiences** through official links. Spotify-only local playback checks the active session source to avoid controlling a different player. Full Spotify search/queue/profile and Roblox profile still require account authorization. Capri uses PKCE, random state and Windows DPAPI-encrypted OAuth credentials when linked.
 
 **Spotify:** connected account profile, active Spotify Connect playback,
 track search, play a selected track, pause/resume/skip via actual Spotify
