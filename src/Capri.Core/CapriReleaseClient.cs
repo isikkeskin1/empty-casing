@@ -5,9 +5,11 @@ using System.Text.RegularExpressions;
 
 namespace Capri.Core;
 
+public sealed record CapriReleaseAsset(Uri DownloadUrl, long SizeBytes, string Sha256Hex);
 public sealed record CapriRelease(
     Version Version, string Tag, Uri ReleasePage,
-    DateTimeOffset? PublishedAt, bool HasWindowsInstaller);
+    DateTimeOffset? PublishedAt, bool HasWindowsInstaller,
+    CapriReleaseAsset? VerifiedInstaller = null);
 
 /// <summary>
 /// A deliberately read-only GitHub release check. Never follows asset URLs,
@@ -58,6 +60,39 @@ public static partial class CapriReleasePolicy
         return url.AbsolutePath == "/isikkeskin1/empty-casing/releases/tag/" + tag;
     }
 
+    public static CapriReleaseAsset? ParseInstallerAsset(JsonElement asset, string tag)
+    {
+        if (asset.ValueKind != JsonValueKind.Object ||
+            !asset.TryGetProperty("name", out var name) ||
+            name.ValueKind != JsonValueKind.String ||
+            name.GetString() != "Capri-Setup.exe" ||
+            !asset.TryGetProperty("size", out var sizeNode) ||
+            !sizeNode.TryGetInt64(out var size) ||
+            size is < 1000000 or > 250000000 ||
+            !asset.TryGetProperty("digest", out var digestNode) ||
+            digestNode.ValueKind != JsonValueKind.String)
+            return null;
+        var digest = digestNode.GetString() ?? "";
+        if (!System.Text.RegularExpressions.Regex.IsMatch(digest,
+            "^sha256:[a-fA-F0-9]{64}$", RegexOptions.CultureInvariant))
+            return null;
+        if (!asset.TryGetProperty("browser_download_url", out var downloadNode) ||
+            downloadNode.ValueKind != JsonValueKind.String ||
+            !Uri.TryCreate(downloadNode.GetString(), UriKind.Absolute, out var uri))
+            return null;
+        if (uri.Scheme != "https" || uri.Host != "github.com" ||
+            uri.Port != 443 || uri.UserInfo.Length != 0 ||
+            uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
+            uri.AbsolutePath != "/isikkeskin1/empty-casing/releases/download/" +
+                tag + "/Capri-Setup.exe")
+            return null;
+        if (asset.TryGetProperty("state", out var state) &&
+            (state.ValueKind != JsonValueKind.String ||
+             state.GetString() != "uploaded"))
+            return null;
+        return new CapriReleaseAsset(uri, size, digest[7..].ToLowerInvariant());
+    }
+
     public static CapriRelease? ParseLatestRelease(string json)
     {
         if (string.IsNullOrWhiteSpace(json) ||
@@ -87,14 +122,23 @@ public static partial class CapriReleasePolicy
             DateTimeOffset.TryParse(timestamp.GetString(), out var parsed))
             published = parsed;
         var installer = false;
+        CapriReleaseAsset? verified = null;
         if (root.TryGetProperty("assets", out var assets) &&
             assets.ValueKind == JsonValueKind.Array)
-            installer = assets.EnumerateArray().Any(a =>
-                a.ValueKind == JsonValueKind.Object &&
-                a.TryGetProperty("name", out var name) &&
-                name.ValueKind == JsonValueKind.String &&
-                name.GetString() == "Capri-Setup.exe");
-        return new CapriRelease(version, tag, url!, published, installer);
+        {
+            foreach (var asset in assets.EnumerateArray())
+            {
+                if (asset.ValueKind != JsonValueKind.Object ||
+                    !asset.TryGetProperty("name", out var name) ||
+                    name.ValueKind != JsonValueKind.String ||
+                    name.GetString() != "Capri-Setup.exe")
+                    continue;
+                installer = true;
+                verified = ParseInstallerAsset(asset, tag);
+                break;
+            }
+        }
+        return new CapriRelease(version, tag, url!, published, installer, verified);
     }
 }
 
