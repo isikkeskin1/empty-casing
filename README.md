@@ -86,13 +86,13 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
-## Update Center and private diagnostics — version 0.6.0
+## Capri 0.7 — real character animations + GitHub auto-updates
 
-**Apps & Tools → ABOUT / UPDATES** and the tray's **About / updates / support** entry open a new release and support center. Capri checks the fixed official GitHub Releases endpoint **only when you click Check for Updates**. It compares installed and published versions, validates the release's official GitHub URL, and opens that page in a browser when asked. No installer is silently downloaded, executed, or installed. If the repository has no published release yet, Capri says so and links to short-lived Actions preview builds.
+The shipped app now supports **one-click import of the owner's seven-state animation pack**. Right-click the floating Capri character → **Import animation pack ZIP…**, or open **Apps & Tools → About / Updates → Import Animation Pack**. Choose `Capri-Animation-Pack-v0.2.zip` without extracting it. The importer validates its structure and all 256 frames, preserves your existing art unless replacement is confirmed, and reloads the character immediately. Existing frame animations (idle, talk, glitch, tossed, sleep, perch, and music-perch) are then used on every startup. Authorized **private** builds can bundle the ZIP in `assets/private/`; public Releases do not ship third-party art without confirmed redistribution rights. See [Animation assets](assets/README.md).
 
-A new tag-only GitHub Actions release workflow validates version numbers, builds/tests Windows artifacts, generates SHA256 checksums, and publishes `Capri-Setup.exe`, the portable ZIP, and `SHA256SUMS.txt` when the maintainer explicitly pushes a matching `vMAJOR.MINOR.PATCH` tag. **No tag or stable release is created by an ordinary main-branch commit.** Preview installer artifacts now include a checksum manifest too.
+**GitHub auto-release and updater:** Each successful push to `main` now automatically publishes a versioned Windows GitHub Release with its installer, portable ZIP and SHA-256 checksums. On startup, Capri checks the pinned official release feed after a short delay, then **every three hours**. She automatically downloads and verifies newer installers, and displays **Restart to update** in the system tray and Update Center when one is ready. Choosing Restart to update performs the per-user installer upgrade and relaunches her. No one needs to re-download installers manually; the final restart remains owner-controlled and won't interrupt a game. Automatic checks can be disabled from About / Updates.
 
-The Update Center also offers a local-only support report containing app/Windows/.NET versions and short **exception category/type** entries—never chat messages, tokens, stack traces or file contents. You decide if you want to copy it. This is not yet a signed updater or complete crash-reporting system. See [Releases & Diagnostics](docs/RELEASES_AND_DIAGNOSTICS.md) for security, release process and test checklist.
+This replaces the previous manual-only update experience. The app still lacks a code-signing certificate and tested rollback, so integrity checks are **not** equivalent to a publisher signature. See [Release, update and diagnostics guide](docs/RELEASES_AND_DIAGNOSTICS.md).
 
 ## Screen Sketch — draw over your desktop
 
