@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Capri.Core;
+using Capri.Desktop.Services;
 
 namespace Capri.Desktop.Windows;
 
@@ -17,6 +18,7 @@ public partial class ChatWindow : Window
     private string? _queuedVoicePrompt;
     private bool _syncing;
     private string _activePage = "CHAT";
+    private FrameAnimator? _heroAnimator;
 
     public ChatWindow()
     {
@@ -38,7 +40,38 @@ public partial class ChatWindow : Window
                 "Press LOOK NOW. Turn on the mic to talk to me, or opt into screen reactions. " +
                 "Nothing buys, deletes or sends messages through my desktop controls.");
 
-        Loaded += async (_, _) => await CheckBrainAsync();
+        Loaded += async (_, _) =>
+        {
+            EnsureHeroArt();
+            await CheckBrainAsync();
+        };
+        Closed += (_, _) => _heroAnimator?.Dispose();
+    }
+
+    private void EnsureHeroArt()
+    {
+        if (_heroAnimator is not null) return;
+        _heroAnimator = new FrameAnimator(App.Instance.Store.CharacterFolder, frame =>
+        {
+            HeroArtImage.Source = frame;
+            HeroArtStatus.Visibility = frame is null
+                ? Visibility.Visible : Visibility.Collapsed;
+            HeroArtStatus.Text = frame is null
+                ? "NO DEFAULT ANIMATION • IMPORT A PRIVATE PACK"
+                : "DEFAULT CHARACTER PLAYING";
+        });
+        _heroAnimator.SetState("idle");
+    }
+
+    public void ReloadHeroArt()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(ReloadHeroArt);
+            return;
+        }
+        EnsureHeroArt();
+        _heroAnimator?.Reload();
     }
 
     private void InitializeScreenOptions()
