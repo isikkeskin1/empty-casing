@@ -1748,7 +1748,8 @@ public partial class App : System.Windows.Application
             return "Stop Call Mode before starting AI clone conversations.";
         return Chaos.StartAi(number, Store.CharacterFolder,
             (prompt, ct) => Brain.ReplyAsync(
-                new[] { new ChatTurn { Role = "user", Text = prompt } }, ct));
+                new[] { new ChatTurn { Role = "user", Text = prompt } }, ct),
+            () => _quietMode || CallCompanionActive);
     }
 
     public void StopChaosClones() => _chaos?.Stop();
@@ -1817,6 +1818,8 @@ public partial class App : System.Windows.Application
             !AudioInputDevices.MicrophoneExists(Settings.MicrophoneDeviceIndex))
             return "Your selected real microphone is unavailable. Choose a microphone in INPUTS.";
 
+        // Do not let fictional clone speech leak into an explicitly armed call.
+        _chaos?.Stop();
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
         if (Settings.ListenToMicrophone) SetMicrophoneEnabled(false);
