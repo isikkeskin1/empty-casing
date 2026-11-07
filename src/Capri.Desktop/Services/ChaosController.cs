@@ -300,7 +300,9 @@ public sealed class ChaosController : IDisposable
         if (_prank is not null)
             return "A short window wobble is already running.";
 
-        var handle = GetForegroundWindow();
+        // Use the frontmost EXTERNAL window, since issuing a chat command or
+        // clicking Capri's context menu makes Capri itself foreground.
+        var handle = new WindowDockingService().FrontmostWindow()?.Handle ?? IntPtr.Zero;
         if (handle == IntPtr.Zero ||
             GetWindowThreadProcessId(handle, out var pid) == 0 ||
             pid == (uint)Environment.ProcessId ||
