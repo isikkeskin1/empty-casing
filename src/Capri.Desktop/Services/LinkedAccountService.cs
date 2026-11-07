@@ -52,10 +52,16 @@ public sealed class LinkedAccountService : IDisposable
     private static string Key(LinkedService service) =>
         service == LinkedService.Spotify ? "spotify" : "roblox";
 
-    public string ClientId(LinkedService service) =>
-        service == LinkedService.Spotify
-            ? _settings.SpotifyClientId.Trim()
-            : _settings.RobloxClientId.Trim();
+    public string ClientId(LinkedService service)
+    {
+        // A consumer install uses Capri's registered app, not a developer app
+        // created by each end-user. A local custom ID is a developer fallback.
+        var packaged = PackagedOAuthClients.Get(service);
+        return packaged.Length > 0 ? packaged :
+            service == LinkedService.Spotify
+                ? _settings.SpotifyClientId.Trim()
+                : _settings.RobloxClientId.Trim();
+    }
 
     public bool IsConnected(LinkedService service)
     {
