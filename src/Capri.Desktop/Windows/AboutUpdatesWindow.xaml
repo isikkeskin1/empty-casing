@@ -30,9 +30,17 @@
                        Foreground="{StaticResource CapriCyanBrush}"
                        FontFamily="Consolas" FontSize="20" FontWeight="Bold"
                        Margin="0,8,0,10"/>
-            <TextBlock Text="Update checks are manual. Capri never silently downloads or executes installers."
+            <TextBlock Text="Automatic updates check GitHub every 30 minutes, verify the new installer and stage it for installation when Capri closes. You can disable automatic updates here."
                        Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
                        Margin="0,0,0,13"/>
+            <CheckBox x:Name="AutoUpdateCheck"
+                      Content="Automatically download and install verified updates on exit"
+                      Style="{StaticResource CapriToggle}"
+                      Checked="AutoUpdate_Changed" Unchecked="AutoUpdate_Changed"/>
+            <TextBlock x:Name="AutomaticUpdateStatusText"
+                       Foreground="{StaticResource CapriCyanBrush}"
+                       Text="No update staged." Margin="0,0,0,11"
+                       TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"/>
             <WrapPanel>
               <Button x:Name="CheckButton" Content="CHECK FOR UPDATES"
                       Click="CheckUpdates_Click" Style="{StaticResource CapriPrimaryButton}"
@@ -42,6 +50,9 @@
                       Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
               <Button Content="SEE PREVIEW BUILDS" Click="OpenBuilds_Click"
                       Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+              <Button x:Name="InstallUpdateButton" Content="INSTALL STAGED UPDATE"
+                      IsEnabled="False" Click="InstallUpdate_Click"
+                      Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,9"/>
             </WrapPanel>
             <TextBlock x:Name="UpdateStatus" Text="Press CHECK FOR UPDATES to contact official GitHub releases."
                        Foreground="{StaticResource CapriCyanBrush}"
