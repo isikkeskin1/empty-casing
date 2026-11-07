@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -25,6 +26,9 @@ public sealed class ChaosController : IDisposable
     private int _turn;
     private Func<string, CancellationToken, Task<string>>? _localDialogue;
     private CancellationTokenSource? _dialogueCts;
+    private SpeechSynthesizer? _cloneSpeaker;
+    private string[] _cloneVoiceNames = Array.Empty<string>();
+    private Func<bool>? _muteCloneSpeech;
     private bool _dialogueBusy;
     private int _dialogueTurns;
     private string _lastDialogue = "We're all here. Who's the original Capri?";
@@ -131,19 +135,36 @@ public sealed class ChaosController : IDisposable
     /// the desktop, and no clone can initiate actions.
     /// </summary>
     public string StartAi(int count, string artFolder,
-        Func<string, CancellationToken, Task<string>> localModel)
+        Func<string, CancellationToken, Task<string>> localModel,
+        Func<bool>? shouldMute = null)
     {
         ArgumentNullException.ThrowIfNull(localModel);
         var result = Start(count, artFolder);
         if (_clones.Count != count) return result;
         _localDialogue = localModel;
+        _muteCloneSpeech = shouldMute;
+        // Local Windows TTS: no Fish API costs and no cloud audio. Use
+        // installed voices for distinct personalities when available.
+        try
+        {
+            _cloneSpeaker = new SpeechSynthesizer { Volume = 70, Rate = 1 };
+            _cloneVoiceNames = _cloneSpeaker.GetInstalledVoices()
+                .Where(v => v.Enabled).Select(v => v.VoiceInfo.Name).ToArray();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            PlatformNotSupportedException)
+        {
+            _cloneSpeaker?.Dispose();
+            _cloneSpeaker = null; // On-screen captions still work.
+        }
         _dialogueCts = new CancellationTokenSource();
         _dialogueTurns = 0;
         _lastDialogue = "We're all here. Who is the real Capri?";
         _chatter.Interval = TimeSpan.FromSeconds(10);
         _ = ConverseWithLocalModelAsync();
         return "AI Chaos: " + count +
-            " clones now chat using your LOCAL Ollama model, up to 10 turns. " +
+            " clones now chat using your LOCAL Ollama model, with distinct " +
+            "Windows voices (when installed), up to 10 turns. " +
             "No private chat, cloud API or desktop access. Hold Esc to stop.";
     }
 
@@ -178,6 +199,18 @@ public sealed class ChaosController : IDisposable
             if (line.Length > 115) line = line[..115] + "…";
             if (line.Length < 2) return;
             _lastDialogue = line;
+            if (_cloneSpeaker is not null && _muteCloneSpeech?.Invoke() != true)
+            {
+                try
+                {
+                    _cloneSpeaker.SpeakAsyncCancelAll();
+                    if (_cloneVoiceNames.Length > 0)
+                        _cloneSpeaker.SelectVoice(
+                            _cloneVoiceNames[speaker % _cloneVoiceNames.Length]);
+                    _cloneSpeaker.SpeakAsync(line);
+                }
+                catch (InvalidOperationException) { /* captions remain */ }
+            }
             _turn++;
             for (var i = 0; i < _clones.Count; i++)
             {
@@ -253,6 +286,12 @@ public sealed class ChaosController : IDisposable
         _chatter.Interval = TimeSpan.FromSeconds(5);
         _dialogueCts?.Cancel();
         _dialogueCts?.Dispose();
+        try { _cloneSpeaker?.SpeakAsyncCancelAll(); }
+        catch (InvalidOperationException) { }
+        _cloneSpeaker?.Dispose();
+        _cloneSpeaker = null;
+        _cloneVoiceNames = Array.Empty<string>();
+        _muteCloneSpeech = null;
         _dialogueCts = null;
         _localDialogue = null;
         _dialogueTurns = 0;
