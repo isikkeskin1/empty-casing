@@ -1,27 +1,26 @@
 # Capri Desktop — Releases, updates and local diagnostics
 
-## Update Center
+## Automatic updates from GitHub
 
-Open **Control Deck → Apps & Tools → ABOUT / UPDATES** or **system-tray icon → About / updates / support**. The Update Center displays the currently installed Windows assembly version (starting in this release: **0.6.0**). No update check runs automatically at startup.
+Starting with **Capri 0.7**, every successful push to the `main` branch runs the Windows build, core tests, portable packaging, Inno Setup and SHA-256 checksums. After all stages succeed, GitHub Actions publishes a stable GitHub Release tagged **`v0.7.<run-number>`**, attaching `Capri-Setup.exe`, the portable ZIP and `SHA256SUMS.txt`. PRs and failed builds never publish releases. The GitHub token creating that release does not retrigger separate tag workflows. The app and installer versions are injected from the **same** CI build number to allow reliable comparisons.
 
-**CHECK FOR UPDATES** makes a read-only HTTPS call to the fixed public GitHub Releases endpoint for `isikkeskin1/empty-casing`. The client accepts only a stable `vMAJOR.MINOR.PATCH` release with an official `https://github.com/isikkeskin1/empty-casing/releases/tag/...` link. It ignores drafts/pre-releases and rejects links on other hosts. It displays whether GitHub lists a `Capri-Setup.exe` asset; no executable is downloaded or run.
+The desktop app checks the repository's pinned `/releases/latest` endpoint about **35 seconds after startup** and then **every three hours**, with an opt-out under **About / Updates → Automatically check and download verified updates**. It ignores drafts, prereleases, invalid version tags and unexpected download URLs.
 
-**OPEN OFFICIAL RELEASE** opens the confirmed GitHub release page in your default browser. You choose whether to download and run any installer. **SEE PREVIEW BUILDS** opens the repository's GitHub Actions Windows workflow. Actions artifacts expire after 14 days and aren't the same as stable Releases.
+If a newer stable release exists, the updater accepts only a `Capri-Setup.exe` asset whose URL exactly matches the official repository/tag and which includes GitHub's `sha256:` release-asset digest. It downloads over HTTPS, permits only GitHub's expected release-asset redirect hosts, enforces strict file-size limits, and verifies the bytes against the SHA-256 digest before making an installer available.
 
-There are **currently no stable GitHub Releases** published for this repository. Until a maintainer publishes the first one, the update checker correctly reports “no public stable release yet” rather than inventing a release.
+**Restart to update:** When the verified download is ready, Capri notifies you via the floating companion and enables a system-tray entry and an Update Center button. Clicking it launches the verified per-user installer, closes Capri, and the silent Inno setup relaunches the upgraded companion. Existing `%LOCALAPPDATA%\\CapriDesktop` notes, settings, linked credentials and imported character art remain in place. No unverified executable or script is executed, and updates never interrupt active gameplay automatically.
 
-### Publish the first stable release
+The process is automatic through **checking, downloading and verification**. The final restart/install action remains user-initiated. This is deliberate while installers are still unsigned; it avoids surprise execution of remotely published software.
 
-A separate `.github/workflows/release.yml` workflow builds and publishes a versioned GitHub Release **only when a maintainer pushes a matching tag**, for example `v0.6.0`. It refuses tags not matching both the WPF app's project version and Inno Setup's installer version.
+The existing tag-based `release.yml` workflow remains for explicitly created version tags. Ordinary `main` pushes use the automatic workflow above. Preview Actions artifacts remain available for 14 days but are **not** the auto-update channel.
 
-A matching tag initiates the following sequence: Windows .NET 10 build → Core smoke tests → self-contained portable zip → Inno Setup installer → SHA256 checksum file → upload all three official release assets. Existing releases are not silently overwritten. The trigger requires normal repository write permissions, and publishing uses the repository-scoped GitHub Actions token, not secrets embedded in source.
+### Package integrity and limitations
 
-Each published release contains:
-- `Capri-Setup.exe` — Inno Setup Windows installer
-- `CapriDesktop-win-x64.zip` — portable package
-- `SHA256SUMS.txt` — SHA256 hashes for both artifacts
+SHA-256 protects the downloaded installer against mismatched or corrupted bytes, as published by the trusted GitHub release. It is **not a digital publisher signature**: account compromise could replace both a package and its metadata. Windows code-signing and trusted rollback support are still needed for a mature release process. Downloaded updates can fail if GitHub is blocked, the asset digest is missing, a local security tool quarantines the installer, or installation fails. Capri reports the error and continues running.
 
-The standard `windows.yml` PR/main preview workflow also now includes `SHA256SUMS.txt` in its installer artifact. Hashes let you detect accidental or malicious download changes **relative to a trusted checksum**; they do not establish publisher identity. Unsigned installers can still show Microsoft SmartScreen warnings. **Automatic installation, rollback, digital code-signing and signed metadata are not implemented.** Do not describe GitHub checksum files as cryptographic signatures.
+### Private animation art
+
+The standard public build intentionally excludes `Capri-Animation-Pack-v0.2.zip` due third-party art redistribution rights. You can import the ZIP once through the app's character context menu; no manual extraction is needed. Authorized private local builds can place it in `assets/private/` before publishing, and the installer will carry/import it on first run. The public automatic-release job does **not** fetch arbitrary user or third-party art.
 
 ## Local-only support diagnostics
 
@@ -38,11 +37,11 @@ The local data folder also contains other personal data such as `history.json`, 
 
 ## Release acceptance checklist
 
-1. Push a valid version tag intentionally after checking the changelog and source revision.
+1. Push an authorized change to main; inspect the successful automatic GitHub Release and its exact source revision.
 2. Confirm the release workflow passed both build and smoke tests.
 3. Download `Capri-Setup.exe` and `SHA256SUMS.txt`, calculate its SHA256 locally, and compare against the checksum from the trusted GitHub release page.
 4. Test installer upgrade over an earlier build; retain a backup of the local data folder.
-5. Test clean Windows installation, tray/About navigation, update check with/without a release, clipboard diagnostics and offline/error state.
-6. Establish trusted code signing and update rollback before enabling any automatic installer execution.
+5. Test clean Windows installation, first-run import of the private animation ZIP, tray/About navigation, startup and three-hour update checks, verified staging, silent installer/relaunch, and offline/error states.
+6. Establish trusted code signing and update rollback before enabling unattended automatic installer execution.
 
-No background updater service is installed or run by this change.
+The update checks use the existing Capri process only; no background Windows service is installed.
