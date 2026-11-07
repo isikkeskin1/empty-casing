@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    # Public OAuth app IDs; the Capri publisher registers these once.
+    # NEVER use a client secret here. Empty values disable provider OAuth until configured.
+    env:
+      CAPRI_SPOTIFY_CLIENT_ID: ${{ vars.CAPRI_SPOTIFY_CLIENT_ID }}
+      CAPRI_ROBLOX_CLIENT_ID: ${{ vars.CAPRI_ROBLOX_CLIENT_ID }}
     permissions:
       contents: write  # Only the main-branch publish step uses this token.
     steps:
@@ -32,7 +37,7 @@ jobs:
       - name: Build app
         shell: pwsh
         run: |
-          dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION
+          dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION -p:CapriSpotifyClientId=$env:CAPRI_SPOTIFY_CLIENT_ID -p:CapriRobloxClientId=$env:CAPRI_ROBLOX_CLIENT_ID
           if ($LASTEXITCODE -ne 0) { throw "Capri Windows build failed." }
       - name: Smoke test core
         shell: pwsh
@@ -42,7 +47,7 @@ jobs:
       - name: Publish Windows executable
         shell: pwsh
         run: |
-          dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION -o publish
+          dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION -p:CapriSpotifyClientId=$env:CAPRI_SPOTIFY_CLIENT_ID -p:CapriRobloxClientId=$env:CAPRI_ROBLOX_CLIENT_ID -o publish
           if ($LASTEXITCODE -ne 0) { throw "Windows publishing failed." }
           # For LOCAL licensed builds only: a privately supplied ZIP is carried
           # with the app and imported on first startup. This is not in this public repo.
