@@ -986,7 +986,7 @@ public partial class App : System.Windows.Application
             try
             {
                 _liveSpeechSpeaking = true;
-                _companion?.SetMood(CompanionMood.Talking);
+                SetMood(CompanionMood.Talking);
                 _speech?.Speak(sentence, Settings.SpeechVoice);
             }
             catch (Exception ex)
@@ -1034,7 +1034,7 @@ public partial class App : System.Windows.Application
             Settings.EnableVoiceFollowUps &&
             Settings.ListenToMicrophone && !MicrophoneMuted);
         if (!CallCompanionActive)
-            _companion?.SetMood(CompanionMood.Idle);
+            SetMood(CompanionMood.Idle);
     }
 
     /// <summary>Used only when a chat turn produces no spoken reply.</summary>
@@ -2483,7 +2483,11 @@ public partial class App : System.Windows.Application
         else _companion.Show();
     }
 
-    public void SetMood(CompanionMood mood) => _companion?.SetMood(mood);
+    public void SetMood(CompanionMood mood)
+    {
+        _companion?.SetMood(mood);
+        _chat?.SetHeroMood(mood);
+    }
 
     public void SavePosition(double left, double top)
     {

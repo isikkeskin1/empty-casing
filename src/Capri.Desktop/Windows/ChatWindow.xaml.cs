@@ -19,11 +19,14 @@ public partial class ChatWindow : Window
     private bool _syncing;
     private string _activePage = "CHAT";
     private FrameAnimator? _heroAnimator;
+    private CompanionMood _heroMood = CompanionMood.Idle;
 
     public ChatWindow()
     {
         InitializeComponent();
         DataContext = this;
+        StateChanged += (_, _) => MaximizeWindowButton.Content =
+            WindowState == System.Windows.WindowState.Maximized ? "❐" : "□";
         InitializeScreenOptions();
         InitializeWatchIntervals();
         RefreshBrainConfiguration();
@@ -36,9 +39,9 @@ public partial class ChatWindow : Window
             Messages.Add(turn);
 
         if (Messages.Count == 0)
-            Add("assistant", "Hey, choom. Want to actually see what I'm looking at? " +
-                "Press LOOK NOW. Turn on the mic to talk to me, or opt into screen reactions. " +
-                "Nothing buys, deletes or sends messages through my desktop controls.");
+            Add("assistant", "Hey, choom. I'm right here. Ask me anything, or try one of the ideas below.");
+        Messages.CollectionChanged += (_, _) => RefreshStarterPanel();
+        RefreshStarterPanel();
 
         Loaded += async (_, _) =>
         {
@@ -60,7 +63,63 @@ public partial class ChatWindow : Window
                 ? "NO DEFAULT ANIMATION • IMPORT A PRIVATE PACK"
                 : "DEFAULT CHARACTER PLAYING";
         });
-        _heroAnimator.SetState("idle");
+        SetHeroMood(_heroMood);
+    }
+
+    private void RefreshStarterPanel()
+    {
+        StarterPanel.Visibility = Messages.Any(x => x.Role == "user")
+            ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void SuggestedPrompt_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string prompt })
+            _ = SendAsync(prompt);
+    }
+
+    private void StarterGameHelp_Click(object sender, RoutedEventArgs e) =>
+        _ = SendAsync("game help: What should I do next?");
+
+    public void SetHeroMood(CompanionMood mood)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(() => SetHeroMood(mood));
+            return;
+        }
+        if (_heroMood == mood && _heroAnimator is not null &&
+            HeroMoodTitle.Text != "HERE WITH YOU")
+            return;
+        _heroMood = mood;
+        var (label, caption, state, color) = mood switch
+        {
+            CompanionMood.Thinking => ("THINKING",
+                "Let me work through that. I'm on it.", "idle", "#F8CF61"),
+            CompanionMood.Talking => ("SPEAKING",
+                "I'm talking. You can interrupt me anytime.", "talk", "#FF77AE"),
+            CompanionMood.Reply => ("REPLY READY",
+                "There you go. Want to keep going?", "talk", "#53E5DC"),
+            CompanionMood.Error => ("NEEDS ATTENTION",
+                "Something went wrong. Check the conversation for details.", "glitch", "#FF7296"),
+            CompanionMood.Glitching => ("GLITCHING",
+                "A little technical turbulence. I'm still here.", "glitch", "#CBA3FF"),
+            CompanionMood.Tossed => ("ON THE MOVE",
+                "Just moving around your desktop.", "tossed", "#F8CF61"),
+            CompanionMood.Sleeping => ("RESTING",
+                "Keeping quiet. I'll be here when you need me.", "sleep", "#91A7C2"),
+            CompanionMood.Perching => ("PERCHED",
+                "Hanging out at the edge of your window.", "perch", "#53E5DC"),
+            CompanionMood.MusicPerch => ("VIBING",
+                "Hanging out with your music.", "perch-music", "#A3FF7F"),
+            _ => ("HERE WITH YOU",
+                "Ready to hang out, help with a game or get something done.", "idle", "#A3FF7F")
+        };
+        HeroMoodTitle.Text = label;
+        HeroMoodCaption.Text = caption;
+        HeroMoodDot.Fill = new SolidColorBrush(
+            (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color)!);
+        _heroAnimator?.SetState(state);
     }
 
     public void ReloadHeroArt()
@@ -136,6 +195,16 @@ public partial class ChatWindow : Window
         _ = CheckBrainAsync();
     }
 
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = System.Windows.WindowState.Minimized;
+
+    private void ToggleMaximizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == System.Windows.WindowState.Maximized
+            ? System.Windows.WindowState.Normal
+            : System.Windows.WindowState.Maximized;
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenUpdates_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUpdatesCenter();
     private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
@@ -191,7 +260,7 @@ public partial class ChatWindow : Window
             "CONTROLS" => "Senses & control",
             "CONNECT" => "Apps & tools",
             "MEMORY" => "My Memory Vault",
-            _ => "Talk to Capri"
+            _ => "At your side"
         };
         PageSubtitle.Text = section switch
         {
@@ -199,7 +268,7 @@ public partial class ChatWindow : Window
             "CONTROLS" => "Manage voice, vision, actions and your AI models.",
             "CONNECT" => "Keep music, games and linked services within reach.",
             "MEMORY" => "Your notes, your control. Nothing is remembered automatically.",
-            _ => "Ask a question, launch a task or just talk. Capri is here."
+            _ => "Your conversation, your projects, your pace."
         };
         var regular = (Style)FindResource("CapriNavButton");
         var selected = (Style)FindResource("CapriNavActiveButton");
@@ -266,7 +335,7 @@ public partial class ChatWindow : Window
         PresenceCheck.IsChecked = App.Instance.LivePresenceEnabled;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
-        TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "LISTENING..." : "TALK ONCE";
+        TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "●  Listening…" : "◉  Talk once";
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         QuietCheck.IsChecked = App.Instance.QuietModeEnabled;
         HuskWatchCheck.IsChecked = App.Instance.CodeHusk.Enabled;
@@ -277,14 +346,14 @@ public partial class ChatWindow : Window
         HandsFreeCheck.Content = App.Instance.Settings.SkipActionConfirmations &&
             !App.Instance.Settings.EnableDesktopActions
                 ? "Hands-free (disarmed)" : "Hands-free · no popups";
-        QuickMicState.Text = App.Instance.MicrophoneMuted ? "MIC  /  MUTED" :
-            App.Instance.Settings.ListenToMicrophone ? "MIC  /  ON" : "MIC  /  OFF";
-        QuickSenseState.Text = App.Instance.Settings.WatchScreen ? "SCREEN  /  WATCHING" :
-            App.Instance.LivePresenceEnabled ? "PRESENCE  /  LOCAL" :
-            App.Instance.Settings.EnableSituationalContext ? "CONTEXT  /  ON" : "SENSE  /  OFF";
+        QuickMicState.Text = App.Instance.MicrophoneMuted ? "Microphone · muted" :
+            App.Instance.Settings.ListenToMicrophone ? "Microphone · listening" : "Microphone · off";
+        QuickSenseState.Text = App.Instance.Settings.WatchScreen ? "Screen · watching" :
+            App.Instance.LivePresenceEnabled ? "Presence · local" :
+            App.Instance.Settings.EnableSituationalContext ? "Context · active" : "Senses · off";
         QuickActionsState.Text = !App.Instance.Settings.EnableDesktopActions ?
-            "ACTIONS  /  DISARMED" : App.Instance.Settings.SkipActionConfirmations ?
-            "ACTIONS  /  HANDS-FREE" : "ACTIONS  /  CONFIRM";
+            "Actions · locked" : App.Instance.Settings.SkipActionConfirmations ?
+            "Actions · hands-free" : "Actions · ask first";
         _syncing = false;
         UpdateLookoutStatus();
         RefreshHuskStatus();
