@@ -1,0 +1,88 @@
+name: Publish Capri release
+
+# Publishing a version is an explicit maintainer action: push a semver tag.
+# Branch builds continue to produce short-lived preview artifacts only.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate tag against app and installer versions
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$') {
+            throw "Only stable vMAJOR.MINOR.PATCH tags publish releases."
+          }
+          $version = $tag.Substring(1)
+          [xml]$project = Get-Content 'src/Capri.Desktop/Capri.Desktop.csproj'
+          $appVersion = [string]$project.Project.PropertyGroup.Version
+          if ($appVersion -ne $version) {
+            throw "Tag $tag does not match app version $appVersion."
+          }
+          $installer = Get-Content 'installer/CapriDesktop.iss' -Raw
+          if (-not $installer.Contains('#define MyAppVersion "' + $version + '"')) {
+            throw "Tag $tag does not match installer version."
+          }
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build and smoke test
+        shell: pwsh
+        run: |
+          dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { throw "App build failed." }
+          dotnet run --project tests/Capri.Core.Smoke/Capri.Core.Smoke.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw "Core smoke tests failed." }
+      - name: Publish Windows executable
+        shell: pwsh
+        run: |
+          dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+          if ($LASTEXITCODE -ne 0) { throw "Windows publish failed." }
+          Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup unavailable." }
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '/Q' 'installer\CapriDesktop.iss'
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path 'installer-output\Capri-Setup.exe')) {
+            throw "Installer build failed."
+          }
+      - name: Assemble release files and SHA256 checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+          Copy-Item 'installer-output\Capri-Setup.exe' 'release-assets\Capri-Setup.exe'
+          Copy-Item 'CapriDesktop-win-x64.zip' 'release-assets\CapriDesktop-win-x64.zip'
+          $items = Get-ChildItem release-assets -File | Sort-Object Name
+          $hashes = foreach ($item in $items) {
+            $sha = (Get-FileHash $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$sha  $($item.Name)"
+          }
+          Set-Content 'release-assets\SHA256SUMS.txt' $hashes -Encoding ascii
+          Write-Output ($hashes -join [Environment]::NewLine)
+      - name: Publish versioned GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY 2>$null) {
+            throw "This tag already has a published release. Refusing silent replacement."
+          }
+          gh release create $env:GITHUB_REF_NAME 'release-assets/Capri-Setup.exe' 'release-assets/CapriDesktop-win-x64.zip' 'release-assets/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --verify-tag --title "Capri Desktop $env:GITHUB_REF_NAME" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish release." }
