@@ -57,6 +57,12 @@
             <TextBlock Text="01  MICROPHONE INPUT" Foreground="#7FE2EF"
                        FontFamily="Consolas" FontWeight="Bold" Margin="0,0,0,10"/>
             <ComboBox x:Name="MicBox" Margin="0,0,0,10"/>
+            <TextBlock Text="WINDOWS RECOGNITION LANGUAGE" Foreground="#A8C9DA"
+                       FontSize="11" FontFamily="Consolas" Margin="0,0,0,5"/>
+            <ComboBox x:Name="SpeechLanguageBox" Margin="0,0,0,7"/>
+            <TextBlock Text="Only languages with an installed Windows Speech Recognition engine are listed. Voice recognition in 80 languages is not yet supported."
+                       Foreground="#8FA7B8" FontSize="11" TextWrapping="Wrap"
+                       Margin="0,0,0,10"/>
             <DockPanel>
               <Button x:Name="TestMicButton" Content="TEST 5 SECONDS"
                       DockPanel.Dock="Left" Click="TestMic_Click"/>

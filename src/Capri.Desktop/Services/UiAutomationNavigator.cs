@@ -5,11 +5,13 @@ using Capri.Core;
 namespace Capri.Desktop.Services;
 
 public sealed record UiTabInfo(string Name, string AutomationId, string RuntimeKey,
-    bool Enabled, bool Offscreen, bool Selected = false);
+    bool Enabled, bool Offscreen, bool Selected = false,
+    double? CenterX = null, double? CenterY = null);
 
 public sealed record UiNavigationControl(
     string Name, string AutomationId, string RuntimeKey, string Action,
-    bool Enabled, bool Offscreen, bool Expanded = false);
+    bool Enabled, bool Offscreen, bool Expanded = false,
+    double? CenterX = null, double? CenterY = null);
 
 public sealed record UiWindowSnapshot(IntPtr Handle, int ProcessId, string Title,
     DateTimeOffset CapturedAt, IReadOnlyList<UiTabInfo> Tabs)
@@ -109,7 +111,10 @@ public sealed class UiAutomationNavigator
             var selected = SafeBool(() =>
                 item.TryGetCurrentPattern(SelectionItemPattern.Pattern, out var pattern) &&
                 pattern is SelectionItemPattern chosen && chosen.Current.IsSelected, false);
-            tabs.Add(new UiTabInfo(name, id, runtime, enabled, offscreen, selected));
+            var rect = SafeRead(() => item.Current.BoundingRectangle);
+            double? cx = rect.Width > 0 && double.IsFinite(rect.X) ? rect.X + rect.Width / 2 : null;
+            double? cy = rect.Height > 0 && double.IsFinite(rect.Y) ? rect.Y + rect.Height / 2 : null;
+            tabs.Add(new UiTabInfo(name, id, runtime, enabled, offscreen, selected, cx, cy));
             if (tabs.Count >= 50) break;
         }
 
@@ -142,8 +147,11 @@ public sealed class UiAutomationNavigator
                     pattern is ExpandCollapsePattern expander &&
                     expander.Current.ExpandCollapseState == ExpandCollapseState.Expanded, false);
             }
+            var rect = SafeRead(() => item.Current.BoundingRectangle);
+            double? cx = rect.Width > 0 && double.IsFinite(rect.X) ? rect.X + rect.Width / 2 : null;
+            double? cy = rect.Height > 0 && double.IsFinite(rect.Y) ? rect.Y + rect.Height / 2 : null;
             controls.Add(new UiNavigationControl(name, id, runtime, action,
-                enabled, offscreen, expanded));
+                enabled, offscreen, expanded, cx, cy));
             if (controls.Count >= 50) break;
         }
 

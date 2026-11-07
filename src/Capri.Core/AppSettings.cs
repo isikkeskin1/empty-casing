@@ -23,9 +23,21 @@ public sealed class AppSettings
     public int WatchIntervalSeconds { get; set; } = 45;
     public bool EnablePetting { get; set; } = true;
     public string SpeechVoice { get; set; } = "";
+    // Windows offers only the recognizer languages installed on the PC.
+    // Empty means the first installed recognizer; not an 80-language STT claim.
+    public string SpeechRecognitionLanguage { get; set; } = "";
     public string VoiceProvider { get; set; } = "windows";
     public int MicrophoneDeviceIndex { get; set; } = -1;
     public int SpeakerDeviceIndex { get; set; } = -1;
+    // Select the Windows render endpoint used by Discord voice OUTPUT.
+    // Empty means default Windows speakers. Capture never starts automatically.
+    public string CallIncomingSpeakerId { get; set; } = "";
+    // -2 means use the previous Capri speaker selection for compatibility;
+    // new call setups pick a dedicated, non-default virtual speaker endpoint.
+    public int CallOutgoingSpeakerIndex { get; set; } = -2;
+    // Mix the owner's real microphone with Fish TTS into the selected
+    // non-default virtual audio cable, but ONLY when Call Mode is armed.
+    public bool CallIncludeRealMicrophone { get; set; }
     public InputShortcuts Shortcuts { get; set; } = new();
     public string FishModel { get; set; } = "s2.1-pro-free";
     public string FishReferenceId { get; set; } = "";

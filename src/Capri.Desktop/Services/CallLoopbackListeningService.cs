@@ -1,6 +1,7 @@
 using System.Speech.AudioFormat;
 using System.Speech.Recognition;
 using NAudio.Wave;
+using NAudio.CoreAudioApi;
 using NAudio.Wave.SampleProviders;
 
 namespace Capri.Desktop.Services;
@@ -15,6 +16,7 @@ public sealed class CallLoopbackListeningService : IDisposable
     private readonly Action<string> _heard;
     private readonly Func<bool> _capriIsSpeaking;
     private WasapiLoopbackCapture? _capture;
+    private MMDevice? _selectedDevice;
     private SpeechRecognitionEngine? _recognizer;
     private BufferedMicrophoneStream? _stream;
     private BufferedWaveProvider? _buffered;
@@ -25,6 +27,7 @@ public sealed class CallLoopbackListeningService : IDisposable
     private bool _disposed;
 
     public bool IsListening => _active;
+    public event Action? CaptureStopped;
 
     public CallLoopbackListeningService(Action<string> heard, Func<bool> capriIsSpeaking)
     {
@@ -32,7 +35,7 @@ public sealed class CallLoopbackListeningService : IDisposable
         _capriIsSpeaking = capriIsSpeaking;
     }
 
-    public void Start()
+    public void Start(string? playbackEndpointId = null, string? recognitionLanguage = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_active) return;
@@ -41,10 +44,27 @@ public sealed class CallLoopbackListeningService : IDisposable
         if (languages.Count == 0)
             throw new InvalidOperationException(
                 "Install a Windows Speech Recognition language pack before using Call Mode.");
+        var chosen = string.IsNullOrWhiteSpace(recognitionLanguage)
+            ? languages[0]
+            : languages.FirstOrDefault(r => r.Culture.Name.Equals(
+                recognitionLanguage, StringComparison.OrdinalIgnoreCase));
+        if (chosen is null)
+            throw new InvalidOperationException("The chosen call recognition language is not installed on Windows.");
 
         try
         {
-            _capture = new WasapiLoopbackCapture();
+            // The selected Windows speaker endpoint is used for call audio.
+            // Windows WASAPI loopback may also hear other apps routed there.
+            if (string.IsNullOrWhiteSpace(playbackEndpointId))
+                _capture = new WasapiLoopbackCapture();
+            else
+            {
+                if (!CallAudioEndpoints.IsAvailable(playbackEndpointId))
+                    throw new InvalidOperationException("Selected call speaker endpoint disconnected.");
+                using var enumerator = new MMDeviceEnumerator();
+                _selectedDevice = enumerator.GetDevice(playbackEndpointId);
+                _capture = new WasapiLoopbackCapture(_selectedDevice);
+            }
             var format = _capture.WaveFormat;
             if (format.Channels is < 1 or > 2)
                 throw new InvalidOperationException(
@@ -67,7 +87,7 @@ public sealed class CallLoopbackListeningService : IDisposable
             _pcm = sample.ToWaveProvider16();
             _stream = new BufferedMicrophoneStream();
 
-            _recognizer = new SpeechRecognitionEngine(languages[0]);
+            _recognizer = new SpeechRecognitionEngine(chosen);
             _recognizer.LoadGrammar(new DictationGrammar());
             _recognizer.SetInputToAudioStream(_stream,
                 new SpeechAudioFormatInfo(
@@ -105,7 +125,9 @@ public sealed class CallLoopbackListeningService : IDisposable
             {
                 // The session controls the lifetime; do not silently restart a
                 // closed or disconnected output device.
+                var wasActive = _active;
                 _active = false;
+                if (wasActive) CaptureStopped?.Invoke();
             };
 
             _active = true;
@@ -141,6 +163,8 @@ public sealed class CallLoopbackListeningService : IDisposable
         try { capture?.StopRecording(); }
         catch (InvalidOperationException) { }
         capture?.Dispose();
+        _selectedDevice?.Dispose();
+        _selectedDevice = null;
 
         _stream?.Complete();
         var recognizer = _recognizer;

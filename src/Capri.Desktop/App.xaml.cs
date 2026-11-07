@@ -48,9 +48,13 @@ public partial class App : System.Windows.Application
     public bool LivePresenceEnabled => _livePresenceEnabled;
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
+    private ChaosController? _chaos;
+    private ChaosController Chaos => _chaos ??= new ChaosController(StopAllInputs);
     private ConnectionsWindow? _connections;
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
     private CallLoopbackListeningService? _callListener;
+    private CallMicrophoneBridge? _callMicBridge;
+    private int? _speakerBeforeCall;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
     public bool CallCompanionActive => _callListener?.IsListening == true;
@@ -322,7 +326,8 @@ public partial class App : System.Windows.Application
         }
         try
         {
-            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            _speech.StartListening(Settings.MicrophoneDeviceIndex,
+                Settings.SpeechRecognitionLanguage);
             MicrophoneMuted = false;
             Settings.ListenToMicrophone = true;
             _companion?.ShowReaction("Mic on. Say 'Capri' before a request.");
@@ -346,7 +351,8 @@ public partial class App : System.Windows.Application
         }
         if (MicrophoneMuted)
         {
-            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            _speech.StartListening(Settings.MicrophoneDeviceIndex,
+                Settings.SpeechRecognitionLanguage);
             MicrophoneMuted = false;
             _companion?.ShowReaction("Microphone unmuted.");
         }
@@ -533,6 +539,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        _chaos?.Stop();
         StopCallCompanionMode();
         StopAutonomousTask();
         StopSessionRoutine();
@@ -562,6 +569,9 @@ public partial class App : System.Windows.Application
 
     public string ApplyInputSettings(InputShortcuts bindings, int microphone, int speaker)
     {
+        if (CallCompanionActive)
+            throw new InvalidOperationException(
+                "End Call Mode before changing microphone or speaker devices.");
         if (!InputShortcuts.TryValidate(bindings, out var reason))
             throw new ArgumentException(reason);
         if (!AudioInputDevices.MicrophoneExists(microphone) ||
@@ -1260,15 +1270,24 @@ public partial class App : System.Windows.Application
         var epoch = _actionEpoch;
         using var cts = new CancellationTokenSource();
         _autonomousTaskCts = cts;
+        var hud = new AutonomousTaskHudWindow();
         try
         {
+            hud.Show();
+            hud.AddStep("OBJECTIVE  " + goal);
             var runner = new AutonomousNavigationRunner(UiNavigator, Brain);
             return await runner.RunAsync(inspectedWindow, goal,
                 () => _actionEpoch == epoch && ReferenceEquals(_autonomousTaskCts, cts),
-                progress, cts.Token);
+                line =>
+                {
+                    progress(line);
+                    hud.AddStep(line);
+                }, cts.Token,
+                (label, x, y) => hud.PointTo(label, x, y));
         }
         finally
         {
+            hud.Close();
             if (ReferenceEquals(_autonomousTaskCts, cts))
                 _autonomousTaskCts = null;
         }
@@ -1551,6 +1570,30 @@ public partial class App : System.Windows.Application
         return null;
     }
 
+    public string TryDiscordDesktopShortcut(DiscordDesktopShortcuts.Command command)
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE before controlling Discord.";
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations &&
+            System.Windows.MessageBox.Show(
+                "Send Discord's standard Ctrl+Shift+" +
+                (command == DiscordDesktopShortcuts.Command.ToggleMute ? "M" : "D") +
+                " shortcut? This TOGGLES the current state; Capri cannot read " +
+                "or verify whether you are currently muted/deafened.",
+                "Capri — Discord local shortcut",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Discord shortcut cancelled.";
+        if (!Settings.EnableDesktopActions || _actionEpoch != epoch)
+            return "Discord shortcut stopped.";
+        return DiscordDesktopShortcuts.Send(command);
+    }
+
+    public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
+
+    public void StopChaosClones() => _chaos?.Stop();
+
     public void OpenCallCompanion()
     {
         if (_callWindow is null)
@@ -1562,19 +1605,58 @@ public partial class App : System.Windows.Application
         _callWindow.Activate();
     }
 
+    public int CallVirtualSpeakerIndex => Settings.CallOutgoingSpeakerIndex == -2
+        ? Settings.SpeakerDeviceIndex : Settings.CallOutgoingSpeakerIndex;
+
+    public void ConfigureCallRouting(string speakerDeviceId, int virtualSpeakerIndex,
+        bool includeRealMicrophone)
+    {
+        if (CallCompanionActive)
+            throw new InvalidOperationException("Stop Call Mode before changing audio routing.");
+        if (!CallAudioEndpoints.IsAvailable(speakerDeviceId))
+            throw new InvalidOperationException("The selected Discord output device is not available.");
+        if (virtualSpeakerIndex < 0 ||
+            !AudioInputDevices.SpeakerExists(virtualSpeakerIndex))
+            throw new InvalidOperationException(
+                "Select an installed, non-default virtual cable playback device for Discord input.");
+        Settings.CallIncomingSpeakerId = speakerDeviceId;
+        Settings.CallOutgoingSpeakerIndex = virtualSpeakerIndex;
+        Settings.CallIncludeRealMicrophone = includeRealMicrophone;
+        Store.SaveSettings(Settings);
+    }
+
     public string StartCallCompanionMode(bool participantsInformed)
     {
         if (!participantsInformed)
             return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
         if (CallCompanionActive)
             return "Call Mode is already running.";
+        if (_quietMode)
+            return "Turn off Quiet Mode before starting a call: Capri's voice is intentionally silenced.";
+        var virtualSpeakerIndex = CallVirtualSpeakerIndex;
         if (!CallCompanionPolicy.IsOutputRoutable(
-            Settings.VoiceProvider, Settings.SpeakReplies, Settings.SpeakerDeviceIndex))
-            return "Choose Fish Audio voice, enable SPEAK REPLIES, and select a non-default virtual cable output under INPUTS.";
+            Settings.VoiceProvider, Settings.SpeakReplies, virtualSpeakerIndex))
+            return "Choose Fish Audio voice, enable SPEAK REPLIES, and select a non-default virtual cable output in CALL COMPANION.";
         if (!Secrets.HasKey("fish"))
             return "Configure a Fish Audio API key in Voice Setup before routing call responses.";
-        if (!AudioInputDevices.SpeakerExists(Settings.SpeakerDeviceIndex))
-            return "The selected outgoing playback device is disconnected. Reconfigure INPUTS.";
+        if (!AudioInputDevices.SpeakerExists(virtualSpeakerIndex))
+            return "The selected virtual cable playback device is disconnected. Reconfigure CALL COMPANION.";
+        if (!CallAudioEndpoints.IsAvailable(Settings.CallIncomingSpeakerId))
+            return "The Discord speaker output device is disconnected. Select it again in CALL COMPANION.";
+        if (!string.IsNullOrWhiteSpace(Settings.CallIncomingSpeakerId))
+        {
+            // Do not feed Fish or the physical microphone into the very
+            // speaker endpoint that Capri is trying to listen to.
+            var incomingName = CallAudioEndpoints.Description(Settings.CallIncomingSpeakerId);
+            var outgoingName = AudioInputDevices.Speakers()
+                .FirstOrDefault(x => x.Index == virtualSpeakerIndex)?.Name ?? "";
+            if (outgoingName.Length >= 8 &&
+                incomingName.StartsWith(outgoingName, StringComparison.OrdinalIgnoreCase))
+                return "The incoming Discord output and outgoing virtual cable appear to be the same endpoint. Choose different devices to avoid a feedback loop.";
+        }
+        if (Settings.CallIncludeRealMicrophone &&
+            !AudioInputDevices.MicrophoneExists(Settings.MicrophoneDeviceIndex))
+            return "Your selected real microphone is unavailable. Choose a microphone in INPUTS.";
 
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
@@ -1583,10 +1665,35 @@ public partial class App : System.Windows.Application
             recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
             () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
                   _speech?.IsSpeaking == true);
+        listener.CaptureStopped += () => Dispatcher.BeginInvoke(() =>
+        {
+            if (!ReferenceEquals(_callListener, listener)) return;
+            StopCallCompanionMode();
+            _callWindow?.SetStatus("Call output disappeared. Incoming capture and mic bridge stopped.");
+        });
+        CallMicrophoneBridge? bridge = null;
         try
         {
-            listener.Start();
+            listener.Start(Settings.CallIncomingSpeakerId,
+                Settings.SpeechRecognitionLanguage);
+            if (Settings.CallIncludeRealMicrophone)
+            {
+                // Feed the real microphone into the same virtual playback
+                // endpoint as Fish Audio, which Windows mixes for Discord's
+                // virtual recording device. Do not change Discord settings.
+                bridge = new CallMicrophoneBridge();
+                bridge.Start(Settings.MicrophoneDeviceIndex, virtualSpeakerIndex);
+            }
+            if (!listener.IsListening)
+                throw new InvalidOperationException("Call capture stopped before initialization completed.");
+            // One temporary output override: Capri uses the virtual mic only
+            // while Call Mode is active, then goes back to normal speakers.
+            CancelVoiceOutput();
+            _speakerBeforeCall = _voicePlayback?.SpeakerDeviceIndex;
+            if (_voicePlayback is not null)
+                _voicePlayback.SpeakerDeviceIndex = virtualSpeakerIndex;
             _callListener = listener;
+            _callMicBridge = bridge;
             _callReplyCts?.Dispose();
             _callReplyCts = new CancellationTokenSource();
 
@@ -1594,13 +1701,21 @@ public partial class App : System.Windows.Application
             // and tests the user's virtual-mic routing without impersonation.
             SpeakIfEnabled(CallCompanionPolicy.AudibleIntroduction);
             _callWindow?.RefreshState();
-            return "Call Mode ON. Listening locally to default Windows playback. " +
-                "Say 'Capri' before a question. Outgoing Fish voice uses the selected speaker endpoint.";
+            return "Call Mode ON. Listening locally to " +
+                CallAudioEndpoints.Description(Settings.CallIncomingSpeakerId) +
+                ". Outgoing Capri voice" +
+                (Settings.CallIncludeRealMicrophone ? " + your real mic" : "") +
+                " is routed through the selected virtual cable output. Say Capri before questions.";
         }
         catch
         {
+            bridge?.Dispose();
             listener.Dispose();
+            _callMicBridge = null;
             _callListener = null;
+            if (_speakerBeforeCall is int previous && _voicePlayback is not null)
+                _voicePlayback.SpeakerDeviceIndex = previous;
+            _speakerBeforeCall = null;
             throw;
         }
     }
@@ -1648,7 +1763,13 @@ public partial class App : System.Windows.Application
         _callReplyCts?.Dispose();
         _callReplyCts = null;
         listener?.Dispose();
-        if (listener is not null) CancelVoiceOutput();
+        var bridge = _callMicBridge;
+        _callMicBridge = null;
+        bridge?.Dispose();
+        if (listener is not null || bridge is not null) CancelVoiceOutput();
+        if (_speakerBeforeCall is int previous && _voicePlayback is not null)
+            _voicePlayback.SpeakerDeviceIndex = previous;
+        _speakerBeforeCall = null;
         _callWindow?.RefreshState();
     }
 
@@ -2078,6 +2199,32 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        var discordCommand = command.ToLowerInvariant() switch
+        {
+            "discord toggle mute" or "toggle discord mute" or "mute toggle discord" =>
+                DiscordDesktopShortcuts.Command.ToggleMute,
+            "discord toggle deafen" or "toggle discord deafen" or "deafen toggle discord" =>
+                DiscordDesktopShortcuts.Command.ToggleDeafen,
+            _ => (DiscordDesktopShortcuts.Command?)null
+        };
+        if (discordCommand.HasValue)
+            return TryDiscordDesktopShortcut(discordCommand.Value);
+        if (ChaosModePolicy.StopRequested(command))
+        {
+            _chaos?.Stop();
+            return "Chaos Mode off. All visual clones closed.";
+        }
+
+        var clones = ChaosModePolicy.CloneCount(command);
+        if (clones > 0)
+            return Chaos.Start(clones, Store.CharacterFolder);
+
+        if (command.Equals("capri you are annoying", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("you're annoying capri", StringComparison.OrdinalIgnoreCase))
+            return Random.Shared.Next(3) == 0
+                ? Chaos.Start(1, Store.CharacterFolder)
+                : "Pff. No clones this time.";
+
         // Exact owner commands change Capri's own overlay only; never plan
         // a desktop action, send to a model, or touch another app's windows.
         var companionCommand = CompanionCommandPolicy.Parse(command);
@@ -2651,6 +2798,7 @@ public partial class App : System.Windows.Application
         Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();
+        _chaos?.Dispose();
         LinkedAccounts.Dispose();
         _mediaSessionTimer.Stop();
         _presenceTimer.Stop();

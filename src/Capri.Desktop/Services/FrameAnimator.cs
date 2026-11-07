@@ -26,6 +26,9 @@ public sealed class FrameAnimator : IDisposable
 
     public int CurrentDurationMs => _frames.Sum(frame => frame.DelayMs);
 
+    // Optional owner-supplied "hang" art can override the procedural fallback.
+    public bool HasState(string state) => GetFrames(state).Count > 0;
+
     public FrameAnimator(string baseFolder, Action<BitmapSource?> onFrame)
     {
         _baseFolder = baseFolder;

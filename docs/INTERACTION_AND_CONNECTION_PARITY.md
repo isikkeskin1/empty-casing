@@ -7,14 +7,14 @@ This is an independent implementation plan based on the owner's requested Capri-
 - **Scale:** right-click the floating companion → Size → 50%, 75%, 100%, 125%, 160%. The setting persists. Saved positions can be on any connected monitor, including negative-coordinate monitors. Mixed-DPI visual acceptance remains outstanding.
 - **Drag and toss:** drag normally; a quick release starts bounded toss physics.
 - **Shift-drop:** keeps Capri sitting at the position you dropped her, rather than attaching to a window.
-- **Ctrl-drop:** forces window-edge attachment if a suitable external window exists. This uses the available *perching* animation, not a separate hanging sequence.
+- **Ctrl-drop:** uses a distinct hanging pendulum animation with the existing perch art, or optional owner-provided `hang` frames. Not new licensed hang assets.
 - **Double-click:** toggle sleeping/waking. Open chat via the context menu or Ctrl+Alt+T / Ctrl+Shift+Space.
 - **Type:** `ride my cursor`, `hop off`, `come here`, `go to sleep`, `wake up`. These commands are exact owner commands, never unconstrained model-generated mouse actions.
 - **Cursor ride:** follows the pointer above the click target and sets the companion overlay click-through. Ctrl+Alt+C dismounts; when not riding, that same shortcut brings Capri near the pointer. Click-through and game input behavior need real Windows QA.
 - **Ctrl+Alt+H:** hide/show Capri (pre-existing).
 - **Ctrl+Alt+T:** focus the typing area (pre-existing).
 - **Ctrl+Alt+P:** toggle Quiet Mode (new).
-- **Ctrl+Alt+X:** STOP ALL INPUTS remains available (pre-existing). Do not claim a global Esc hook exists.
+- **Ctrl+Alt+X:** STOP ALL INPUTS remains available. While Chaos Mode clones are active, holding Esc for ~0.85 seconds also clears clones and invokes STOP ALL. No always-on Esc hook.
 
 ## Provider connections — normal consumer vs app publisher
 
@@ -30,11 +30,11 @@ A developer may still use the optional per-user public client-ID override under 
 
 ## Not yet implemented / do not advertise as working
 
-- Physical taskbar/icon snapping, distinct hanging pose, multi-monitor mixed-DPI collision handling, arbitrary direct-size slider, and mouse-gesture replay QA.
+- Physical taskbar/icon snapping, a hand-authored hang animation in the default art pack, multi-monitor mixed-DPI collision handling, arbitrary direct-size slider, and mouse-gesture replay QA.
 - Reliable multilingual voice recognition for 80 languages, full-duplex audio and streaming VAD; Windows recognizer and configured provider capabilities still govern voice.
-- Full on-screen cursor automation, window-moving job orchestration, progress/cancel steps UI and a pink cursor; current UI Automation remains scoped/limited.
+- Full on-screen cursor automation and window-moving job orchestration. A visible progress/cancel HUD and pink **visual-only** target pointer now exist for the bounded UI Automation task runner.
 - Discord voice joining, direct message sending on the user's behalf, and Discord status animation parity.
-- Clones, autonomous multiplication, window dragging by clones, anti-game/stream gating, or hold-Esc global rollback. These need independent process/window ownership tracking and reversible changes; simply painting copies is not parity.
+- Autonomous AI-powered talking clones, cursor stealing, or clone-directed window dragging and restoration. The new Chaos Mode does implement 1–5 visual animated clones, some game/stream gating and a hold-Esc STOP ALL while clones are active; they never touch external windows.
 - Unsigned installer rollback, physical click-through QA, peripheral/Windows language compatibility, and official OAuth production acceptance.
 
 ## Manual acceptance checks

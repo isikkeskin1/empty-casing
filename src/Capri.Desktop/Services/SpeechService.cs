@@ -26,7 +26,7 @@ public sealed class SpeechService : IDisposable
 
     public SpeechService(Action<string> heard) => _heard = heard;
 
-    public void StartListening(int deviceIndex = -1)
+    public void StartListening(int deviceIndex = -1, string? recognitionLanguage = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_listening) return;
@@ -39,10 +39,17 @@ public sealed class SpeechService : IDisposable
         if (installed.Count == 0)
             throw new InvalidOperationException(
                 "Windows Speech Recognition has no installed language pack. Add a speech language in Settings.");
+        var selected = string.IsNullOrWhiteSpace(recognitionLanguage)
+            ? installed[0]
+            : installed.FirstOrDefault(r => r.Culture.Name.Equals(
+                recognitionLanguage, StringComparison.OrdinalIgnoreCase));
+        if (selected is null)
+            throw new InvalidOperationException(
+                "The selected Windows speech recognition language is unavailable. Select an installed language in INPUTS.");
 
         try
         {
-            _recognizer = new SpeechRecognitionEngine(installed[0]);
+            _recognizer = new SpeechRecognitionEngine(selected);
             _recognizer.LoadGrammar(new DictationGrammar());
 
             // SAPI can capture the Windows default microphone natively.

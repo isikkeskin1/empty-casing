@@ -11,7 +11,8 @@ namespace Capri.Desktop.Services;
 public sealed class AutonomousNavigationRunner
 {
     private sealed record Candidate(string Action, string Name, string AutomationId,
-        string RuntimeKey, bool Selected, bool Enabled, bool Offscreen);
+        string RuntimeKey, bool Selected, bool Enabled, bool Offscreen,
+        double? CenterX, double? CenterY);
 
     private readonly UiAutomationNavigator _navigator;
     private readonly BrainRouter _brain;
@@ -25,7 +26,8 @@ public sealed class AutonomousNavigationRunner
     public async Task<string> RunAsync(
         UiWindowSnapshot approvedWindow, string goal,
         Func<bool> stillAuthorized, Action<string> progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, double, double>? showVisualPointer = null)
     {
         if (!AutonomousNavigationPolicy.IsSafeGoal(goal))
             return "Only short, non-sensitive navigation tasks are supported.";
@@ -54,7 +56,8 @@ public sealed class AutonomousNavigationRunner
                         t.Enabled && !t.Offscreen &&
                         UiNavigationPolicy.IsSafeTabLabel(t.Name))
                     .Select(t => new Candidate("select_tab", t.Name, t.AutomationId,
-                        t.RuntimeKey, t.Selected, t.Enabled, t.Offscreen))
+                        t.RuntimeKey, t.Selected, t.Enabled, t.Offscreen,
+                        t.CenterX, t.CenterY))
                     .Concat(observed.NavigationControls.Where(c =>
                         c.Enabled && !c.Offscreen && !c.Expanded &&
                         (c.Action == "expand_tree" &&
@@ -62,7 +65,8 @@ public sealed class AutonomousNavigationRunner
                          c.Action == "press_navigation" &&
                             UiNavigationPolicy.IsSafeNavigationButton(c.Name)))
                     .Select(c => new Candidate(c.Action, c.Name, c.AutomationId,
-                        c.RuntimeKey, c.Expanded, c.Enabled, c.Offscreen)))
+                        c.RuntimeKey, c.Expanded, c.Enabled, c.Offscreen,
+                        c.CenterX, c.CenterY)))
                     .GroupBy(c => c.Action + ":" + c.Name,
                         StringComparer.OrdinalIgnoreCase)
                     .Where(group => group.Count() == 1)
@@ -140,6 +144,15 @@ public sealed class AutonomousNavigationRunner
                 token.ThrowIfCancellationRequested();
                 if (!stillAuthorized())
                     return "Task permission revoked. No further actions executed.";
+
+                // Visual-only pointer tracks the exact freshly revalidated
+                // accessibility element; it never injects mouse input.
+                var visualX = chosen.Action == "select_tab"
+                    ? matchTabs[0].CenterX : matchNav[0].CenterX;
+                var visualY = chosen.Action == "select_tab"
+                    ? matchTabs[0].CenterY : matchNav[0].CenterY;
+                if (visualX.HasValue && visualY.HasValue)
+                    showVisualPointer?.Invoke(chosen.Name, visualX.Value, visualY.Value);
 
                 var receipt = chosen.Action == "select_tab"
                     ? await _navigator.SelectTabAsync(fresh, chosen.Name, token)
