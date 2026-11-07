@@ -68,6 +68,8 @@
                 Click="Stop_Click" IsEnabled="False"
                 Background="#802F47" BorderBrush="#E57495"/>
         <Button Content="OPEN DISCORD" Click="Discord_Click"/>
+        <Button Content="TOGGLE MUTE" Click="DiscordMute_Click"/>
+        <Button Content="TOGGLE DEAFEN" Click="DiscordDeafen_Click"/>
       </WrapPanel>
       <TextBlock x:Name="StatusText" Foreground="#9FE4CF"
                  FontSize="12" TextWrapping="Wrap"
