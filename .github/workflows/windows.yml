@@ -46,9 +46,18 @@ jobs:
           & $compiler "/Q" "installer\CapriDesktop.iss"
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
           if (!(Test-Path "installer-output\Capri-Setup.exe")) { throw "Capri installer output missing." }
+      - name: Generate preview SHA256 checksums
+        shell: pwsh
+        run: |
+          $installer = (Get-FileHash 'installer-output/Capri-Setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          $portable = (Get-FileHash 'CapriDesktop-win-x64.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
+          @("$installer  Capri-Setup.exe", "$portable  CapriDesktop-win-x64.zip") |
+            Set-Content -Path 'installer-output/SHA256SUMS.txt' -Encoding ascii
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: Capri-Setup
-          path: installer-output/Capri-Setup.exe
+          path: |
+            installer-output/Capri-Setup.exe
+            installer-output/SHA256SUMS.txt
           retention-days: 14
