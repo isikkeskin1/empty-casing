@@ -36,9 +36,9 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Optional PRIVATE asset pack is used only in licensed local/CI builds that supply the ZIP.
-; Public builds do not include third-party character art by default.
-Source: "..\assets\private\Capri-Animation-Pack-v0.2.zip"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; A privately supplied animation ZIP is copied into publish/ during a
+; licensed local build and included automatically by the wildcard above.
+; Public builds contain no third-party art unless an authorized pack is supplied.
 
 [Icons]
 Name: "{autoprograms}\Capri Desktop"; Filename: "{app}\{#MyAppExeName}"
