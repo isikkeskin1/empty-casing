@@ -1801,6 +1801,7 @@ public partial class App : System.Windows.Application
             if (result.Installed)
                 _companion?.ReloadArt();
             _companion?.ShowReaction(result.Message);
+            NotifyUpdateState();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
