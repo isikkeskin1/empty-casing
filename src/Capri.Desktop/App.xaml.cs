@@ -93,6 +93,26 @@ public partial class App : System.Windows.Application
     public LocalDataStore Store { get; private set; } = null!;
     public CapriDiagnosticJournal Diagnostics { get; private set; } = null!;
     private AboutUpdatesWindow? _updatesCenter;
+    private readonly CapriReleaseClient _autoReleaseClient = new();
+    private readonly CapriUpdateDownloader _autoDownloader = new();
+    private readonly DispatcherTimer _updateTimer = new()
+    {
+        Interval = TimeSpan.FromMinutes(30)
+    };
+    private readonly CancellationTokenSource _autoUpdateCts = new();
+    private bool _checkingUpdate;
+    private string? _stagedInstallerPath;
+    private string? _stagedInstallerHash;
+    private string? _stagedReleaseTag;
+    public string AutomaticUpdateStatus { get; private set; } = "No update staged.";
+    public bool HasStagedUpdate => _stagedInstallerPath is not null;
+    public bool SupportsAutoInstall =>
+        Environment.ProcessPath is string path &&
+        Path.GetFullPath(path).Equals(
+            Path.Combine(Environment.GetFolderPath(
+                Environment.SpecialFolder.LocalApplicationData),
+                "Programs", "CapriDesktop", "Capri.Desktop.exe"),
+            StringComparison.OrdinalIgnoreCase);
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
     private ScreenSketchWindow? _screenSketch;
@@ -167,6 +187,23 @@ public partial class App : System.Windows.Application
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
+        _updateTimer.Tick += async (_, _) => await CheckAndStageUpdateAsync();
+        _updateTimer.Start();
+        Dispatcher.BeginInvoke(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(12), _autoUpdateCts.Token);
+                if (Settings.AutomaticUpdates)
+                    await CheckAndStageUpdateAsync();
+            }
+            catch (OperationCanceledException) { }
+        });
+        if (!Directory.EnumerateFiles(
+                Path.Combine(Store.CharacterFolder, "idle"), "*.png")
+            .Any() && Directory.Exists(Store.CharacterFolder))
+            Dispatcher.BeginInvoke(() =>
+                _companion?.ShowReaction("Character art not installed. Open Apps & Tools → Import Animation Pack to load your ZIP."));
         if (!Settings.SetupCompleted)
             Dispatcher.BeginInvoke(OpenSetup);
     }
@@ -1573,6 +1610,133 @@ public partial class App : System.Windows.Application
         _callWindow?.RefreshState();
     }
 
+    public void SetAutomaticUpdates(bool enabled)
+    {
+        Settings.AutomaticUpdates = enabled;
+        Store.SaveSettings(Settings);
+        if (!enabled)
+        {
+            AutomaticUpdateStatus = "Automatic downloads disabled.";
+            // A staged update is never executed after the user opts out.
+            _stagedInstallerPath = null;
+            _stagedInstallerHash = null;
+            _stagedReleaseTag = null;
+        }
+        else
+            _ = CheckAndStageUpdateAsync();
+        _updatesCenter?.RefreshAutomaticUpdateState();
+    }
+
+    public async Task CheckAndStageUpdateAsync()
+    {
+        if (_checkingUpdate || !Settings.AutomaticUpdates ||
+            _autoUpdateCts.IsCancellationRequested || HasStagedUpdate)
+            return;
+        _checkingUpdate = true;
+        try
+        {
+            AutomaticUpdateStatus = "Checking official Capri releases…";
+            _updatesCenter?.RefreshAutomaticUpdateState();
+            var latest = await _autoReleaseClient.CheckLatestAsync(_autoUpdateCts.Token);
+            if (latest is null ||
+                !CapriReleasePolicy.IsNewer(
+                    typeof(App).Assembly.GetName().Version ?? new Version(0, 6, 0),
+                    latest))
+            {
+                AutomaticUpdateStatus = "Capri is up to date (or no stable release is published).";
+                return;
+            }
+            if (latest.InstallerAsset is null)
+            {
+                AutomaticUpdateStatus = "New release " + latest.Tag +
+                    " is available, but has no verifiable Windows installer.";
+                return;
+            }
+            if (!SupportsAutoInstall)
+            {
+                AutomaticUpdateStatus = "New release " + latest.Tag +
+                    " available. Portable builds must update manually from GitHub.";
+                return;
+            }
+            AutomaticUpdateStatus = "Downloading and verifying " + latest.Tag + "…";
+            _updatesCenter?.RefreshAutomaticUpdateState();
+            var stage = Path.Combine(Store.DataFolder, "updates");
+            var installer = await _autoDownloader.DownloadVerifiedAsync(
+                latest, stage, _autoUpdateCts.Token);
+            if (!Settings.AutomaticUpdates || _autoUpdateCts.IsCancellationRequested)
+                return;
+            _stagedInstallerPath = installer;
+            _stagedInstallerHash = latest.InstallerAsset.Sha256;
+            _stagedReleaseTag = latest.Tag;
+            AutomaticUpdateStatus = latest.Tag +
+                " downloaded and SHA256 verified. Capri will update when you close it.";
+            _tray?.ShowBalloonTip(5000, "Capri update ready",
+                "A verified update is staged and will install when Capri closes.",
+                System.Windows.Forms.ToolTipIcon.Info);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is IOException or HttpRequestException or
+            InvalidDataException or InvalidOperationException or
+            System.Text.Json.JsonException)
+        {
+            Diagnostics.Record("update-check", ex);
+            AutomaticUpdateStatus = "Update temporarily unavailable; will retry later.";
+        }
+        finally
+        {
+            _checkingUpdate = false;
+            _updatesCenter?.RefreshAutomaticUpdateState();
+        }
+    }
+
+    private bool LaunchStagedInstaller()
+    {
+        if (!Settings.AutomaticUpdates || _stagedInstallerPath is not { } path ||
+            _stagedInstallerHash is not { } expected ||
+            _stagedReleaseTag is null || !SupportsAutoInstall ||
+            !File.Exists(path)) return false;
+        try
+        {
+            // Rehash immediately before execution to detect post-download
+            // disk modifications or stale installer replacements.
+            using var source = File.OpenRead(path);
+            if (!Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(source))
+                .Equals(expected, StringComparison.OrdinalIgnoreCase))
+                return false;
+            var start = new ProcessStartInfo(path)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(path)!
+            };
+            start.ArgumentList.Add("/VERYSILENT");
+            start.ArgumentList.Add("/SUPPRESSMSGBOXES");
+            start.ArgumentList.Add("/NORESTART");
+            start.ArgumentList.Add("/CLOSEAPPLICATIONS");
+            Process.Start(start);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or
+            UnauthorizedAccessException or System.ComponentModel.Win32Exception
+            or InvalidOperationException)
+        {
+            Diagnostics.Record("update-check", ex);
+            return false;
+        }
+    }
+
+    public void RestartToInstallUpdate()
+    {
+        if (!HasStagedUpdate) return;
+        if (System.Windows.MessageBox.Show(
+            "Exit Capri and install the verified update now?\n\n" +
+            "The installer replaces application files, not your local character " +
+            "animations, memories or settings.",
+            "Capri — install update", MessageBoxButton.YesNo,
+            MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        Shutdown(); // OnExit launches the already-verified staged installer.
+    }
+
     public void OpenUpdatesCenter()
     {
         if (_updatesCenter is null)
@@ -2107,6 +2271,8 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("About / updates / support", null, (_, _) => Dispatcher.Invoke(OpenUpdatesCenter));
+        context.Items.Add("Install downloaded update now", null, (_, _) =>
+            Dispatcher.Invoke(RestartToInstallUpdate));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
@@ -2288,6 +2454,8 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _updateTimer.Stop();
+        _autoUpdateCts.Cancel();
         Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();
@@ -2313,6 +2481,8 @@ public partial class App : System.Windows.Application
             _tray.Visible = false;
             _tray.Dispose();
         }
+        LaunchStagedInstaller();
+        _autoUpdateCts.Dispose();
         base.OnExit(e);
     }
 }
