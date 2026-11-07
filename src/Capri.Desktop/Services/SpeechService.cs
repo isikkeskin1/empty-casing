@@ -44,9 +44,20 @@ public sealed class SpeechService : IDisposable
         {
             _recognizer = new SpeechRecognitionEngine(installed[0]);
             _recognizer.LoadGrammar(new DictationGrammar());
-            _pcmStream = new BufferedMicrophoneStream();
-            _recognizer.SetInputToAudioStream(_pcmStream,
-                new SpeechAudioFormatInfo(16000, AudioBitsPerSample.Sixteen, AudioChannel.Mono));
+
+            // SAPI can capture the Windows default microphone natively.
+            // Only non-default devices need the NAudio -> PCM stream bridge.
+            // This also avoids the custom-stream COM interop on the common path.
+            if (deviceIndex == -1)
+            {
+                _recognizer.SetInputToDefaultAudioDevice();
+            }
+            else
+            {
+                _pcmStream = new BufferedMicrophoneStream();
+                _recognizer.SetInputToAudioStream(_pcmStream,
+                    new SpeechAudioFormatInfo(16000, AudioBitsPerSample.Sixteen, AudioChannel.Mono));
+            }
             _recognizer.SpeechRecognized += (_, args) =>
             {
                 if (_listening && args.Result.Confidence >= 0.68 &&
@@ -55,13 +66,17 @@ public sealed class SpeechService : IDisposable
                     _heard(args.Result.Text);
             };
 
-            _capture = AudioInputDevices.CreateCapture(deviceIndex);
-            _capture.DataAvailable += (_, args) =>
+            if (deviceIndex != -1)
             {
-                if (_listening) _pcmStream?.Push(args.Buffer, args.BytesRecorded);
-            };
+                _capture = AudioInputDevices.CreateCapture(deviceIndex);
+                _capture.DataAvailable += (_, args) =>
+                {
+                    if (_listening) _pcmStream?.Push(args.Buffer, args.BytesRecorded);
+                };
+            }
+
             _listening = true;
-            _capture.StartRecording();
+            _capture?.StartRecording();
             _recognizer.RecognizeAsync(RecognizeMode.Multiple);
         }
         catch
