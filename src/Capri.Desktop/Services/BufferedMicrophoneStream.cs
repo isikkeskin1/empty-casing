@@ -12,17 +12,22 @@ internal sealed class BufferedMicrophoneStream : Stream
     private readonly BlockingCollection<byte[]> _queue = new(40);
     private byte[]? _current;
     private int _offset;
-    private bool _closed;
+    private volatile bool _closed;
+    private long _readPosition;
 
     public void Push(byte[] bytes, int count)
     {
         if (_closed || count <= 0) return;
         var copy = new byte[count];
         Buffer.BlockCopy(bytes, 0, copy, 0, count);
-        if (_queue.TryAdd(copy)) return;
-        _queue.TryTake(out _);
-        try { _queue.TryAdd(copy); }
-        catch (InvalidOperationException) { }
+        try
+        {
+            if (_queue.TryAdd(copy)) return;
+            _queue.TryTake(out _);
+            _queue.TryAdd(copy);
+        }
+        catch (InvalidOperationException) { } // Recording stopped while the callback was running.
+        catch (ObjectDisposedException) { }
     }
 
     public void Complete()
@@ -48,16 +53,26 @@ internal sealed class BufferedMicrophoneStream : Stream
             var copied = Math.Min(count, _current.Length - _offset);
             Buffer.BlockCopy(_current, _offset, buffer, offset, copied);
             _offset += copied;
+            Interlocked.Add(ref _readPosition, copied);
             return copied;
         }
         catch (InvalidOperationException) { return 0; }
+        catch (ObjectDisposedException) { return 0; }
     }
 
     public override bool CanRead => !_closed;
     public override bool CanSeek => false;
     public override bool CanWrite => false;
-    public override long Length => throw new NotSupportedException();
-    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    // System.Speech's SAPI COM wrapper queries Length at construction and
+    // Position during Read, even when the underlying PCM stream is live.
+    // An effectively unbounded length allows recording to continue until
+    // Complete() signals end-of-input. We never buffer that amount of data.
+    public override long Length => long.MaxValue;
+    public override long Position
+    {
+        get => Interlocked.Read(ref _readPosition);
+        set => throw new NotSupportedException("Live microphone audio cannot be repositioned.");
+    }
     public override void Flush() { }
     public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
     public override void SetLength(long value) => throw new NotSupportedException();
