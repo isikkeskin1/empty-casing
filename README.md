@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Update Center and private diagnostics — version 0.6.0
+
+**Apps & Tools → ABOUT / UPDATES** and the tray's **About / updates / support** entry open a new release and support center. Capri checks the fixed official GitHub Releases endpoint **only when you click Check for Updates**. It compares installed and published versions, validates the release's official GitHub URL, and opens that page in a browser when asked. No installer is silently downloaded, executed, or installed. If the repository has no published release yet, Capri says so and links to short-lived Actions preview builds.
+
+A new tag-only GitHub Actions release workflow validates version numbers, builds/tests Windows artifacts, generates SHA256 checksums, and publishes `Capri-Setup.exe`, the portable ZIP, and `SHA256SUMS.txt` when the maintainer explicitly pushes a matching `vMAJOR.MINOR.PATCH` tag. **No tag or stable release is created by an ordinary main-branch commit.** Preview installer artifacts now include a checksum manifest too.
+
+The Update Center also offers a local-only support report containing app/Windows/.NET versions and short **exception category/type** entries—never chat messages, tokens, stack traces or file contents. You decide if you want to copy it. This is not yet a signed updater or complete crash-reporting system. See [Releases & Diagnostics](docs/RELEASES_AND_DIAGNOSTICS.md) for security, release process and test checklist.
+
 ## Screen Sketch — draw over your desktop
 
 Capri can now open an interactive **Screen Sketch Mode** from **Game Center → SCREEN SKETCH**, **Apps & Tools → DRAW ON SCREEN**, or `Capri, draw on screen`. After a confirmation warning, use three neon pen colors, undo, clear, and an explicit **SAVE PNG** that exports only strokes, without capturing the screen. ESC, EXIT, STOP ALL and a three-minute timer always close the drawing surface. Unlike the click-through Game Coach HUD, the temporary sketch window deliberately captures mouse clicks while you draw, so do not leave it active during gameplay.

@@ -1,0 +1,86 @@
+<Window x:Class="Capri.Desktop.Windows.AboutUpdatesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Capri // About &amp; Updates" Width="740" Height="690"
+        MinWidth="590" MinHeight="550" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource CapriBaseBrush}"
+        Foreground="{StaticResource CapriTextBrush}"
+        FontFamily="Segoe UI" FontSize="13">
+  <Grid Margin="22">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,17">
+      <TextBlock Text="/// CAPRI  /  RELEASE CENTER"
+                 Foreground="{StaticResource CapriYellowBrush}"
+                 FontFamily="Bahnschrift SemiCondensed" FontWeight="Bold"
+                 FontSize="26"/>
+      <TextBlock Text="Check official GitHub releases, understand the installed build and create a privacy-conscious support report."
+                 Margin="0,7,0,0" Foreground="{StaticResource CapriMutedBrush}"
+                 TextWrapping="Wrap"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="0,0,8,8">
+        <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
+          <StackPanel>
+            <TextBlock Text="/// INSTALLED BUILD" Style="{StaticResource CapriLabel}"/>
+            <TextBlock x:Name="VersionText" Text="0.6.0"
+                       Foreground="{StaticResource CapriCyanBrush}"
+                       FontFamily="Consolas" FontSize="20" FontWeight="Bold"
+                       Margin="0,8,0,10"/>
+            <TextBlock Text="Update checks are manual. Capri never silently downloads or executes installers."
+                       Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
+                       Margin="0,0,0,13"/>
+            <WrapPanel>
+              <Button x:Name="CheckButton" Content="CHECK FOR UPDATES"
+                      Click="CheckUpdates_Click" Style="{StaticResource CapriPrimaryButton}"
+                      Margin="0,0,9,9"/>
+              <Button x:Name="OpenReleaseButton" Content="OPEN OFFICIAL RELEASE"
+                      IsEnabled="False" Click="OpenRelease_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+              <Button Content="SEE PREVIEW BUILDS" Click="OpenBuilds_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+            </WrapPanel>
+            <TextBlock x:Name="UpdateStatus" Text="Press CHECK FOR UPDATES to contact official GitHub releases."
+                       Foreground="{StaticResource CapriCyanBrush}"
+                       TextWrapping="Wrap" Margin="0,7,0,0"/>
+            <TextBlock Text="Preview Actions builds expire after 14 days. They are separate from versioned releases, and may be unsigned. Verify sources before installing."
+                       Style="{StaticResource CapriSubtext}" FontSize="11"
+                       TextWrapping="Wrap" Margin="0,11,0,0"/>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
+          <StackPanel>
+            <TextBlock Text="/// LOCAL DIAGNOSTICS" Style="{StaticResource CapriLabel}"/>
+            <TextBlock Text="No telemetry or automatic upload. Only timestamps, application/runtime version, and error categories/types are captured. No chat, memory, tokens, window titles, full paths, screenshots or stack traces."
+                       Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
+                       Margin="0,9,0,11"/>
+            <TextBox x:Name="ReportBox" IsReadOnly="True"
+                     Background="#0C1822" Foreground="{StaticResource CapriTextBrush}"
+                     BorderBrush="#436778" BorderThickness="1"
+                     FontFamily="Consolas" FontSize="11"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     Height="190" Padding="10"/>
+            <WrapPanel Margin="0,12,0,0">
+              <Button Content="REFRESH REPORT" Click="RefreshReport_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+              <Button Content="COPY REPORT" Click="CopyReport_Click"
+                      Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,9"/>
+              <Button Content="OPEN LOCAL DATA" Click="OpenData_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+            </WrapPanel>
+            <TextBlock x:Name="ReportFeedback" Foreground="{StaticResource CapriCyanBrush}"
+                       TextWrapping="Wrap" FontSize="11"
+                       Text="Nothing is shared until you choose to copy it."/>
+          </StackPanel>
+        </Border>
+        <TextBlock Text="Capri Desktop is an unofficial fan companion. Versioned GitHub releases may be unsigned until code-signing is arranged."
+                   Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"/>
+      </StackPanel>
+    </ScrollViewer>
+    <Button Grid.Row="2" Content="BACK TO CAPRI" HorizontalAlignment="Right"
+            Click="Close_Click" Style="{StaticResource CapriButton}" Margin="0,12,0,0"/>
+  </Grid>
+</Window>

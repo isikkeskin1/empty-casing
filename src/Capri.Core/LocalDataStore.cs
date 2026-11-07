@@ -14,6 +14,8 @@ public sealed class LocalDataStore
         Directory.CreateDirectory(_directory);
     }
 
+    public string DataFolder => _directory;
+
     public string CharacterFolder
     {
         get

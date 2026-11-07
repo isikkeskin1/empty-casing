@@ -17,6 +17,62 @@ try
     store.SaveHistory(turns);
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
+    var currentRelease = new Version(0, 6, 0);
+    const string officialReleaseJson =
+        "{\"tag_name\":\"v0.7.1\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1\"," +
+        "\"draft\":false,\"prerelease\":false,\"published_at\":\"2026-11-07T00:00:00Z\"," +
+        "\"assets\":[{\"name\":\"Capri-Setup.exe\"}]}";
+    var latestRelease = CapriReleasePolicy.ParseLatestRelease(officialReleaseJson);
+    Check(latestRelease is not null &&
+          latestRelease.Tag == "v0.7.1" && latestRelease.HasWindowsInstaller &&
+          CapriReleasePolicy.IsNewer(currentRelease, latestRelease) &&
+          !CapriReleasePolicy.IsNewer(new Version(0, 8, 0), latestRelease),
+        "stable pinned GitHub release metadata yields version comparison without downloading");
+    Check(CapriReleasePolicy.TryParseVersionTag("0.6.0", out var parsedVersion) &&
+          parsedVersion == currentRelease &&
+          !CapriReleasePolicy.TryParseVersionTag("v0.7.0-rc1", out _) &&
+          !CapriReleasePolicy.TryParseVersionTag("../v0.7.1", out _) &&
+          !CapriReleasePolicy.TryParseVersionTag("v999999.1.1", out _) &&
+          !CapriReleasePolicy.TryParseVersionTag("v1.2", out _),
+        "release tags must be strict, bounded, stable semantic versions");
+    Check(!CapriReleasePolicy.IsOfficialReleasePage(
+              new Uri("https://github.com.evil.example/isikkeskin1/empty-casing/releases/tag/v0.7.1"), "v0.7.1") &&
+          !CapriReleasePolicy.IsOfficialReleasePage(
+              new Uri("http://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1"), "v0.7.1") &&
+          !CapriReleasePolicy.IsOfficialReleasePage(
+              new Uri("https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1?download=1"), "v0.7.1"),
+        "release browser actions reject spoofed hosts, HTTP and altered paths");
+    var forgedReleaseRejected = false;
+    try
+    {
+        CapriReleasePolicy.ParseLatestRelease(
+            officialReleaseJson.Replace("https://github.com/",
+                "https://fake-github.example/"));
+    }
+    catch (InvalidDataException) { forgedReleaseRejected = true; }
+    Check(forgedReleaseRejected &&
+          CapriReleasePolicy.ParseLatestRelease(
+            officialReleaseJson.Replace("\"draft\":false", "\"draft\":true")) is null,
+        "release checker refuses forged release links and draft releases");
+
+    var diagnosticJournal = new CapriDiagnosticJournal(directory);
+    const string syntheticSecret = "sk-fish-PRIVATE-TEST-SECRET-NEVER-PRINT";
+    diagnosticJournal.Record("ui-unhandled", new InvalidOperationException(syntheticSecret));
+    diagnosticJournal.Record("unknown malicious", new IOException("hidden-user-file-name"));
+    var supportReport = diagnosticJournal.ReadSupportReport(currentRelease);
+    Check(supportReport.Contains("ui-unhandled  InvalidOperationException", StringComparison.Ordinal) &&
+          supportReport.Contains("unknown  IOException", StringComparison.Ordinal) &&
+          supportReport.Contains("App version: 0.6.0", StringComparison.Ordinal) &&
+          !supportReport.Contains(syntheticSecret, StringComparison.Ordinal) &&
+          !supportReport.Contains("hidden-user-file-name", StringComparison.Ordinal),
+        "diagnostics retain event category/type but never secret-bearing exception messages");
+    for (var i = 0; i < 90; i++)
+        diagnosticJournal.Record("update-check", new HttpRequestException("private-url-" + i));
+    Check(new FileInfo(diagnosticJournal.PathToJournal).Length <= CapriDiagnosticJournal.MaxFileBytes &&
+          File.ReadAllLines(diagnosticJournal.PathToJournal).Length <= CapriDiagnosticJournal.MaxEntryCount,
+        "offline diagnostic diagnosticJournal rotates within bounded file and event limits");
+
+
     Check(ScreenSketchPolicy.Parse("draw on screen") == "open" &&
           ScreenSketchPolicy.Parse("start screen drawing") == "open" &&
           ScreenSketchPolicy.Parse("open drawing mode!") == "open" &&

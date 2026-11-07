@@ -554,6 +554,8 @@
                           Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
                   <Button Content="DRAW ON SCREEN" Click="SketchMode_Click"
                           Style="{StaticResource CapriButton}" Margin="0,0,10,8"/>
+                  <Button Content="ABOUT / UPDATES" Click="OpenUpdates_Click"
+                          Style="{StaticResource CapriPrimaryButton}" Margin="0,0,10,8"/>
                 </WrapPanel>
               </StackPanel>
             </Border>
