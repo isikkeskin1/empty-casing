@@ -29,6 +29,27 @@ try
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
     Check(store.LoadSettings().OverlayLeft == 101, "settings persist");
+    Check(ChaosModePolicy.CloneCount("clone yourself") == 1 &&
+          ChaosModePolicy.CloneCount("make 3 clones") == 3 &&
+          ChaosModePolicy.CloneCount("make 6 clones") == 0 &&
+          ChaosModePolicy.CloneCount("capri, chaos mode") == 3 &&
+          ChaosModePolicy.CloneCount("move all my windows") == 0 &&
+          ChaosModePolicy.StopRequested("stop clones") &&
+          ChaosModePolicy.StopRequested("chaos off") &&
+          !ChaosModePolicy.StopRequested("start chaos mode") &&
+          !ChaosModePolicy.HeldEscapeLongEnough(true, 1000, 1500) &&
+          ChaosModePolicy.HeldEscapeLongEnough(true, 1000, 1950) &&
+          !ChaosModePolicy.HeldEscapeLongEnough(false, 1000, 1950),
+        "chaos clones require exact bounded requests and hold-Esc is time-gated");
+    settings.CallIncomingSpeakerId = "unit-test-speaker-id";
+    settings.CallIncludeRealMicrophone = true;
+    settings.SpeechRecognitionLanguage = "en-US";
+    store.SaveSettings(settings);
+    var storedCall = store.LoadSettings();
+    Check(storedCall.CallIncomingSpeakerId == "unit-test-speaker-id" &&
+          storedCall.CallIncludeRealMicrophone &&
+          storedCall.SpeechRecognitionLanguage == "en-US",
+        "call audio endpoint, optional microphone mix and STT language persist without starting capture");
     settings.OverlayScale = 1.25;
     store.SaveSettings(settings);
     Check(Math.Abs(store.LoadSettings().OverlayScale - 1.25) < 0.001,
