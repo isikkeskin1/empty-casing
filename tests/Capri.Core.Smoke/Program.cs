@@ -1,9 +1,30 @@
 using System.Net;
 using Capri.Core;
+using Capri.Desktop.Services;
 
 var directory = Path.Combine(Path.GetTempPath(), "capri-smoke-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // SAPI's COM stream adapter queries Length and Position while opening a
+    // live microphone. Regression: both formerly threw NotSupportedException.
+    using (var liveMic = new BufferedMicrophoneStream())
+    {
+        Check(liveMic.CanRead && !liveMic.CanSeek &&
+              liveMic.Length == long.MaxValue && liveMic.Position == 0,
+            "live microphone provides SAPI-compatible length/position metadata");
+        liveMic.Push(new byte[] { 10, 20, 30, 40 }, 4);
+        var recorded = new byte[6];
+        Check(liveMic.Read(recorded, 1, 2) == 2 &&
+              liveMic.Position == 2 && recorded[1] == 10 && recorded[2] == 20,
+            "SAPI microphone stream reads PCM without losing offsets");
+        Check(liveMic.Read(recorded, 3, 3) == 2 &&
+              liveMic.Position == 4 && recorded[3] == 30 && recorded[4] == 40,
+            "SAPI microphone stream advances position by bytes actually read");
+        liveMic.Complete();
+        Check(liveMic.Read(recorded, 0, 1) == 0,
+            "SAPI microphone stream ends cleanly after capture stops");
+    }
+
     var store = new LocalDataStore(directory);
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
