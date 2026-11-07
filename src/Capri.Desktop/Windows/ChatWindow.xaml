@@ -209,15 +209,13 @@
                       </RadialGradientBrush>
                     </Ellipse.Fill>
                   </Ellipse>
-                  <Image x:Name="HeroArtImage" Stretch="Uniform"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         Width="440" Height="480"
-                         RenderOptions.BitmapScalingMode="HighQuality"
-                         RenderTransformOrigin="0.5,0.5">
-                    <Image.RenderTransform>
-                      <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
-                    </Image.RenderTransform>
-                  </Image>
+                  <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                           Margin="4,0,4,0">
+                    <Image x:Name="HeroArtImage" Stretch="Uniform"
+                           Width="450" Height="460"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                  </Viewbox>
                   <TextBlock x:Name="HeroArtStatus"
                              Text="LOADING ANIMATIONS..."
                              VerticalAlignment="Bottom" HorizontalAlignment="Center"
@@ -821,13 +819,31 @@
               <ColumnDefinition Width="8"/>
               <ColumnDefinition Width="105"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="PromptBox" Style="{StaticResource CapriInput}"
-                     Background="#101A29" BorderBrush="#28384A"
-                     AcceptsReturn="True" TextWrapping="Wrap"
-                     MinHeight="44" MaxHeight="132"
-                     VerticalScrollBarVisibility="Auto"
-                     KeyDown="Prompt_KeyDown"
-                     ToolTip="Enter to send · Shift+Enter to add a line"/>
+            <Grid>
+              <TextBox x:Name="PromptBox" Style="{StaticResource CapriInput}"
+                       Background="#101A29" BorderBrush="#28384A"
+                       AcceptsReturn="True" TextWrapping="Wrap"
+                       MinHeight="44" MaxHeight="132"
+                       VerticalScrollBarVisibility="Auto"
+                       KeyDown="Prompt_KeyDown"
+                       ToolTip="Enter to send · Shift+Enter to add a line"/>
+              <TextBlock Text="Ask Capri something, or tell her what to do..."
+                         Margin="15,0,0,0" VerticalAlignment="Center"
+                         Foreground="#8397AD" FontSize="13"
+                         IsHitTestVisible="False">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding ElementName=PromptBox, Path=Text}"
+                                   Value="">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </Grid>
             <Button x:Name="SendButton" Grid.Column="2"
                     Content="Send  ↗" Click="Send_Click"
                     Style="{StaticResource CapriPrimaryButton}"
