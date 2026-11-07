@@ -1264,15 +1264,24 @@ public partial class App : System.Windows.Application
         var epoch = _actionEpoch;
         using var cts = new CancellationTokenSource();
         _autonomousTaskCts = cts;
+        var hud = new AutonomousTaskHudWindow();
         try
         {
+            hud.Show();
+            hud.AddStep("OBJECTIVE  " + goal);
             var runner = new AutonomousNavigationRunner(UiNavigator, Brain);
             return await runner.RunAsync(inspectedWindow, goal,
                 () => _actionEpoch == epoch && ReferenceEquals(_autonomousTaskCts, cts),
-                progress, cts.Token);
+                line =>
+                {
+                    progress(line);
+                    hud.AddStep(line);
+                }, cts.Token,
+                (label, x, y) => hud.PointTo(label, x, y));
         }
         finally
         {
+            hud.Close();
             if (ReferenceEquals(_autonomousTaskCts, cts))
                 _autonomousTaskCts = null;
         }
