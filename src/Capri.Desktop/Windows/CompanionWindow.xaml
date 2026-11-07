@@ -12,6 +12,7 @@
       <MenuItem Header="Ride my cursor" Click="RideCursor_Click"/>
       <MenuItem Header="Hop off cursor" Click="HopOff_Click"/>
       <MenuItem Header="Chaos Mode — spawn 3 animated clones" Click="SpawnClones_Click"/>
+      <MenuItem Header="AI Chaos — 3 LOCAL Ollama talking clones" Click="SpawnAiClones_Click"/>
       <MenuItem Header="Stop Chaos Mode" Click="StopClones_Click"/>
       <MenuItem Header="Size">
         <MenuItem Header="Tiny (50%)" Tag="0.5" Click="Scale_Click"/>
