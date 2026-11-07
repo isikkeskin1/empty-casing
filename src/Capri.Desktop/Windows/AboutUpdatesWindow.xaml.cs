@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Windows;
 using Capri.Core;
+using Capri.Desktop.Services;
 
 namespace Capri.Desktop.Windows;
 
@@ -13,6 +14,8 @@ public partial class AboutUpdatesWindow : Window
     private CapriRelease? _latest;
     private bool _checking;
     private bool _syncing;
+    private bool _readinessRunning;
+    private readonly CancellationTokenSource _readinessCancel = new();
 
     public AboutUpdatesWindow()
     {
@@ -21,7 +24,12 @@ public partial class AboutUpdatesWindow : Window
         VersionText.Text = "v" + _current.ToString(3) + "  /  Windows x64";
         RefreshReport();
         App.Instance.UpdateStateChanged += RefreshUpdateState;
-        Closed += (_, _) => App.Instance.UpdateStateChanged -= RefreshUpdateState;
+        Closed += (_, _) =>
+        {
+            _readinessCancel.Cancel();
+            _readinessCancel.Dispose();
+            App.Instance.UpdateStateChanged -= RefreshUpdateState;
+        };
         RefreshUpdateState();
     }
 
@@ -106,6 +114,52 @@ public partial class AboutUpdatesWindow : Window
 
     private void OpenBuilds_Click(object sender, RoutedEventArgs e) =>
         OpenExternal(CapriReleasePolicy.BuildsPage);
+
+    private async void Readiness_Click(object sender, RoutedEventArgs e)
+    {
+        if (_readinessRunning) return;
+        _readinessRunning = true;
+        ReadinessButton.IsEnabled = false;
+        ReadinessReportBox.Text = "Checking local configuration and model integrity…";
+        try
+        {
+            var report = await CapriReadinessService.BuildAsync(
+                App.Instance, _readinessCancel.Token);
+            if (!_readinessCancel.IsCancellationRequested)
+                ReadinessReportBox.Text = report;
+        }
+        catch (OperationCanceledException)
+        {
+            if (!_readinessCancel.IsCancellationRequested)
+                ReadinessReportBox.Text = "Readiness check cancelled.";
+        }
+        catch (Exception ex)
+        {
+            if (!_readinessCancel.IsCancellationRequested)
+                ReadinessReportBox.Text = "Readiness check unavailable (" +
+                    ex.GetType().Name + "). Open LOCAL DIAGNOSTICS for details.";
+        }
+        finally
+        {
+            _readinessRunning = false;
+            if (!_readinessCancel.IsCancellationRequested)
+                ReadinessButton.IsEnabled = true;
+        }
+    }
+
+    private void CopyReadiness_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(ReadinessReportBox.Text);
+            ReadinessFeedback.Text = "Readiness results copied; check before sharing.";
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException
+            or InvalidOperationException)
+        {
+            ReadinessFeedback.Text = "Clipboard unavailable. Select the text manually.";
+        }
+    }
 
     private void RefreshReport() =>
         ReportBox.Text = App.Instance.Diagnostics.ReadSupportReport(_current);
