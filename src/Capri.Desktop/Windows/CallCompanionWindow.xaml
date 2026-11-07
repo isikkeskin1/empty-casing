@@ -74,6 +74,8 @@
         <Button Content="OPEN DISCORD" Click="Discord_Click"/>
         <Button Content="TOGGLE MUTE" Click="DiscordMute_Click"/>
         <Button Content="TOGGLE DEAFEN" Click="DiscordDeafen_Click"/>
+        <Button x:Name="DiscordPresenceButton" Content="DISCORD STATUS ON/OFF"
+                Click="DiscordPresence_Click"/>
       </WrapPanel>
       <TextBlock x:Name="StatusText" Foreground="#9FE4CF"
                  FontSize="12" TextWrapping="Wrap"
