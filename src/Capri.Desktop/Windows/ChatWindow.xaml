@@ -1,13 +1,66 @@
 <Window x:Class="Capri.Desktop.Windows.ChatWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="CAPRI  ·  Mainframe" Width="1340" Height="850"
         MinWidth="1020" MinHeight="700" WindowStartupLocation="CenterScreen"
         Background="{StaticResource CapriWindowAtmosphere}"
         Foreground="{StaticResource CapriTextBrush}"
         FontFamily="Segoe UI" FontSize="13"
-        UseLayoutRounding="True" SnapsToDevicePixels="True">
-  <Grid Margin="20">
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        WindowStyle="None" ResizeMode="CanResize">
+  <shell:WindowChrome.WindowChrome>
+    <shell:WindowChrome CaptionHeight="38"
+                        ResizeBorderThickness="7"
+                        GlassFrameThickness="0"
+                        CornerRadius="0"
+                        UseAeroCaptionButtons="False"/>
+  </shell:WindowChrome.WindowChrome>
+  <Grid Background="#090E18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="38"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <!-- Dark, draggable native-compatible chrome with explicit window actions. -->
+    <Border Grid.Row="0" Background="#0D1320"
+            BorderBrush="#27374A" BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="17,0,0,0"
+                    VerticalAlignment="Center">
+          <Ellipse Width="9" Height="9" Margin="0,0,10,0"
+                   Fill="{StaticResource CapriPinkBrush}"/>
+          <TextBlock Text="CAPRI" Foreground="#E8ECF5"
+                     FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                     VerticalAlignment="Center"/>
+          <TextBlock Text="  /  MAINFRAME" Foreground="#71889E"
+                     FontFamily="Consolas" FontSize="10"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Content="—" ToolTip="Minimize" Click="MinimizeWindow_Click"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                  Width="48" Height="37" FontSize="13" FontFamily="Segoe UI"
+                  Foreground="#C9D5E1" Background="Transparent"
+                  BorderThickness="0" Cursor="Hand"/>
+          <Button x:Name="MaximizeWindowButton" Content="□" ToolTip="Maximize or restore"
+                  Click="ToggleMaximizeWindow_Click"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                  Width="48" Height="37" FontSize="16"
+                  Foreground="#C9D5E1" Background="Transparent"
+                  BorderThickness="0" Cursor="Hand"/>
+          <Button Content="×" ToolTip="Close" Click="CloseWindow_Click"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                  Width="52" Height="37" FontSize="19"
+                  Foreground="#FF96AD" Background="#251928"
+                  BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1" Margin="20">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
@@ -871,5 +924,6 @@
         </Grid>
       </Grid>
     </Grid>
+  </Grid>
   </Grid>
 </Window>
