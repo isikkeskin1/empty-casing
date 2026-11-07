@@ -51,6 +51,7 @@ public partial class App : System.Windows.Application
     private ConnectionsWindow? _connections;
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
     private CallLoopbackListeningService? _callListener;
+    private CallMicrophoneBridge? _callMicBridge;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
     public bool CallCompanionActive => _callListener?.IsListening == true;
@@ -1562,6 +1563,15 @@ public partial class App : System.Windows.Application
         _callWindow.Activate();
     }
 
+    public void ConfigureCallRouting(string speakerDeviceId, bool includeRealMicrophone)
+    {
+        if (!CallAudioEndpoints.IsAvailable(speakerDeviceId))
+            throw new InvalidOperationException("The selected Discord output device is not available.");
+        Settings.CallIncomingSpeakerId = speakerDeviceId;
+        Settings.CallIncludeRealMicrophone = includeRealMicrophone;
+        Store.SaveSettings(Settings);
+    }
+
     public string StartCallCompanionMode(bool participantsInformed)
     {
         if (!participantsInformed)
@@ -1575,6 +1585,11 @@ public partial class App : System.Windows.Application
             return "Configure a Fish Audio API key in Voice Setup before routing call responses.";
         if (!AudioInputDevices.SpeakerExists(Settings.SpeakerDeviceIndex))
             return "The selected outgoing playback device is disconnected. Reconfigure INPUTS.";
+        if (!CallAudioEndpoints.IsAvailable(Settings.CallIncomingSpeakerId))
+            return "The Discord speaker output device is disconnected. Select it again in CALL COMPANION.";
+        if (Settings.CallIncludeRealMicrophone &&
+            !AudioInputDevices.MicrophoneExists(Settings.MicrophoneDeviceIndex))
+            return "Your selected real microphone is unavailable. Choose a microphone in INPUTS.";
 
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
@@ -1583,10 +1598,20 @@ public partial class App : System.Windows.Application
             recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
             () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
                   _speech?.IsSpeaking == true);
+        CallMicrophoneBridge? bridge = null;
         try
         {
-            listener.Start();
+            listener.Start(Settings.CallIncomingSpeakerId);
+            if (Settings.CallIncludeRealMicrophone)
+            {
+                // Feed the real microphone into the same virtual playback
+                // endpoint as Fish Audio, which Windows mixes for Discord's
+                // virtual recording device. Do not change Discord settings.
+                bridge = new CallMicrophoneBridge();
+                bridge.Start(Settings.MicrophoneDeviceIndex, Settings.SpeakerDeviceIndex);
+            }
             _callListener = listener;
+            _callMicBridge = bridge;
             _callReplyCts?.Dispose();
             _callReplyCts = new CancellationTokenSource();
 
@@ -1594,12 +1619,17 @@ public partial class App : System.Windows.Application
             // and tests the user's virtual-mic routing without impersonation.
             SpeakIfEnabled(CallCompanionPolicy.AudibleIntroduction);
             _callWindow?.RefreshState();
-            return "Call Mode ON. Listening locally to default Windows playback. " +
-                "Say 'Capri' before a question. Outgoing Fish voice uses the selected speaker endpoint.";
+            return "Call Mode ON. Listening locally to " +
+                CallAudioEndpoints.Description(Settings.CallIncomingSpeakerId) +
+                ". Outgoing Capri voice" +
+                (Settings.CallIncludeRealMicrophone ? " + your real mic" : "") +
+                " is routed through the selected virtual cable output. Say Capri before questions.";
         }
         catch
         {
+            bridge?.Dispose();
             listener.Dispose();
+            _callMicBridge = null;
             _callListener = null;
             throw;
         }
@@ -1648,7 +1678,10 @@ public partial class App : System.Windows.Application
         _callReplyCts?.Dispose();
         _callReplyCts = null;
         listener?.Dispose();
-        if (listener is not null) CancelVoiceOutput();
+        var bridge = _callMicBridge;
+        _callMicBridge = null;
+        bridge?.Dispose();
+        if (listener is not null || bridge is not null) CancelVoiceOutput();
         _callWindow?.RefreshState();
     }
 
