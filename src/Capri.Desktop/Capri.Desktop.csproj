@@ -15,6 +15,10 @@
     <ProjectReference Include="../Capri.Core/Capri.Core.csproj" />
     <PackageReference Include="System.Speech" Version="10.0.14" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <!-- On-device, multilingual Whisper inference. Model is separately
+         downloaded on explicit user request and SHA-256 verified. -->
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationTypes" />
     <!-- OAuth client IDs are public identifiers, injected by the publisher.
@@ -26,6 +30,11 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>CapriRobloxClientId</_Parameter1>
       <_Parameter2>$(CapriRobloxClientId)</_Parameter2>
+    </AssemblyAttribute>
+    <!-- One public publisher-owned Discord application ID. No tokens. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CapriDiscordClientId</_Parameter1>
+      <_Parameter2>$(CapriDiscordClientId)</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 </Project>

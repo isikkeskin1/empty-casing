@@ -29,6 +29,13 @@ try
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
     Check(store.LoadSettings().OverlayLeft == 101, "settings persist");
+    Check(ChaosModePolicy.AiCloneCount("make 3 AI clones") == 3 &&
+          ChaosModePolicy.AiCloneCount("make talking clones") == 3 &&
+          ChaosModePolicy.AiCloneCount("capri, make 5 talking clones") == 5 &&
+          ChaosModePolicy.AiCloneCount("make 9 AI clones") == 0 &&
+          ChaosModePolicy.AiCloneCount("copy all my private chats") == 0 &&
+          ChaosModePolicy.CloneCount("make 3 AI clones") == 0,
+        "AI clone conversations require explicit bounded intent distinct from visual clones");
     Check(ChaosModePolicy.CloneCount("clone yourself") == 1 &&
           ChaosModePolicy.CloneCount("make 3 clones") == 3 &&
           ChaosModePolicy.CloneCount("make 6 clones") == 0 &&

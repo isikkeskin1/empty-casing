@@ -49,6 +49,13 @@ public partial class App : System.Windows.Application
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
     private ChaosController? _chaos;
+    private DiscordPresenceService? _discordPresence;
+    private readonly DispatcherTimer _discordPresenceTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(25)
+    };
+    private bool _discordPresenceBusy;
+    private CompanionMood _discordMood = CompanionMood.Idle;
     private ChaosController Chaos => _chaos ??= new ChaosController(StopAllInputs);
     private ConnectionsWindow? _connections;
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
@@ -67,6 +74,7 @@ public partial class App : System.Windows.Application
     private VoicePlaybackService? _voicePlayback;
     private SystemAudioActivityService? _audioReactions;
     private CancellationTokenSource? _voiceCts;
+    private CancellationTokenSource? _whisperOnceCts;
     private readonly Queue<string> _liveSpeechQueue = new();
     private VoiceSentenceBuffer? _liveSpeechBuffer;
     private bool _liveSpeechSpeaking;
@@ -209,6 +217,12 @@ public partial class App : System.Windows.Application
         };
         _mediaSessionTimer.Tick += async (_, _) => await ObserveNowPlayingAsync();
         _presenceTimer.Tick += async (_, _) => await ObservePresenceAsync();
+        _discordPresenceTimer.Tick += async (_, _) => await RefreshDiscordPresenceAsync();
+        if (Settings.EnableDiscordRichPresence && DiscordPresenceService.HasPublisherAppId)
+        {
+            _discordPresenceTimer.Start();
+            _ = RefreshDiscordPresenceAsync();
+        }
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
@@ -282,6 +296,24 @@ public partial class App : System.Windows.Application
     public void StartTalkOnce()
     {
         if (_speech is null) return;
+        if (Settings.SpeechRecognitionMode == "whisper")
+        {
+            if (!LocalWhisperTranscriber.ModelInstalled)
+            {
+                _companion?.ShowReaction("Install the local multilingual Whisper model in INPUTS first.");
+                OpenInputSettings();
+                return;
+            }
+            if (CallCompanionActive || Settings.ListenToMicrophone)
+            {
+                _companion?.ShowReaction("End Call Mode or turn MIC OFF before Whisper Talk Once.");
+                return;
+            }
+            CancelCurrentReply();
+            _whisperOnceCts?.Cancel();
+            _ = RunWhisperTalkOnceAsync();
+            return;
+        }
         // The Talk Once hotkey doubles as a deliberate barge-in button:
         // abandon any previous AI generation instead of queuing stale speech.
         CancelCurrentReply();
@@ -299,6 +331,45 @@ public partial class App : System.Windows.Application
         _chat?.SyncCapabilitySwitches();
     }
 
+    private async Task RunWhisperTalkOnceAsync()
+    {
+        using var cts = new CancellationTokenSource();
+        _whisperOnceCts = cts;
+        _companion?.ShowReaction("Multilingual Whisper: recording 6 seconds locally. Speak now.");
+        try
+        {
+            var text = await LocalWhisperTranscriber.CaptureAndTranscribeAsync(
+                Settings.MicrophoneDeviceIndex, TimeSpan.FromSeconds(6), cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(_whisperOnceCts, cts))
+                return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _companion?.ShowReaction("Whisper didn't hear speech. Check the microphone.");
+                return;
+            }
+            // The owner explicitly pressed Talk Once, so this transcription
+            // is an owner-directed prompt, not an ambient wake-word input.
+            CancelVoiceOutput();
+            if (Settings.OpenChatForVoiceRequests || !Settings.SpeakReplies || _quietMode)
+                ShowChat();
+            else
+                EnsureChatWindow();
+            _chat?.SubmitVoiceText(text);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!cts.IsCancellationRequested)
+                _companion?.ShowReaction("Local Whisper unavailable: " +
+                    ex.GetType().Name + ". Check INPUTS and your model.");
+        }
+        finally
+        {
+            if (ReferenceEquals(_whisperOnceCts, cts))
+                _whisperOnceCts = null;
+        }
+    }
+
     private void FinishTalkOnce()
     {
         _talkOnceTimeout.Stop();
@@ -314,6 +385,12 @@ public partial class App : System.Windows.Application
     public void SetMicrophoneEnabled(bool enabled)
     {
         if (_speech is null) return;
+        if (enabled && Settings.SpeechRecognitionMode == "whisper")
+        {
+            _companion?.ShowReaction("Whisper supports manual Talk Once, not continuous wake-word listening. " +
+                "Switch to Windows recognition for hands-free MIC ON.");
+            return;
+        }
         if (!enabled)
         {
             Settings.ListenToMicrophone = false;
@@ -539,6 +616,8 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        _whisperOnceCts?.Cancel();
+        _ = SetDiscordPresenceEnabledAsync(false);
         _chaos?.Stop();
         StopCallCompanionMode();
         StopAutonomousTask();
@@ -1590,7 +1669,107 @@ public partial class App : System.Windows.Application
         return DiscordDesktopShortcuts.Send(command);
     }
 
+    private (string Details, string State) DiscordActivity()
+    {
+        if (CallCompanionActive) return ("Voice call companion", "Responding as an AI in a call");
+        if (_chaos?.CloneCount > 0)
+            return ("Chaos Mode", _chaos.CloneCount + " animated Capri clones");
+        return _discordMood switch
+        {
+            CompanionMood.Sleeping => ("Capri is sleeping", "Dreaming on the desktop"),
+            CompanionMood.Talking => ("Chatting with Capri", "AI companion is speaking"),
+            CompanionMood.MusicPerch => ("Listening to music", "Vibing on the desktop"),
+            CompanionMood.Thinking => ("Capri is thinking", "A question is in progress"),
+            _ => ("Capri Desktop", "Your cyberpunk AI companion")
+        };
+    }
+
+    private async Task RefreshDiscordPresenceAsync()
+    {
+        if (!Settings.EnableDiscordRichPresence || _discordPresenceBusy ||
+            !DiscordPresenceService.HasPublisherAppId) return;
+        _discordPresenceBusy = true;
+        try
+        {
+            _discordPresence ??= new DiscordPresenceService();
+            var (details, state) = DiscordActivity();
+            await _discordPresence.SetActivityAsync(details, state);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Discord presence unavailable: " + ex.GetType().Name);
+        }
+        finally { _discordPresenceBusy = false; }
+    }
+
+    public async Task<string> SetDiscordPresenceEnabledAsync(bool enabled)
+    {
+        if (!enabled)
+        {
+            Settings.EnableDiscordRichPresence = false;
+            _discordPresenceTimer.Stop();
+            _discordPresence?.Dispose();
+            _discordPresence = null;
+            Store.SaveSettings(Settings);
+            return "Discord Rich Presence disabled; local connection closed.";
+        }
+        if (!DiscordPresenceService.HasPublisherAppId)
+            return "Discord presence needs Capri's public application ID configured ONCE " +
+                "by its publisher (CAPRI_DISCORD_CLIENT_ID). No user token is required.";
+
+        try
+        {
+            _discordPresence ??= new DiscordPresenceService();
+            var (details, state) = DiscordActivity();
+            await _discordPresence.SetActivityAsync(details, state);
+            Settings.EnableDiscordRichPresence = true;
+            Store.SaveSettings(Settings);
+            _discordPresenceTimer.Start();
+            return "Discord Rich Presence enabled using Discord's local desktop IPC. " +
+                "It does not read messages or join calls.";
+        }
+        catch (Exception ex)
+        {
+            _discordPresence?.Dispose();
+            _discordPresence = null;
+            return "Cannot connect Discord desktop Rich Presence: " +
+                ex.GetType().Name + ". Open Discord and enable activity sharing.";
+        }
+    }
+
     public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
+
+    public string StartAiChaosClones(int number)
+    {
+        if (!Brain.IsLocal)
+            return "AI clone dialogue uses local Ollama only. Select LOCAL in Voice/Brain setup " +
+                "before starting it; cloud models are never called for background clone chatter.";
+        if (CallCompanionActive)
+            return "Stop Call Mode before starting AI clone conversations.";
+        return Chaos.StartAi(number, Store.CharacterFolder,
+            (prompt, ct) => Brain.ReplyAsync(
+                new[] { new ChatTurn { Role = "user", Text = prompt } }, ct),
+            () => _quietMode || CallCompanionActive);
+    }
+
+    public string StartApprovedChaosWindowPrank()
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS for this session first.";
+        if (_chaos?.CloneCount is null or 0)
+            return "Start animated Chaos clones first.";
+        var approval = System.Windows.MessageBox.Show(
+            "Allow Capri's clones to gently wobble ONE supported app window " +
+            "for up to 12 seconds? Capri will restore the original position on " +
+            "STOP ALL / hold Esc, unless you manually move the window. " +
+            "No clicks, typing, resizing or game/system windows are involved.",
+            "Capri — approve reversible window prank",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (approval != MessageBoxResult.Yes)
+            return "Chaos window prank cancelled.";
+        return _chaos.StartWindowPrank();
+    }
 
     public void StopChaosClones() => _chaos?.Stop();
 
@@ -1658,6 +1837,8 @@ public partial class App : System.Windows.Application
             !AudioInputDevices.MicrophoneExists(Settings.MicrophoneDeviceIndex))
             return "Your selected real microphone is unavailable. Choose a microphone in INPUTS.";
 
+        // Do not let fictional clone speech leak into an explicitly armed call.
+        _chaos?.Stop();
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
         if (Settings.ListenToMicrophone) SetMicrophoneEnabled(false);
@@ -2199,6 +2380,13 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        if (command.Equals("start window prank", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("let clones wobble my window", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("have clones move my window", StringComparison.OrdinalIgnoreCase))
+            return StartApprovedChaosWindowPrank();
+        var aiClones = ChaosModePolicy.AiCloneCount(command);
+        if (aiClones > 0)
+            return StartAiChaosClones(aiClones);
         var discordCommand = command.ToLowerInvariant() switch
         {
             "discord toggle mute" or "toggle discord mute" or "mute toggle discord" =>
@@ -2777,6 +2965,7 @@ public partial class App : System.Windows.Application
 
     public void SetMood(CompanionMood mood)
     {
+        _discordMood = mood;
         _companion?.SetMood(mood);
         _chat?.SetHeroMood(mood);
     }
@@ -2790,6 +2979,9 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _whisperOnceCts?.Cancel();
+        _discordPresenceTimer.Stop();
+        _discordPresence?.Dispose();
         _firstUpdateCheck.Stop();
         _regularUpdateCheck.Stop();
         _autoInstallTimer.Stop();

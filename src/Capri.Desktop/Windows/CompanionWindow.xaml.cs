@@ -556,6 +556,10 @@ public partial class CompanionWindow : Window
     private void HopOff_Click(object sender, RoutedEventArgs e) => EndCursorRide();
     private void SpawnClones_Click(object sender, RoutedEventArgs e) =>
         ShowReaction(App.Instance.StartChaosClones(3));
+    private void SpawnAiClones_Click(object sender, RoutedEventArgs e) =>
+        ShowReaction(App.Instance.StartAiChaosClones(3));
+    private void WindowPrank_Click(object sender, RoutedEventArgs e) =>
+        ShowReaction(App.Instance.StartApprovedChaosWindowPrank());
     private void StopClones_Click(object sender, RoutedEventArgs e) =>
         App.Instance.StopChaosClones();
     private void Perch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Perching);

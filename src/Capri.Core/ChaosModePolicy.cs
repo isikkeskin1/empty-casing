@@ -27,6 +27,25 @@ public static class ChaosModePolicy
             ? count : 0;
     }
 
+    // Unlike ordinary decorative clones, AI chatter starts ONLY on an explicit
+    // "AI/talking" request, with a locally configured Ollama model. No cloud
+    // requests or private user context are ever forwarded to clone personas.
+    public static int AiCloneCount(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Length > 120) return 0;
+        var normalized = text.Trim().TrimEnd('.', '!', '?').ToLowerInvariant();
+        if (normalized.StartsWith("capri, ")) normalized = normalized[7..];
+        if (normalized.StartsWith("hey capri, ")) normalized = normalized[11..];
+        if (normalized is "make ai clones" or "let the clones talk" or
+            "make talking clones" or "ai chaos mode")
+            return 3;
+        var match = Regex.Match(normalized,
+            @"^(?:make|spawn|create) ([1-5]) (?:ai|talking) clones?$",
+            RegexOptions.CultureInvariant);
+        return match.Success && int.TryParse(match.Groups[1].Value, out var count)
+            ? count : 0;
+    }
+
     public static bool StopRequested(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return false;
