@@ -541,6 +541,9 @@ public partial class App : System.Windows.Application
         CodeHusk.SetEnabled(false);
         SetObsClipsEnabled(false);
         _chat?.CancelActiveReply();
+        // STOP ALL must also release any pointer-following overlay mode.
+        // This restores normal hit testing before notifying the owner.
+        _companion?.EndCursorRide();
         _actionEpoch++;
         _voiceRouter.Reset();
         _talkOnceTimeout.Stop();

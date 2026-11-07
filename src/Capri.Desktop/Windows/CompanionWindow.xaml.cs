@@ -21,6 +21,7 @@ public partial class CompanionWindow : Window
     private readonly DispatcherTimer _flight = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly DispatcherTimer _cursorFollow = new() { Interval = TimeSpan.FromMilliseconds(35) };
     private bool _cursorRiding;
+    private bool _sleepRequested;
     public bool CursorRiding => _cursorRiding;
     private const int GwlExStyle = -20;
     private const long WsExTransparent = 0x20;
@@ -277,6 +278,7 @@ public partial class CompanionWindow : Window
     {
         if (!IsVisible) Show();
         if (_cursorRiding) return;
+        if (_sleepRequested) Wake();
         _flight.Stop();
         DetachWindow();
         _cursorRiding = true;
@@ -298,21 +300,21 @@ public partial class CompanionWindow : Window
 
     public void ToggleSleep()
     {
-        if (_mood == CompanionMood.Sleeping)
-            SetMood(CompanionMood.Idle);
-        else
-        {
-            EndCursorRide();
-            _flight.Stop();
-            SetMood(CompanionMood.Sleeping);
-        }
+        if (_sleepRequested) Wake();
+        else GoToSleep();
     }
 
-    public void Wake() => SetMood(CompanionMood.Idle);
+    public void Wake()
+    {
+        _sleepRequested = false;
+        SetMood(CompanionMood.Idle);
+    }
+
     public void GoToSleep()
     {
         EndCursorRide();
         _flight.Stop();
+        _sleepRequested = true;
         SetMood(CompanionMood.Sleeping);
     }
 
@@ -429,6 +431,11 @@ public partial class CompanionWindow : Window
 
     public void SetMood(CompanionMood mood)
     {
+        // Explicit sleep is persistent. An AI answer, system reaction or TTS
+        // completion must not instantly wake Capri; only Wake/DoubleClick does.
+        if (_sleepRequested && mood != CompanionMood.Sleeping) return;
+        if (_cursorRiding && mood == CompanionMood.Idle)
+            mood = CompanionMood.Perching;
         _mood = mood;
         _returnToIdle.Stop();
         var (label, color, state) = mood switch
