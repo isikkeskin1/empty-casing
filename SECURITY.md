@@ -12,6 +12,10 @@ Capri Desktop is an early, unsigned, independently developed desktop companion. 
 | OpenRouter | https://openrouter.ai/api/v1/ | Cloud prompts and approved images |
 | OpenAI | https://api.openai.com/v1/ | Cloud prompts and approved images |
 | Windows speech | OS speech recognition and TTS | Microphone audio is processed by Windows when enabled; raw audio is not saved by Capri |
+| Multilingual Whisper Talk Once | Local CPU / verified ~148 MB model weights | User-triggered six-second PCM in RAM; no audio is sent to a cloud transcription provider or saved by the model wrapper |
+| Discord Call Companion | Local WASAPI speaker loopback + selected virtual microphone cable | All audio on the chosen endpoint can be heard locally; only recognized Capri-addressed text is sent to the chosen AI brain, and Fish Audio receives generated voice text |
+| Discord Rich Presence | Discord desktop local IPC | Only opt-in, short activity strings; no Discord account token, message access or voice auto-join |
+| Spotify / Roblox OAuth | Official provider browser consent pages | Authorization Code + PKCE. OAuth access/refresh credentials are stored encrypted with Windows DPAPI, never manually pasted as account cookies |
 
 Our app implements no analytics or telemetry endpoint. This does **not** mean Windows, Ollama, or third-party AI services collect nothing.
 
@@ -21,6 +25,16 @@ Screen watching and microphone recognition start OFF on each launch, and screen 
 
 The installer is not signed. A warning is not proof of malware, but it is not proof of a false positive either. Use source and provenance checks, and report potential vulnerabilities without posting secrets to public issues. See [asset rights](docs/ASSET_RIGHTS.md).
 
+
+## Call audio, optional model downloads, and data recovery
+
+**Consent:** Call Mode is started by a deliberate button after the owner confirms that participants were informed. The WASAPI listener captures **all** sounds routed through the chosen Windows output endpoint, not only Discord's audio. Prefer a dedicated voice-call output and headphones. The optional real microphone bridge sends your mic into the virtual cable **only while Call Mode is active**. STOP CALL MODE, STOP ALL, closing the call window, or losing the monitored device end capture and mic mixing.
+
+**Cloud boundary:** Raw call PCM stays in memory for Windows speech recognition, but recognized questions addressed to Capri may be sent to the selected cloud AI service; generated voice text may go to Fish Audio. Keep privacy-sensitive calls out of this feature unless everyone understands and consents.
+
+**Model integrity:** The optional Whisper base model is downloaded from a pinned official provider URL and checked against expected length and SHA-256 before native loading; the app also checks the saved model's SHA-256 on first use in each process (and when the file changes). Do not copy in arbitrary model binaries and assume they are safe.
+
+**Local recovery:** Settings are written atomically with one previous-good settings backup at `settings.json.backup`. This backup may include ordinary settings and public OAuth app IDs, but never API secrets. Sensitive **history, reminders and personal memories are not preserved in backup copies** after explicit deletion. To erase all local data, close Capri and remove the entire `%LOCALAPPDATA%\CapriDesktop` folder, including the settings backup and encrypted keys. The app currently has no telemetry or remote support-report upload.
 
 ## Reminder information
 
