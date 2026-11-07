@@ -10,7 +10,9 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write
+    env:
+      CAPRI_RELEASE_VERSION: ${{ github.ref == 'refs/heads/main' && format('0.7.{0}', github.run_number) || '0.6.0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,11 +21,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Build app
-        run: dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo
+        run: dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo -p:Version=$env:CAPRI_RELEASE_VERSION
       - name: Smoke test core
         run: dotnet run --project tests/Capri.Core.Smoke/Capri.Core.Smoke.csproj -c Release
       - name: Publish Windows executable
-        run: dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+        run: dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:CAPRI_RELEASE_VERSION -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
@@ -43,7 +45,7 @@ jobs:
         run: |
           $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
           if (!(Test-Path $compiler)) { throw "Inno Setup compiler was not installed." }
-          & $compiler "/Q" "installer\CapriDesktop.iss"
+          & $compiler "/Q" "/DMyAppVersion=$env:CAPRI_RELEASE_VERSION" "installer\CapriDesktop.iss"
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
           if (!(Test-Path "installer-output\Capri-Setup.exe")) { throw "Capri installer output missing." }
       - name: Generate preview SHA256 checksums
@@ -61,3 +63,16 @@ jobs:
             installer-output/Capri-Setup.exe
             installer-output/SHA256SUMS.txt
           retention-days: 14
+
+      - name: Publish stable auto-update release (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v$env:CAPRI_RELEASE_VERSION"
+          # Version and commit are unique to this successful main workflow run.
+          # An official Release is published ONLY after build, tests, installer
+          # and SHA256 manifest have all succeeded.
+          gh release create $tag "installer-output/Capri-Setup.exe" "CapriDesktop-win-x64.zip" "installer-output/SHA256SUMS.txt" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw "Automatic GitHub release publishing failed." }
