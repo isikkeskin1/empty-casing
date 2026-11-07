@@ -13,15 +13,45 @@ public partial class AboutUpdatesWindow : Window
         new Version(0, 6, 0);
     private CapriRelease? _latest;
     private CancellationTokenSource? _check;
+    private bool _syncingAutoUpdate;
 
     public AboutUpdatesWindow()
     {
         InitializeComponent();
         Owner = App.Instance.MainWindow;
         VersionText.Text = "v" + _current.ToString(3) + "  /  Windows x64";
+        RefreshAutomaticUpdateState();
         RefreshReport();
         Closed += (_, _) => _check?.Cancel();
     }
+
+    public void RefreshAutomaticUpdateState()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshAutomaticUpdateState);
+            return;
+        }
+        _syncingAutoUpdate = true;
+        try
+        {
+            AutoUpdateCheck.IsChecked = App.Instance.Settings.AutomaticUpdates;
+            AutomaticUpdateStatusText.Text = App.Instance.AutomaticUpdateStatus;
+            InstallUpdateButton.IsEnabled = App.Instance.HasStagedUpdate &&
+                                            App.Instance.Settings.AutomaticUpdates;
+        }
+        finally { _syncingAutoUpdate = false; }
+    }
+
+    private void AutoUpdate_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingAutoUpdate) return;
+        App.Instance.SetAutomaticUpdates(AutoUpdateCheck.IsChecked == true);
+        RefreshAutomaticUpdateState();
+    }
+
+    private void InstallUpdate_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.RestartToInstallUpdate();
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
