@@ -1,3 +1,4 @@
+using System.IO;
 using NAudio.Wave;
 
 namespace Capri.Desktop.Services;
