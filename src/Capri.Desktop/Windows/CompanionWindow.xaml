@@ -9,6 +9,15 @@
       <MenuItem Header="Open chat" Click="OpenChat_Click"/>
       <Separator/>
       <MenuItem Header="Wake / idle" Click="Idle_Click"/>
+      <MenuItem Header="Ride my cursor" Click="RideCursor_Click"/>
+      <MenuItem Header="Hop off cursor" Click="HopOff_Click"/>
+      <MenuItem Header="Size">
+        <MenuItem Header="Tiny (50%)" Tag="0.5" Click="Scale_Click"/>
+        <MenuItem Header="Small (75%)" Tag="0.75" Click="Scale_Click"/>
+        <MenuItem Header="Normal (100%)" Tag="1" Click="Scale_Click"/>
+        <MenuItem Header="Large (125%)" Tag="1.25" Click="Scale_Click"/>
+        <MenuItem Header="Giant (160%)" Tag="1.6" Click="Scale_Click"/>
+      </MenuItem>
       <MenuItem Header="Talk animation" Click="Talk_Click"/>
       <MenuItem Header="Glitch animation" Click="Glitch_Click"/>
       <MenuItem Header="Toss animation" Click="Toss_Click"/>
@@ -26,10 +35,12 @@
     </ContextMenu>
   </Window.ContextMenu>
   <Grid>
-    <Canvas Width="270" Height="480">
+    <!-- Viewbox scales the entire existing animated stage as one unit. -->
+    <Viewbox Stretch="Fill">
+      <Canvas Width="270" Height="480">
       <Canvas x:Name="CharacterSurface" Width="270" Height="355" Canvas.Top="50"
               MouseLeftButtonDown="Character_MouseDown" MouseMove="Character_MouseMove"
-              MouseLeave="Character_MouseLeave" Cursor="Hand" ToolTip="Drag to move • Drop near a window edge to perch • Flick to toss">
+              MouseLeave="Character_MouseLeave" Cursor="Hand" ToolTip="Drag or toss • Shift-drop to sit • Ctrl-drop to perch • Double-click to sleep or wake">
         <Canvas.RenderTransform>
           <TranslateTransform x:Name="FloatOffset"/>
         </Canvas.RenderTransform>
@@ -114,6 +125,7 @@
       <Button Canvas.Left="73" Canvas.Top="446" Width="124" Height="28" MinHeight="28"
               Content="OPEN CHAT" ToolTip="Ctrl+Shift+Space" Click="OpenChat_Click"
               Style="{StaticResource CapriButton}" FontSize="10" Padding="7,4"/>
-    </Canvas>
+      </Canvas>
+    </Viewbox>
   </Grid>
 </Window>
