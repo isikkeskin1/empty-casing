@@ -514,6 +514,10 @@ public partial class CompanionWindow : Window
     private void Sleep_Click(object sender, RoutedEventArgs e) => GoToSleep();
     private void RideCursor_Click(object sender, RoutedEventArgs e) => StartCursorRide();
     private void HopOff_Click(object sender, RoutedEventArgs e) => EndCursorRide();
+    private void SpawnClones_Click(object sender, RoutedEventArgs e) =>
+        ShowReaction(App.Instance.StartChaosClones(3));
+    private void StopClones_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.StopChaosClones();
     private void Perch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Perching);
     private void MusicPerch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.MusicPerch);
     private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
