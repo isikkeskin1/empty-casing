@@ -43,20 +43,17 @@
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button Content="—" ToolTip="Minimize" Click="MinimizeWindow_Click"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                  Width="48" Height="37" FontSize="13" FontFamily="Segoe UI"
-                  Foreground="#C9D5E1" Background="Transparent"
-                  BorderThickness="0" Cursor="Hand"/>
+                  Style="{StaticResource CapriTitleBarButton}"
+                  Width="48" Height="37" FontSize="13"/>
           <Button x:Name="MaximizeWindowButton" Content="□" ToolTip="Maximize or restore"
                   Click="ToggleMaximizeWindow_Click"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                  Width="48" Height="37" FontSize="16"
-                  Foreground="#C9D5E1" Background="Transparent"
-                  BorderThickness="0" Cursor="Hand"/>
+                  Style="{StaticResource CapriTitleBarButton}"
+                  Width="48" Height="37" FontSize="16"/>
           <Button Content="×" ToolTip="Close" Click="CloseWindow_Click"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                  Width="52" Height="37" FontSize="19"
-                  Foreground="#FF96AD" Background="#251928"
-                  BorderThickness="0" Cursor="Hand"/>
+                  Style="{StaticResource CapriTitleBarCloseButton}"
+                  Width="52" Height="37" FontSize="19"/>
         </StackPanel>
       </Grid>
     </Border>
