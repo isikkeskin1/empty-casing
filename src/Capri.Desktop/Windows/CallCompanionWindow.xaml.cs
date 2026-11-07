@@ -44,6 +44,8 @@ public partial class CallCompanionWindow : Window
         CallOutgoingBox.IsEnabled = !active;
         IncludeRealMicCheck.IsEnabled = !active;
         StartButton.IsEnabled = !active;
+        DiscordPresenceButton.Content = settings.EnableDiscordRichPresence
+            ? "DISCORD STATUS OFF" : "DISCORD STATUS ON";
         StopButton.IsEnabled = active;
         if (active) StatusText.Text = "CALL MODE LIVE — Say 'Capri' before a question. STOP CALL MODE to revoke listening.";
     }
@@ -84,6 +86,22 @@ public partial class CallCompanionWindow : Window
         App.Instance.StopCallCompanionMode();
         StatusText.Text = "Call Mode OFF. All call audio capture stopped.";
         RefreshState();
+    }
+
+    private async void DiscordPresence_Click(object sender, RoutedEventArgs e)
+    {
+        DiscordPresenceButton.IsEnabled = false;
+        try
+        {
+            StatusText.Text = await App.Instance.SetDiscordPresenceEnabledAsync(
+                !App.Instance.Settings.EnableDiscordRichPresence);
+        }
+        finally
+        {
+            DiscordPresenceButton.IsEnabled = true;
+            DiscordPresenceButton.Content = App.Instance.Settings.EnableDiscordRichPresence
+                ? "DISCORD STATUS OFF" : "DISCORD STATUS ON";
+        }
     }
 
     private void DiscordMute_Click(object sender, RoutedEventArgs e) =>
