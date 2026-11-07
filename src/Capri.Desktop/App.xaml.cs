@@ -93,6 +93,26 @@ public partial class App : System.Windows.Application
     public LocalDataStore Store { get; private set; } = null!;
     public CapriDiagnosticJournal Diagnostics { get; private set; } = null!;
     private AboutUpdatesWindow? _updatesCenter;
+    private readonly CapriReleaseClient _releaseClient = new();
+    private readonly CapriUpdateDownloader _updateDownloader = new();
+    private readonly DispatcherTimer _firstUpdateCheck = new()
+    {
+        Interval = TimeSpan.FromSeconds(35)
+    };
+    private readonly DispatcherTimer _regularUpdateCheck = new()
+    {
+        Interval = TimeSpan.FromHours(3)
+    };
+    private CancellationTokenSource? _updateDownloadCts;
+    private bool _checkingForUpdates;
+    private CapriRelease? _stagedRelease;
+    private string? _stagedInstaller;
+    private System.Windows.Forms.ToolStripMenuItem? _restartToUpdateMenu;
+    public event Action? UpdateStateChanged;
+    public string UpdateStatus { get; private set; } =
+        "Automatic updates enabled. Checking official releases soon.";
+    public bool UpdateReady => _stagedRelease is not null && _stagedInstaller is not null;
+    public bool UpdateChecking => _checkingForUpdates;
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
     private ScreenSketchWindow? _screenSketch;
@@ -135,6 +155,16 @@ public partial class App : System.Windows.Application
         _companion = new CompanionWindow();
         MainWindow = _companion;
         _companion.Show();
+        _ = Task.Run(() => CharacterPackImporter.InstallBundledIfNeeded(
+            AppContext.BaseDirectory, Store.CharacterFolder)).ContinueWith(task =>
+        {
+            if (task.IsCompletedSuccessfully && task.Result.Installed)
+                Dispatcher.BeginInvoke(() =>
+                {
+                    _companion?.ReloadArt();
+                    _companion?.ShowReaction("Character art loaded: all seven animations ready.");
+                });
+        }, TaskScheduler.Default);
         _audioReactions = new SystemAudioActivityService(Dispatcher,
             active => _companion?.SetMusicActivity(active),
             () => _companion?.OnMusicPulse(),
@@ -167,6 +197,19 @@ public partial class App : System.Windows.Application
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
+        _firstUpdateCheck.Tick += async (_, _) =>
+        {
+            _firstUpdateCheck.Stop();
+            if (Settings.AutoUpdateEnabled)
+                await CheckAndStageUpdateAsync();
+        };
+        _regularUpdateCheck.Tick += async (_, _) =>
+        {
+            if (Settings.AutoUpdateEnabled)
+                await CheckAndStageUpdateAsync();
+        };
+        _regularUpdateCheck.Start();
+        if (Settings.AutoUpdateEnabled) _firstUpdateCheck.Start();
         if (!Settings.SetupCompleted)
             Dispatcher.BeginInvoke(OpenSetup);
     }
@@ -2107,6 +2150,14 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("About / updates / support", null, (_, _) => Dispatcher.Invoke(OpenUpdatesCenter));
+        _restartToUpdateMenu = new System.Windows.Forms.ToolStripMenuItem("Restart to update")
+        {
+            Enabled = false
+        };
+        _restartToUpdateMenu.Click += (_, _) => Dispatcher.Invoke(InstallStagedUpdate);
+        context.Items.Add(_restartToUpdateMenu);
+        context.Items.Add("Import animation ZIP", null, (_, _) =>
+            Dispatcher.Invoke(ImportCharacterPackInteractive));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
@@ -2247,6 +2298,10 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _firstUpdateCheck.Stop();
+        _regularUpdateCheck.Stop();
+        _updateDownloadCts?.Cancel();
+        _updateDownloader.Dispose();
         Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();
