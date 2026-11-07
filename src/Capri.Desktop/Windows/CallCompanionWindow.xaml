@@ -34,9 +34,13 @@
                     Background="#172B42" Foreground="#0E1525"/>
           <TextBlock Text="02 // SPEAK INTO DISCORD"
                      Foreground="#B4CCDA" FontWeight="Bold" Margin="0,0,0,5"/>
+          <TextBlock Text="Capri call-only speaker: choose CABLE Input (the virtual playback side). Normal Capri speaker settings in INPUTS stay unchanged."
+                     Foreground="#91AEC5" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"/>
+          <ComboBox x:Name="CallOutgoingBox" Margin="0,0,0,10" Padding="8,6"
+                    Background="#172B42" Foreground="#0E1525"/>
           <TextBlock x:Name="OutputDeviceText" Foreground="#B4CCDA"
                      TextWrapping="Wrap" Margin="0,0,0,7"/>
-          <TextBlock Text="In Capri INPUTS, choose CABLE Input (virtual playback) as the Fish speaker. In Discord Voice &amp; Video, select CABLE Output (virtual recording) as the input and your chosen call speaker above as the output. Fish Audio voice is required for this path."
+          <TextBlock Text="Discord Voice &amp; Video: set Input Device to CABLE Output (virtual recording) and Output Device to your selected call-listening speakers. Fish Audio voice is required. Capri restores her normal playback device when Call Mode stops."
                      Foreground="#92AEBF" TextWrapping="Wrap" FontSize="11"/>
           <CheckBox x:Name="IncludeRealMicCheck"
                     Content="Also transmit my real microphone alongside Capri's voice"
