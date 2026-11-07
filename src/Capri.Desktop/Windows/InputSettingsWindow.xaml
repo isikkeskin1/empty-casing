@@ -101,6 +101,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
               </Grid.RowDefinitions>
               <TextBlock Text="OPEN CHAT" Grid.Row="0" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="OpenChatKey" Grid.Row="0" Grid.Column="1"
@@ -120,14 +121,17 @@
               <TextBlock Text="HIDE / SHOW CAPRI" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="ToggleCompanionKey" Grid.Row="5" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
-              <TextBlock Text="BRING CAPRI HERE" Grid.Row="6" VerticalAlignment="Center" Margin="0,0,8,8"/>
+              <TextBlock Text="HOP OFF / COME HERE" Grid.Row="6" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="BringHereKey" Grid.Row="6" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
               <TextBlock Text="INTERRUPT ACTIVE REPLY" Grid.Row="7" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="StopReplyKey" Grid.Row="7" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
-              <TextBlock Text="STOP ALL INPUTS" Grid.Row="8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="STOP ALL INPUTS" Grid.Row="8" VerticalAlignment="Center" Margin="0,0,8,8"/>
               <TextBox x:Name="StopVoiceKey" Grid.Row="8" Grid.Column="1"
+                       KeyDown="Shortcut_KeyDown" Margin="0,0,0,8" IsReadOnly="True"/>
+              <TextBlock Text="QUIET MODE ON / OFF" Grid.Row="9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox x:Name="QuietModeKey" Grid.Row="9" Grid.Column="1"
                        KeyDown="Shortcut_KeyDown" IsReadOnly="True"/>
             </Grid>
             <CheckBox x:Name="FollowUpsCheck"
