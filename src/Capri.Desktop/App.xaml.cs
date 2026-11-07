@@ -1631,6 +1631,8 @@ public partial class App : System.Windows.Application
             return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
         if (CallCompanionActive)
             return "Call Mode is already running.";
+        if (_quietMode)
+            return "Turn off Quiet Mode before starting a call: Capri's voice is intentionally silenced.";
         var virtualSpeakerIndex = CallVirtualSpeakerIndex;
         if (!CallCompanionPolicy.IsOutputRoutable(
             Settings.VoiceProvider, Settings.SpeakReplies, virtualSpeakerIndex))
@@ -1641,6 +1643,17 @@ public partial class App : System.Windows.Application
             return "The selected virtual cable playback device is disconnected. Reconfigure CALL COMPANION.";
         if (!CallAudioEndpoints.IsAvailable(Settings.CallIncomingSpeakerId))
             return "The Discord speaker output device is disconnected. Select it again in CALL COMPANION.";
+        if (!string.IsNullOrWhiteSpace(Settings.CallIncomingSpeakerId))
+        {
+            // Do not feed Fish or the physical microphone into the very
+            // speaker endpoint that Capri is trying to listen to.
+            var incomingName = CallAudioEndpoints.Description(Settings.CallIncomingSpeakerId);
+            var outgoingName = AudioInputDevices.Speakers()
+                .FirstOrDefault(x => x.Index == virtualSpeakerIndex)?.Name ?? "";
+            if (outgoingName.Length >= 8 &&
+                incomingName.StartsWith(outgoingName, StringComparison.OrdinalIgnoreCase))
+                return "The incoming Discord output and outgoing virtual cable appear to be the same endpoint. Choose different devices to avoid a feedback loop.";
+        }
         if (Settings.CallIncludeRealMicrophone &&
             !AudioInputDevices.MicrophoneExists(Settings.MicrophoneDeviceIndex))
             return "Your selected real microphone is unavailable. Choose a microphone in INPUTS.";
