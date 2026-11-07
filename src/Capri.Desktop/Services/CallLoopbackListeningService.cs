@@ -27,6 +27,7 @@ public sealed class CallLoopbackListeningService : IDisposable
     private bool _disposed;
 
     public bool IsListening => _active;
+    public event Action? CaptureStopped;
 
     public CallLoopbackListeningService(Action<string> heard, Func<bool> capriIsSpeaking)
     {
@@ -34,7 +35,7 @@ public sealed class CallLoopbackListeningService : IDisposable
         _capriIsSpeaking = capriIsSpeaking;
     }
 
-    public void Start(string? playbackEndpointId = null)
+    public void Start(string? playbackEndpointId = null, string? recognitionLanguage = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_active) return;
@@ -43,6 +44,12 @@ public sealed class CallLoopbackListeningService : IDisposable
         if (languages.Count == 0)
             throw new InvalidOperationException(
                 "Install a Windows Speech Recognition language pack before using Call Mode.");
+        var chosen = string.IsNullOrWhiteSpace(recognitionLanguage)
+            ? languages[0]
+            : languages.FirstOrDefault(r => r.Culture.Name.Equals(
+                recognitionLanguage, StringComparison.OrdinalIgnoreCase));
+        if (chosen is null)
+            throw new InvalidOperationException("The chosen call recognition language is not installed on Windows.");
 
         try
         {
@@ -80,7 +87,7 @@ public sealed class CallLoopbackListeningService : IDisposable
             _pcm = sample.ToWaveProvider16();
             _stream = new BufferedMicrophoneStream();
 
-            _recognizer = new SpeechRecognitionEngine(languages[0]);
+            _recognizer = new SpeechRecognitionEngine(chosen);
             _recognizer.LoadGrammar(new DictationGrammar());
             _recognizer.SetInputToAudioStream(_stream,
                 new SpeechAudioFormatInfo(
@@ -118,7 +125,9 @@ public sealed class CallLoopbackListeningService : IDisposable
             {
                 // The session controls the lifetime; do not silently restart a
                 // closed or disconnected output device.
+                var wasActive = _active;
                 _active = false;
+                if (wasActive) CaptureStopped?.Invoke();
             };
 
             _active = true;
