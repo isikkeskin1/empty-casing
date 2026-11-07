@@ -26,6 +26,12 @@ public sealed class AppSettings
     public string VoiceProvider { get; set; } = "windows";
     public int MicrophoneDeviceIndex { get; set; } = -1;
     public int SpeakerDeviceIndex { get; set; } = -1;
+    // Select the Windows render endpoint used by Discord voice OUTPUT.
+    // Empty means default Windows speakers. Capture never starts automatically.
+    public string CallIncomingSpeakerId { get; set; } = "";
+    // Mix the owner's real microphone with Fish TTS into the selected
+    // non-default virtual audio cable, but ONLY when Call Mode is armed.
+    public bool CallIncludeRealMicrophone { get; set; }
     public InputShortcuts Shortcuts { get; set; } = new();
     public string FishModel { get; set; } = "s2.1-pro-free";
     public string FishReferenceId { get; set; } = "";
