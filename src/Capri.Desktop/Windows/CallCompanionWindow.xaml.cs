@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Diagnostics;
 using System.Windows.Controls;
 using Capri.Desktop.Services;
 
@@ -6,6 +7,7 @@ namespace Capri.Desktop.Windows;
 
 public partial class CallCompanionWindow : Window
 {
+    private CancellationTokenSource? _outputTestCancellation;
     public CallCompanionWindow()
     {
         InitializeComponent();
@@ -28,7 +30,11 @@ public partial class CallCompanionWindow : Window
             ?? CallOutgoingBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
         IncludeRealMicCheck.IsChecked = App.Instance.Settings.CallIncludeRealMicrophone;
         Loaded += (_, _) => RefreshState();
-        Closed += (_, _) => App.Instance.StopCallCompanionMode();
+        Closed += (_, _) =>
+        {
+            _outputTestCancellation?.Cancel();
+            App.Instance.StopCallCompanionMode();
+        };
     }
 
     public void RefreshState()
@@ -44,6 +50,7 @@ public partial class CallCompanionWindow : Window
         CallOutgoingBox.IsEnabled = !active;
         IncludeRealMicCheck.IsEnabled = !active;
         StartButton.IsEnabled = !active;
+        TestVirtualButton.IsEnabled = !active && _outputTestCancellation is null;
         DiscordPresenceButton.Content = settings.EnableDiscordRichPresence
             ? "DISCORD STATUS OFF" : "DISCORD STATUS ON";
         StopButton.IsEnabled = active;
@@ -58,6 +65,72 @@ public partial class CallCompanionWindow : Window
 
     private void Inputs_Click(object sender, RoutedEventArgs e) =>
         App.Instance.OpenInputSettings();
+
+    private void GetVirtualCable_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(
+                "https://vb-audio.com/Cable/index.htm") { UseShellExecute = true });
+            StatusText.Text = "Official VB-Audio driver page opened. " +
+                "Install from the provider, reboot if requested, then reopen CALL COMPANION.";
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or
+            InvalidOperationException)
+        {
+            StatusText.Text = "Could not open the VB-Audio website. " +
+                "Visit vb-audio.com/Cable/ in your browser.";
+        }
+    }
+
+    private async void TestVirtual_Click(object sender, RoutedEventArgs e)
+    {
+        if (_outputTestCancellation is not null) return;
+        if (App.Instance.CallCompanionActive)
+        {
+            StatusText.Text = "Stop Call Mode before the virtual microphone routing test.";
+            return;
+        }
+        if (InformedCheck.IsChecked != true)
+        {
+            StatusText.Text = "Tick CALL CONSENT before sending a test sound " +
+                "into a device that Discord may transmit to other participants.";
+            return;
+        }
+        if ((CallOutgoingBox.SelectedItem as ComboBoxItem)?.Tag is not int index || index < 0)
+        {
+            StatusText.Text = "Choose CABLE Input (a non-default virtual playback device) first.";
+            return;
+        }
+        var test = new CancellationTokenSource();
+        _outputTestCancellation = test;
+        TestVirtualButton.IsEnabled = false;
+        try
+        {
+            StatusText.Text = "Playing two quiet test tones to the selected cable. " +
+                "Check Discord's microphone input meter (CABLE Output).";
+            await CallAudioRoutingTester.TestVirtualOutputAsync(index, test.Token);
+            if (!test.IsCancellationRequested)
+                StatusText.Text = "Test tone finished. If Discord's microphone meter " +
+                    "did not move, choose its CABLE Output input and check input sensitivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Output test cancelled.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Virtual cable test failed: " + ex.GetType().Name +
+                ". Check your playback device and driver installation.";
+        }
+        finally
+        {
+            if (ReferenceEquals(_outputTestCancellation, test))
+                _outputTestCancellation = null;
+            test.Dispose();
+            if (IsVisible) RefreshState();
+        }
+    }
 
     private void Start_Click(object sender, RoutedEventArgs e)
     {
