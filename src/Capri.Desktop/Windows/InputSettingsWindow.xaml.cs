@@ -167,7 +167,7 @@ public partial class InputSettingsWindow : Window
     {
         if (_whisperDownloadCancellation is not null ||
             LocalWhisperTranscriber.ModelInstalled) return;
-        if (MessageBox.Show(
+        if (System.Windows.MessageBox.Show(
                 "Download the multilingual Whisper base model (~148 MB) from the " +
                 "official whisper.cpp Hugging Face repository? Capri verifies the " +
                 "SHA-256 before installing. Audio will stay on this device.",
