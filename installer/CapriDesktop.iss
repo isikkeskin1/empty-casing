@@ -1,5 +1,7 @@
 #define MyAppName "Capri Desktop (Unofficial)"
-#define MyAppVersion "0.6.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.6.0"
+#endif
 #define MyAppExeName "Capri.Desktop.exe"
 
 [Setup]
