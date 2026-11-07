@@ -7,5 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Capri.Core/Capri.Core.csproj" />
+    <!-- Keep the real live PCM/SAPI stream contract under the cross-platform smoke suite. -->
+    <Compile Include="../../src/Capri.Desktop/Services/BufferedMicrophoneStream.cs" Link="BufferedMicrophoneStream.cs" />
   </ItemGroup>
 </Project>
