@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Diagnostics;
 using Capri.Core;
 using Capri.Desktop.Services;
 
@@ -31,11 +32,15 @@ public partial class ConnectionsWindow : Window
     private void RefreshConnectionLabels()
     {
         SpotifyAccountText.Text = App.Instance.LinkedAccounts.IsConnected(LinkedService.Spotify)
-            ? "Spotify authorized for this Windows account."
-            : "Spotify not linked. Enter a client ID and use CONNECT.";
+            ? "Spotify account connected."
+            : App.Instance.LinkedAccounts.ClientId(LinkedService.Spotify).Length > 0
+                ? "Ready to connect via Spotify's official sign-in page."
+                : "Local playback works without linking. Spotify account OAuth awaits a publisher-registered app.";
         RobloxAccountText.Text = App.Instance.LinkedAccounts.IsConnected(LinkedService.Roblox)
-            ? "Roblox authorized for this Windows account."
-            : "Roblox not linked. Enter a client ID and use CONNECT.";
+            ? "Roblox account connected."
+            : App.Instance.LinkedAccounts.ClientId(LinkedService.Roblox).Length > 0
+                ? "Ready to connect via Roblox's official sign-in page."
+                : "You can launch Roblox now. Roblox account OAuth awaits a publisher-registered app.";
     }
 
     private void SaveIds_Click(object sender, RoutedEventArgs e)
@@ -52,12 +57,13 @@ public partial class ConnectionsWindow : Window
     private async Task ConnectAsync(LinkedService provider)
     {
         if (_working) return;
-        SaveIds_Click(this, new RoutedEventArgs());
         if (!LinkedAccountPolicy.IsClientIdValid(
             App.Instance.LinkedAccounts.ClientId(provider)))
         {
-            StatusText.Text = "Enter a valid client ID for " +
-                              LinkedAccountPolicy.ProviderName(provider) + ".";
+            StatusText.Text = LinkedAccountPolicy.ProviderName(provider) +
+                " official account linking needs one registered Capri OAuth application. " +
+                "The publisher configures its public app ID once; individual users do not " +
+                "fetch tokens or register apps. You can still use the local app button above.";
             return;
         }
 
@@ -90,6 +96,39 @@ public partial class ConnectionsWindow : Window
     private void ConnectRoblox_Click(object sender, RoutedEventArgs e) =>
         _ = ConnectAsync(LinkedService.Roblox);
 
+    private static void OpenOfficialUri(string uri)
+    {
+        Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+    }
+
+    private void OpenSpotifyLocal_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Ask the user's installed Spotify client to open. If absent, use
+            // Spotify's own browser app. No password, cookies or API keys needed.
+            try { OpenOfficialUri("spotify:"); }
+            catch (System.ComponentModel.Win32Exception)
+            { OpenOfficialUri("https://open.spotify.com/"); }
+            StatusText.Text = "Spotify opened. Windows media controls work with an active " +
+                "media session; full Web API account features still require an OAuth link.";
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        { StatusText.Text = "Could not open Spotify: " + ex.GetType().Name; }
+    }
+
+    private void OpenRobloxLocal_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            OpenOfficialUri("https://www.roblox.com/home");
+            StatusText.Text = "Opened Roblox's official home page. Sign in there if needed; " +
+                "no Roblox cookie or token is shared with Capri.";
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        { StatusText.Text = "Could not open Roblox: " + ex.GetType().Name; }
+    }
+
     private void CancelConnect_Click(object sender, RoutedEventArgs e) =>
         _loginCts?.Cancel();
 
@@ -119,6 +158,13 @@ public partial class ConnectionsWindow : Window
     private void SpotifyStatus_Click(object sender, RoutedEventArgs e) =>
         _ = RunAsync(async () =>
         {
+            if (!App.Instance.LinkedAccounts.IsConnected(LinkedService.Spotify))
+            {
+                var media = await App.Instance.NowPlaying.GetCurrentAsync();
+                return media is null ? "No active Windows media session. Open Spotify and play something first." :
+                    "Local Windows media (not an authenticated Spotify API session): " +
+                    media.FriendlyDescription;
+            }
             var profile = await App.Instance.LinkedAccounts.ProfileAsync(LinkedService.Spotify);
             var playback = await App.Instance.LinkedAccounts.SpotifyPlaybackAsync();
             SpotifyAccountText.Text = "Connected: " + profile.Name;
@@ -128,6 +174,9 @@ public partial class ConnectionsWindow : Window
     private void RobloxProfile_Click(object sender, RoutedEventArgs e) =>
         _ = RunAsync(async () =>
         {
+            if (!App.Instance.LinkedAccounts.IsConnected(LinkedService.Roblox))
+                return "Open Roblox for ordinary play. To show your authenticated Roblox profile " +
+                    "here, Capri's publisher must register a Roblox OAuth app.";
             var profile = await App.Instance.LinkedAccounts.ProfileAsync(LinkedService.Roblox);
             RobloxAccountText.Text = "Connected: " + profile.Name + " (" + profile.Detail + ")";
             return "Roblox profile retrieved from official OAuth userinfo.";

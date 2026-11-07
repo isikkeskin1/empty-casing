@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Input;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
@@ -17,6 +19,17 @@ public partial class CompanionWindow : Window
     private readonly DispatcherTimer _reactionTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     private readonly DispatcherTimer _follow = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly DispatcherTimer _flight = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private readonly DispatcherTimer _cursorFollow = new() { Interval = TimeSpan.FromMilliseconds(35) };
+    private bool _cursorRiding;
+    public bool CursorRiding => _cursorRiding;
+    private const int GwlExStyle = -20;
+    private const long WsExTransparent = 0x20;
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
+
     private FrameAnimator? _frames;
     private readonly PettingGesture _petting = new();
     private WindowDockingService.Target? _attached;
@@ -35,6 +48,7 @@ public partial class CompanionWindow : Window
             _reactionTimer.Stop();
             _follow.Stop();
             _flight.Stop();
+            _cursorFollow.Stop();
             _frames?.Dispose();
         };
         _returnToIdle.Tick += (_, _) =>
@@ -49,16 +63,28 @@ public partial class CompanionWindow : Window
         };
         _follow.Tick += (_, _) => TrackAttachedWindow();
         _flight.Tick += (_, _) => AdvanceFlight();
+        _cursorFollow.Tick += (_, _) => TrackCursor();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var settings = App.Instance.Settings;
-        var area = SystemParameters.WorkArea;
+        var scale = double.IsFinite(settings.OverlayScale)
+            ? Math.Clamp(settings.OverlayScale, 0.5, 1.6) : 1.0;
+        Width = 270 * scale;
+        Height = 480 * scale;
+        var virtualLeft = SystemParameters.VirtualScreenLeft;
+        var virtualTop = SystemParameters.VirtualScreenTop;
+        var virtualRight = virtualLeft + SystemParameters.VirtualScreenWidth;
+        var virtualBottom = virtualTop + SystemParameters.VirtualScreenHeight;
+        // Keep a saved position on ANY connected monitor, including those to
+        // the left of the primary display (negative Windows coordinates).
         Left = settings.OverlayLeft is double left && double.IsFinite(left) &&
-               left >= area.Left && left < area.Right - 50 ? left : area.Right - Width - 20;
+               left >= virtualLeft && left < virtualRight - 50
+            ? left : Math.Max(virtualLeft, virtualRight - Width - 20);
         Top = settings.OverlayTop is double top && double.IsFinite(top) &&
-              top >= area.Top && top < area.Bottom - 50 ? top : area.Bottom - Height - 25;
+              top >= virtualTop && top < virtualBottom - 50
+            ? top : Math.Max(virtualTop, virtualBottom - Height - 25);
 
         var bob = new DoubleAnimation(0, -6, TimeSpan.FromSeconds(1.9))
         {
@@ -95,11 +121,12 @@ public partial class CompanionWindow : Window
     {
         if (e.ClickCount >= 2)
         {
-            App.Instance.ShowChat();
+            ToggleSleep();
             e.Handled = true;
             return;
         }
 
+        EndCursorRide();
         _flight.Stop();
         _follow.Stop();
         var originalLeft = Left;
@@ -128,9 +155,23 @@ public partial class CompanionWindow : Window
         }
 
         DetachWindow();
-        // DragMove returns after mouse release; measure the drop against other apps' top edges.
+        var modifiers = Keyboard.Modifiers;
+        // Shift-drop seats Capri at the owner's exact position rather than
+        // trying to attach her to an unrelated top-level window.
+        if (modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            SetMood(CompanionMood.Perching);
+            App.Instance.SavePosition(Left, Top);
+            return;
+        }
+
+        // Ctrl-drop explicitly requests a persistent window-edge hang. The
+        // seven-state art currently uses the perch frame for this pose.
         var cursor = System.Windows.Forms.Cursor.Position;
-        var target = _windows.WindowNearEdge(cursor);
+        var target = _windows.WindowNearEdge(cursor,
+            modifiers.HasFlag(ModifierKeys.Control) ? 180 : 90);
+        if (!target.HasValue && modifiers.HasFlag(ModifierKeys.Control))
+            target = _windows.FrontmostWindow();
         if (target.HasValue)
         {
             Attach(target.Value, cursor.X);
@@ -193,6 +234,7 @@ public partial class CompanionWindow : Window
     public void BringNearPointer()
     {
         if (!IsVisible) Show();
+        EndCursorRide();
         _flight.Stop();
         DetachWindow();
         var cursor = System.Windows.Forms.Cursor.Position;
@@ -205,6 +247,100 @@ public partial class CompanionWindow : Window
             SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height);
         SetMood(CompanionMood.Glitching);
         App.Instance.SavePosition(Left, Top);
+    }
+
+    private void SetRideClickThrough(bool enabled)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        var oldStyle = GetWindowLongPtr(handle, GwlExStyle).ToInt64();
+        var newStyle = enabled ? oldStyle | WsExTransparent : oldStyle & ~WsExTransparent;
+        if (oldStyle != newStyle)
+            SetWindowLongPtr(handle, GwlExStyle, new IntPtr(newStyle));
+    }
+
+    private void TrackCursor()
+    {
+        if (!_cursorRiding) return;
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var point = ToDip(cursor.X, cursor.Y);
+        var minX = SystemParameters.VirtualScreenLeft;
+        var minY = SystemParameters.VirtualScreenTop;
+        Left = Math.Clamp(point.X - Width * 0.5, minX,
+            Math.Max(minX, minX + SystemParameters.VirtualScreenWidth - Width));
+        // Capri floats *above* the pointer, never directly on its click target.
+        Top = Math.Clamp(point.Y - Height - 16, minY,
+            Math.Max(minY, minY + SystemParameters.VirtualScreenHeight - Height));
+    }
+
+    public void StartCursorRide()
+    {
+        if (!IsVisible) Show();
+        if (_cursorRiding) return;
+        _flight.Stop();
+        DetachWindow();
+        _cursorRiding = true;
+        SetRideClickThrough(true);
+        _cursorFollow.Start();
+        TrackCursor();
+        SetMood(CompanionMood.Perching);
+    }
+
+    public void EndCursorRide()
+    {
+        if (!_cursorRiding) return;
+        _cursorRiding = false;
+        _cursorFollow.Stop();
+        SetRideClickThrough(false);
+        SetMood(CompanionMood.Idle);
+        App.Instance.SavePosition(Left, Top);
+    }
+
+    public void ToggleSleep()
+    {
+        if (_mood == CompanionMood.Sleeping)
+            SetMood(CompanionMood.Idle);
+        else
+        {
+            EndCursorRide();
+            _flight.Stop();
+            SetMood(CompanionMood.Sleeping);
+        }
+    }
+
+    public void Wake() => SetMood(CompanionMood.Idle);
+    public void GoToSleep()
+    {
+        EndCursorRide();
+        _flight.Stop();
+        SetMood(CompanionMood.Sleeping);
+    }
+
+    public void SetScale(double value)
+    {
+        if (!double.IsFinite(value) || value < 0.5 || value > 1.6) return;
+        var centerX = Left + Width * 0.5;
+        var centerY = Top + Height * 0.5;
+        Width = 270 * value;
+        Height = 480 * value;
+        var minX = SystemParameters.VirtualScreenLeft;
+        var minY = SystemParameters.VirtualScreenTop;
+        Left = Math.Clamp(centerX - Width * 0.5, minX,
+            Math.Max(minX, minX + SystemParameters.VirtualScreenWidth - Width));
+        Top = Math.Clamp(centerY - Height * 0.5, minY,
+            Math.Max(minY, minY + SystemParameters.VirtualScreenHeight - Height));
+        App.Instance.Settings.OverlayScale = value;
+        App.Instance.Store.SaveSettings(App.Instance.Settings);
+        App.Instance.SavePosition(Left, Top);
+        if (_cursorRiding) TrackCursor();
+    }
+
+    private void Scale_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.MenuItem { Tag: string tag } &&
+            double.TryParse(tag, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var scale))
+            SetScale(scale);
     }
 
     public void DetachWindow()
@@ -359,6 +495,7 @@ public partial class CompanionWindow : Window
     private void ReloadArt_Click(object sender, RoutedEventArgs e) => ReloadArt();
     private void Idle_Click(object sender, RoutedEventArgs e)
     {
+        EndCursorRide();
         DetachWindow();
         SetMood(CompanionMood.Idle);
     }
@@ -367,7 +504,9 @@ public partial class CompanionWindow : Window
     private void Talk_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Talking);
     private void Glitch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Glitching);
     private void Toss_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Tossed);
-    private void Sleep_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Sleeping);
+    private void Sleep_Click(object sender, RoutedEventArgs e) => GoToSleep();
+    private void RideCursor_Click(object sender, RoutedEventArgs e) => StartCursorRide();
+    private void HopOff_Click(object sender, RoutedEventArgs e) => EndCursorRide();
     private void Perch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.Perching);
     private void MusicPerch_Click(object sender, RoutedEventArgs e) => SetMood(CompanionMood.MusicPerch);
     private void Hide_Click(object sender, RoutedEventArgs e) => Hide();

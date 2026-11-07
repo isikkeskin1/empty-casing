@@ -23,6 +23,12 @@ public sealed record NowPlayingInfo(
 
 public static class MediaMetadataPolicy
 {
+    // A Spotify-specific command must never operate another active media app
+    // when the user is using Capri without Spotify OAuth.
+    public static bool IsSpotifyWindowsSession(NowPlayingInfo? info) =>
+        info is not null && info.Source.Contains(
+            "spotify", StringComparison.OrdinalIgnoreCase);
+
     public static string Clean(string? value, int max = 95)
     {
         if (string.IsNullOrWhiteSpace(value)) return "";

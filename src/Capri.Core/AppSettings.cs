@@ -54,6 +54,7 @@ public sealed class AppSettings
     // Default off: gaming voice requests should not pull a full chat window
     // into the foreground. If speech is disabled, chat still opens for replies.
     public bool OpenChatForVoiceRequests { get; set; }
+    public double OverlayScale { get; set; } = 1.0;
     public double? OverlayLeft { get; set; }
     public double? OverlayTop { get; set; }
 }
