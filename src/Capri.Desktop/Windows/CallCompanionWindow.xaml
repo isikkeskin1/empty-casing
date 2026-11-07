@@ -47,8 +47,15 @@
                     Margin="0,12,0,0" Foreground="#DBF5EF"/>
           <TextBlock Text="When enabled, Capri bridges your selected real microphone into the virtual cable, so your friends hear both you and Capri. This never starts until you press START CALL MODE. Headphones are recommended to prevent feedback."
                      Foreground="#91AEC5" TextWrapping="Wrap" FontSize="11" Margin="21,4,0,0"/>
-          <Button Content="OPEN INPUTS / DEVICES" Click="Inputs_Click"
-                  HorizontalAlignment="Left" Margin="0,12,0,0"/>
+          <WrapPanel Margin="0,12,0,0">
+            <Button x:Name="TestVirtualButton" Content="TEST DISCORD MIC ROUTE"
+                    Click="TestVirtual_Click"/>
+            <Button Content="GET VIRTUAL CABLE" Click="GetVirtualCable_Click"/>
+            <Button Content="OPEN INPUTS / DEVICES" Click="Inputs_Click"/>
+          </WrapPanel>
+          <TextBlock Text="Test sends two quiet tones to the selected CABLE Input only. Discord's CABLE Output microphone level meter should respond. It does not open your real microphone or use Fish credits."
+                     Foreground="#91AEC5" TextWrapping="Wrap" FontSize="11"
+                     Margin="0,7,0,0"/>
         </StackPanel>
       </Border>
       <Border Margin="0,13,0,0" BorderBrush="#7D5160" BorderThickness="1"
