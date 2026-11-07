@@ -32,7 +32,9 @@ The original fan project has a broad feature set. This file tracks our independe
 | Versioned release packaging & checksums | Implemented: tag-only release workflow with version checks, installer/portable ZIP, SHA256SUMS | First intentional version tag/release not yet published; signing still missing |
 | In-app Update Center | Implemented: manual pinned GitHub Release check, stable version comparison, official page/open preview builds | Real Windows connectivity and offline/error-state QA; no automatic update execution |
 | Local diagnostics | Implemented: bounded local event/exception-type journal, user-reviewed copyable support report | Real crash/permission and clipboard QA; no telemetry, dumps or stack traces |
-| Installer signing/automatic updates | Not implemented | Trusted signing identity, authenticated auto-update metadata and rollback |
+| Owner animation ZIP import | Implemented: seven-state validation, safe staged extraction and live character reload | Artwork is intentionally not bundled in public installers; user imports local ZIP |
+| Automatic official GitHub updates | Implemented: publish on successful main, versioned installers, SHA256/size check, stage/download and auto-install on exit | End-to-end Windows install testing and code signing still needed |
+| Installer signing/rollback | Not implemented | Trusted publisher signing, independent signed update metadata and rollback |
 
 Suggested order: clean setup → voice and mic selection → multi-monitor and media context → UIA computer use with per-step approvals, hard cancellation and permanently prohibited purchases → reminders/files/call integrations.
 
