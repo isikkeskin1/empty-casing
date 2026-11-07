@@ -10,8 +10,12 @@ The example seven animation files (idle, talk, sleep, glitch, tossed, perch and 
 
 License text: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-The repository intentionally contains **no original Capri fan art or converted third-party sprite frames**. The WebP importer processes images already on the user's local PC and does not contact outside servers. A separately supplied test pack should retain attribution and its applicable license notices.
+The source repository still does not commit binary sprite frames, but the **Windows release build automatically packages default animations** from a pinned upstream source revision (currently `3d460f3a37ec0d2bb085b00541d1de6dc531f2ef`) under the separate **PolyForm Noncommercial 1.0.0** terms. This is not a claim of original authorship. Bundled artifacts include upstream LICENSE.md, THIRD-PARTY-NOTICES.md and a mandatory attribution notice inside `character-default/`. The source-code MIT license does not apply to these files.
 
-**Before any public character-faithful release**, verify and document the rights to each bundled animation, voice, font and model. PolyForm Noncommercial is not a grant of commercial rights, and the character/IP owners may have additional rights. If permission cannot be obtained, do not ship those assets; obtain a distribution license or create an independently owned character/design instead.
+This use relies on the upstream project's explicit noncommercial-sharing permission with required notices. **The application installer containing these art assets must be distributed noncommercially; do not charge for it or incorporate it into paid products without separate rights.** Some character and IP rights may be held by additional owners. The upstream artist's privacy is respected.
+
+The repository intentionally contains **no original Capri fan art or converted third-party sprite frames**. The optional WebP importer processes files already on the user's PC. The *Windows CI build*, separately, retrieves pinned WebPs from the upstream repository to assemble its default art, and packages their license/credit notices with them. A separately supplied test pack should retain attribution and its applicable license notices.
+
+**Distribution condition:** these public character-faithful Windows installers are for noncommercial use only, subject to the upstream required notices and any additional character/IP rights. This does not authorize paid redistribution, commercial products or reuse without attribution. Re-evaluate permissions before any commercial distribution; otherwise omit upstream art or obtain an appropriate license.
 
 This is an unofficial fan project, unaffiliated with CD PROJEKT RED, Netflix or the creators of the anime.
