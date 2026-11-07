@@ -22,6 +22,7 @@ public partial class CompanionWindow : Window
     private readonly DispatcherTimer _cursorFollow = new() { Interval = TimeSpan.FromMilliseconds(35) };
     private bool _cursorRiding;
     private bool _sleepRequested;
+    private bool _hanging;
     public bool CursorRiding => _cursorRiding;
     private const int GwlExStyle = -20;
     private const long WsExTransparent = 0x20;
@@ -175,7 +176,7 @@ public partial class CompanionWindow : Window
             target = _windows.FrontmostWindow();
         if (target.HasValue)
         {
-            Attach(target.Value, cursor.X);
+            Attach(target.Value, cursor.X, modifiers.HasFlag(ModifierKeys.Control));
             return;
         }
 
@@ -208,9 +209,12 @@ public partial class CompanionWindow : Window
         return matrix.Transform(new System.Windows.Point(pixelX, pixelY));
     }
 
-    private void Attach(WindowDockingService.Target target, double centerXInPixels)
+    private void Attach(WindowDockingService.Target target, double centerXInPixels,
+        bool hang = false)
     {
         _flight.Stop();
+        _hanging = hang;
+        ApplyHangTransform();
         var pLeft = ToDip(target.Rect.Left, target.Rect.Top);
         var pRight = ToDip(target.Rect.Right, target.Rect.Bottom);
         var preferredCenter = ToDip((int)centerXInPixels, target.Rect.Top).X;
@@ -345,8 +349,32 @@ public partial class CompanionWindow : Window
             SetScale(scale);
     }
 
+    private void ApplyHangTransform()
+    {
+        // If licensed owner art includes an optional "hang" state, use it.
+        // Otherwise animate the existing perch art with an independent
+        // pendulum pose; never claim the default pack contains new frames.
+        if (!_hanging)
+        {
+            CharacterImage.RenderTransform = Transform.Identity;
+            return;
+        }
+        var angle = new RotateTransform(163);
+        CharacterImage.RenderTransformOrigin = new System.Windows.Point(0.5, 0.15);
+        CharacterImage.RenderTransform = angle;
+        angle.BeginAnimation(RotateTransform.AngleProperty,
+            new DoubleAnimation(157, 171, TimeSpan.FromMilliseconds(1500))
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            });
+    }
+
     public void DetachWindow()
     {
+        _hanging = false;
+        ApplyHangTransform();
         _attached = null;
         _follow.Stop();
         if (_mood is CompanionMood.Perching or CompanionMood.MusicPerch)
@@ -369,7 +397,11 @@ public partial class CompanionWindow : Window
             _relativeX, Width, SystemParameters.VirtualScreenTop + 6);
 
         Left = target.Left;
-        Top = target.Top;
+        Top = _hanging
+            ? Math.Clamp(leftTop.Y + 12, SystemParameters.VirtualScreenTop,
+                Math.Max(SystemParameters.VirtualScreenTop,
+                    SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height))
+            : target.Top;
     }
 
     private void AdvanceFlight()
@@ -436,6 +468,8 @@ public partial class CompanionWindow : Window
         if (_sleepRequested && mood != CompanionMood.Sleeping) return;
         if (_cursorRiding && mood == CompanionMood.Idle)
             mood = CompanionMood.Perching;
+        if (_hanging && mood == CompanionMood.Idle)
+            mood = CompanionMood.Perching;
         _mood = mood;
         _returnToIdle.Stop();
         var (label, color, state) = mood switch
@@ -451,6 +485,12 @@ public partial class CompanionWindow : Window
             CompanionMood.MusicPerch => ("MUSIC PERCH", "#71DDF1", "perch-music"),
             _ => ("IDLE", "#71DDF1", "idle")
         };
+
+        if (_hanging && mood == CompanionMood.Perching)
+        {
+            label = "HANGING";
+            state = _frames?.HasState("hang") == true ? "hang" : "perch";
+        }
 
         StatusText.Text = "CAPRI // " + label;
         StatusLight.Fill = new SolidColorBrush(
