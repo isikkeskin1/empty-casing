@@ -1085,7 +1085,11 @@ public partial class ChatWindow : Window
             ClearLivePreview();
             Add("assistant", answer);
             if (showCoachResult) App.Instance.ShowGameCoachTip(answer);
-            App.Instance.SetMood(CompanionMood.Reply);
+            // Don't immediately replace an explicit sleep/cursor-ride pose
+            // with the generic talking/reply animation.
+            var overlayCommand = CompanionCommandPolicy.Parse(prompt);
+            if (overlayCommand is not (CompanionCommand.Sleep or CompanionCommand.RideCursor))
+                App.Instance.SetMood(CompanionMood.Reply);
             if (streamed && speakingSentences)
                 App.Instance.CompleteLiveSpeech();
             else
