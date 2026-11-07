@@ -14,9 +14,9 @@
   <SolidColorBrush x:Key="CapriTextBrush" Color="#F2F6FA"/>
   <SolidColorBrush x:Key="CapriMutedBrush" Color="#99AFC1"/>
   <LinearGradientBrush x:Key="CapriHeroBackground" StartPoint="0,0" EndPoint="1,1">
-    <GradientStop Color="#291B38" Offset="0"/>
-    <GradientStop Color="#111626" Offset="0.54"/>
-    <GradientStop Color="#0C2030" Offset="1"/>
+    <GradientStop Color="#312140" Offset="0"/>
+    <GradientStop Color="#161827" Offset="0.50"/>
+    <GradientStop Color="#102B37" Offset="1"/>
   </LinearGradientBrush>
   <LinearGradientBrush x:Key="CapriWindowAtmosphere" StartPoint="0,0" EndPoint="1,1">
     <GradientStop Color="#131C2A" Offset="0"/>
@@ -88,9 +88,6 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"/>
-            <Rectangle Height="2" Width="28" VerticalAlignment="Top"
-                       HorizontalAlignment="Right" Margin="0,0,10,0"
-                       Fill="{StaticResource CapriPinkBrush}" IsHitTestVisible="False"/>
             <ContentPresenter VerticalAlignment="Center"
                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                               RecognizesAccessKey="True"
@@ -128,20 +125,79 @@
     <Setter Property="BorderBrush" Value="#D86C87"/>
     <Setter Property="Foreground" Value="#FFD9E4"/>
   </Style>
-  <Style x:Key="CapriNavButton" TargetType="Button"
-         BasedOn="{StaticResource CapriButton}">
+  <!-- Slim navigation rails rather than five identical raised rectangles.
+       Keyboard focus, hover and active states remain fully accessible. -->
+  <Style x:Key="CapriNavButton" TargetType="Button">
+    <Setter Property="Foreground" Value="#9DB0C6"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
     <Setter Property="HorizontalContentAlignment" Value="Left"/>
-    <Setter Property="Margin" Value="0,0,0,7"/>
-    <Setter Property="MinHeight" Value="46"/>
-    <Setter Property="Padding" Value="15,11"/>
+    <Setter Property="FontFamily" Value="Segoe UI"/>
     <Setter Property="FontSize" Value="13"/>
-    <Setter Property="Background" Value="#111B29"/>
-    <Setter Property="BorderBrush" Value="#283B4D"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="MinHeight" Value="48"/>
+    <Setter Property="Padding" Value="16,11"/>
+    <Setter Property="Margin" Value="0,2,0,2"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid SnapsToDevicePixels="True">
+            <Border x:Name="NavSurface" Background="{TemplateBinding Background}"
+                    CornerRadius="10"/>
+            <Border x:Name="ActiveRail" HorizontalAlignment="Left"
+                    Width="3" Margin="0,11,0,11"
+                    Background="{StaticResource CapriPinkBrush}" CornerRadius="2"
+                    Visibility="Collapsed"/>
+            <ContentPresenter Margin="{TemplateBinding Padding}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="Center" RecognizesAccessKey="True"/>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="NavSurface" Property="Background" Value="#233149"/>
+              <Setter Property="Foreground" Value="#F1F5FA"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="NavSurface" Property="BorderBrush" Value="#53E5DC"/>
+              <Setter TargetName="NavSurface" Property="BorderThickness" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.38"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
   <Style x:Key="CapriNavActiveButton" TargetType="Button"
          BasedOn="{StaticResource CapriNavButton}">
-    <Setter Property="Background" Value="#362038"/>
-    <Setter Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
-    <Setter Property="Foreground" Value="#FFE7F0"/>
+    <Setter Property="Foreground" Value="#FFF2F6"/>
+    <Setter Property="Background" Value="#40283F"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid SnapsToDevicePixels="True">
+            <Border x:Name="NavSurface" Background="#38263D"
+                    CornerRadius="10"/>
+            <Border HorizontalAlignment="Left" Width="3"
+                    Background="{StaticResource CapriPinkBrush}" Margin="0,10,0,10"
+                    CornerRadius="2"/>
+            <ContentPresenter Margin="{TemplateBinding Padding}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="Center" RecognizesAccessKey="True"/>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="NavSurface" Property="Background" Value="#4D304F"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="NavSurface" Property="BorderBrush" Value="#53E5DC"/>
+              <Setter TargetName="NavSurface" Property="BorderThickness" Value="1"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 </ResourceDictionary>
