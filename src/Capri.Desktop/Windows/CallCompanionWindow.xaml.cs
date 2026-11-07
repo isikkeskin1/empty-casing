@@ -73,6 +73,14 @@ public partial class CallCompanionWindow : Window
         RefreshState();
     }
 
+    private void DiscordMute_Click(object sender, RoutedEventArgs e) =>
+        StatusText.Text = App.Instance.TryDiscordDesktopShortcut(
+            DiscordDesktopShortcuts.Command.ToggleMute);
+
+    private void DiscordDeafen_Click(object sender, RoutedEventArgs e) =>
+        StatusText.Text = App.Instance.TryDiscordDesktopShortcut(
+            DiscordDesktopShortcuts.Command.ToggleDeafen);
+
     private async void Discord_Click(object sender, RoutedEventArgs e)
     {
         StatusText.Text = await App.Instance.TryHandleActionAsync("open discord") ??
