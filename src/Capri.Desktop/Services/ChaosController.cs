@@ -34,6 +34,40 @@ public sealed class ChaosController : IDisposable
     private string _lastDialogue = "We're all here. Who's the original Capri?";
     private const int MaxDialogueTurns = 10;
 
+    // Explicitly authorized single-window reversible prank. No resize,
+    // mouse injection, shell/taskbar or arbitrary process manipulation.
+    private sealed class WindowPrank
+    {
+        public required IntPtr Handle { get; init; }
+        public required uint ProcessId { get; init; }
+        public required int OriginalX { get; init; }
+        public required int OriginalY { get; init; }
+        public required int LastX { get; set; }
+        public required int LastY { get; set; }
+        public required long BeganAt { get; init; }
+    }
+    private WindowPrank? _prank;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter,
+        int x, int y, int cx, int cy, uint flags);
+
+    private const uint SwpNoSizeNoZOrderNoActivate = 0x0001 | 0x0004 | 0x0010;
+    private static readonly HashSet<string> AllowedPrankApps =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "notepad", "code", "chrome", "msedge", "firefox",
+            "spotify", "discord", "discordcanary", "paintdotnet", "mspaint"
+        };
+
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int key);
 
@@ -257,6 +291,103 @@ public sealed class ChaosController : IDisposable
         }
     }
 
+    public string StartWindowPrank()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_clones.Count == 0)
+            return "Start Chaos Mode clones before asking them to nudge a window.";
+        if (GuardReason() is string block) return block;
+        if (_prank is not null)
+            return "A short window wobble is already running.";
+
+        var handle = GetForegroundWindow();
+        if (handle == IntPtr.Zero ||
+            GetWindowThreadProcessId(handle, out var pid) == 0 ||
+            pid == (uint)Environment.ProcessId ||
+            !GetWindowRect(handle, out var rect))
+            return "Focus a supported normal application window before approving this prank.";
+        try
+        {
+            using var process = Process.GetProcessById((int)pid);
+            if (!AllowedPrankApps.Contains(process.ProcessName))
+                return "The foreground application is not on Capri's permitted low-impact window list.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or
+            System.ComponentModel.Win32Exception)
+        {
+            return "The focused application was lost.";
+        }
+        var width = rect.Right - rect.Left;
+        var height = rect.Bottom - rect.Top;
+        if (width < 240 || height < 180 ||
+            width >= SystemParameters.VirtualScreenWidth - 25 ||
+            height >= SystemParameters.VirtualScreenHeight - 25)
+            return "Full-screen, tiny and system-style windows cannot be moved by Chaos Mode.";
+
+        _prank = new WindowPrank
+        {
+            Handle = handle, ProcessId = pid,
+            OriginalX = rect.Left, OriginalY = rect.Top,
+            LastX = rect.Left, LastY = rect.Top,
+            BeganAt = Environment.TickCount64
+        };
+        return "Approved Chaos prank: a small 12-second wobble on ONE app window. " +
+            "Hold Esc or STOP ALL to restore it. Manual dragging cancels the prank.";
+    }
+
+    private void RestoreWindowPrank()
+    {
+        var prank = _prank;
+        _prank = null;
+        if (prank is null ||
+            GetWindowThreadProcessId(prank.Handle, out var pid) == 0 ||
+            pid != prank.ProcessId ||
+            !GetWindowRect(prank.Handle, out var current))
+            return;
+        // If the owner repositioned it during the prank, never yank it
+        // back. Only restore when the position still matches Capri's last move.
+        if (Math.Abs(current.Left - prank.LastX) > 12 ||
+            Math.Abs(current.Top - prank.LastY) > 12) return;
+        SetWindowPos(prank.Handle, IntPtr.Zero,
+            prank.OriginalX, prank.OriginalY, 0, 0, SwpNoSizeNoZOrderNoActivate);
+    }
+
+    private void NudgeWindow()
+    {
+        var prank = _prank;
+        if (prank is null) return;
+        var ms = Environment.TickCount64 - prank.BeganAt;
+        if (ms >= 12_000)
+        {
+            RestoreWindowPrank();
+            return;
+        }
+        if (GetWindowThreadProcessId(prank.Handle, out var pid) == 0 ||
+            pid != prank.ProcessId ||
+            !GetWindowRect(prank.Handle, out var current))
+        {
+            _prank = null;
+            return;
+        }
+        if (Math.Abs(current.Left - prank.LastX) > 12 ||
+            Math.Abs(current.Top - prank.LastY) > 12)
+        {
+            // A person moved the window; surrender ownership immediately.
+            _prank = null;
+            return;
+        }
+        var dx = (int)Math.Round(23 * Math.Sin(ms / 275.0));
+        var dy = (int)Math.Round(10 * Math.Sin(ms / 420.0));
+        var newX = prank.OriginalX + dx;
+        var newY = prank.OriginalY + dy;
+        if (SetWindowPos(prank.Handle, IntPtr.Zero, newX, newY,
+                0, 0, SwpNoSizeNoZOrderNoActivate))
+        {
+            prank.LastX = newX;
+            prank.LastY = newY;
+        }
+    }
+
     private void Poll()
     {
         // Freeze and clean up immediately when a game/streaming app becomes
@@ -266,6 +397,7 @@ public sealed class ChaosController : IDisposable
             Stop();
             return;
         }
+        NudgeWindow();
         var now = Environment.TickCount64;
         if (IsDown(0x1B))
         {
@@ -281,6 +413,7 @@ public sealed class ChaosController : IDisposable
 
     public void Stop()
     {
+        RestoreWindowPrank();
         _tick.Stop();
         _chatter.Stop();
         _chatter.Interval = TimeSpan.FromSeconds(5);
