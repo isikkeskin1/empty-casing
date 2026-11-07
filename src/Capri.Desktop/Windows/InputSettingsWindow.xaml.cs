@@ -13,6 +13,7 @@ namespace Capri.Desktop.Windows;
 public partial class InputSettingsWindow : Window
 {
     private CancellationTokenSource? _testCancellation;
+    private CancellationTokenSource? _whisperDownloadCancellation;
     public InputSettingsWindow()
     {
         InitializeComponent();
@@ -25,7 +26,14 @@ public partial class InputSettingsWindow : Window
         OpenChatForVoiceCheck.IsChecked = App.Instance.Settings.OpenChatForVoiceRequests;
         SpeakWhileGeneratingCheck.IsChecked = App.Instance.Settings.SpeakWhileGenerating;
         StatusText.Text = "Select microphone and output, then save. No device monitoring is active.";
-        Closed += (_, _) => _testCancellation?.Cancel();
+        var backend = App.Instance.Settings.SpeechRecognitionMode;
+        RecognitionModeBox.SelectedIndex = backend == "whisper" ? 1 : 0;
+        RefreshWhisperStatus();
+        Closed += (_, _) =>
+        {
+            _testCancellation?.Cancel();
+            _whisperDownloadCancellation?.Cancel();
+        };
     }
 
     private void PopulateDevices()
@@ -146,6 +154,56 @@ public partial class InputSettingsWindow : Window
         StatusText.Text = "Default keys restored in editor. Press SAVE to apply.";
     }
 
+    private void RefreshWhisperStatus()
+    {
+        var installed = LocalWhisperTranscriber.ModelInstalled;
+        WhisperModelStatus.Text = installed
+            ? "Whisper multilingual base model VERIFIED & installed (local)."
+            : "Whisper multilingual model not installed (requires ~148 MB download).";
+        InstallWhisperButton.IsEnabled = !installed && _whisperDownloadCancellation is null;
+    }
+
+    private async void InstallWhisper_Click(object sender, RoutedEventArgs e)
+    {
+        if (_whisperDownloadCancellation is not null ||
+            LocalWhisperTranscriber.ModelInstalled) return;
+        if (MessageBox.Show(
+                "Download the multilingual Whisper base model (~148 MB) from the " +
+                "official whisper.cpp Hugging Face repository? Capri verifies the " +
+                "SHA-256 before installing. Audio will stay on this device.",
+                "Install local Whisper recognition",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+
+        using var cts = new CancellationTokenSource();
+        _whisperDownloadCancellation = cts;
+        InstallWhisperButton.IsEnabled = false;
+        var report = new Progress<double>(ratio =>
+            WhisperModelStatus.Text = "Downloading Whisper multilingual: " +
+                (ratio * 100).ToString("0") + "%");
+        try
+        {
+            await LocalWhisperTranscriber.InstallModelAsync(report, cts.Token);
+            StatusText.Text = "Verified multilingual Whisper model installed. " +
+                "Choose the Whisper recognition mode and SAVE. Talk Once is ready.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Whisper model download cancelled; partial data cleared.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Whisper setup failed: " + ex.GetType().Name +
+                ". Check internet connection and available disk space.";
+        }
+        finally
+        {
+            _whisperDownloadCancellation = null;
+            RefreshWhisperStatus();
+        }
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -153,6 +211,15 @@ public partial class InputSettingsWindow : Window
             var bindings = ReadBindings();
             if (!InputShortcuts.TryValidate(bindings, out var reason))
                 throw new ArgumentException(reason);
+            var recognitionMode =
+                (RecognitionModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "windows";
+            if (recognitionMode == "whisper" && !LocalWhisperTranscriber.ModelInstalled)
+                throw new InvalidOperationException(
+                    "Install the verified Whisper model before choosing multilingual recognition.");
+            if (App.Instance.Settings.ListenToMicrophone && recognitionMode == "whisper")
+                throw new InvalidOperationException(
+                    "Turn MIC OFF before switching to Whisper Talk Once.");
+            App.Instance.Settings.SpeechRecognitionMode = recognitionMode;
             App.Instance.Settings.SpeechRecognitionLanguage =
                 (SpeechLanguageBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
             var result = App.Instance.ApplyInputSettings(bindings,
