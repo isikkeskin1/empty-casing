@@ -264,6 +264,10 @@
                   <TextBlock Text="Voice, games, code, music — all one place."
                              Style="{StaticResource CapriSubtext}" Margin="0,6,0,0"
                              FontSize="12"/>
+                  <TextBlock Text="ART © 2026 LACHY / POLYFORM NONCOMMERCIAL"
+                             FontFamily="Consolas" Foreground="#C59AAC"
+                             FontSize="9" Margin="0,9,0,0"
+                             ToolTip="Animation source: github.com/lachydotmcg/capri-desktop. Artist prefers privacy. Not MIT-licensed."/>
                 </StackPanel>
                 <Grid Grid.Row="3">
                   <Grid.ColumnDefinitions>
