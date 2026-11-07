@@ -145,7 +145,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
               </Grid.RowDefinitions>
-              <DockPanel Margin="2,0,2,17">
+              <DockPanel Margin="2,0,2,17" LastChildFill="False">
                 <StackPanel>
                   <TextBlock Text="/// LIVE CONVERSATION" Style="{StaticResource CapriLabel}"
                              Foreground="{StaticResource CapriCyanBrush}"/>
@@ -219,8 +219,8 @@
                   <RowDefinition Height="Auto"/>
                   <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <DockPanel>
-                  <StackPanel>
+                <DockPanel LastChildFill="False">
+                  <StackPanel DockPanel.Dock="Left">
                     <TextBlock Text="/// LIVE PRESENCE" FontFamily="Consolas"
                                Foreground="{StaticResource CapriPinkBrush}"
                                FontSize="11" FontWeight="Bold"/>
