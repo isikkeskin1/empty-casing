@@ -105,6 +105,7 @@ public partial class ChatWindow : Window
 
     private void SetupBrain_Click(object sender, RoutedEventArgs e) => App.Instance.OpenSetup();
     private void OpenUpdates_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUpdatesCenter();
+    private void ImportAnimation_Click(object sender, RoutedEventArgs e) => App.Instance.ImportAnimationPack();
     private void OpenInputs_Click(object sender, RoutedEventArgs e) => App.Instance.OpenInputSettings();
     private void OpenUiInspector_Click(object sender, RoutedEventArgs e) => App.Instance.OpenUiInspector();
     private void OpenGames_Click(object sender, RoutedEventArgs e) =>
