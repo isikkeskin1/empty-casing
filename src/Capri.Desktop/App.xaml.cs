@@ -113,6 +113,7 @@ public partial class App : System.Windows.Application
         "Automatic updates enabled. Checking official releases soon.";
     public bool UpdateReady => _stagedRelease is not null && _stagedInstaller is not null;
     public bool UpdateChecking => _checkingForUpdates;
+    public CapriRelease? LatestAvailableRelease { get; private set; }
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
     private ScreenSketchWindow? _screenSketch;
@@ -1660,6 +1661,7 @@ public partial class App : System.Windows.Application
         {
             var token = _updateDownloadCts.Token;
             var release = await _releaseClient.CheckLatestAsync(token);
+            LatestAvailableRelease = release;
             var installedVersion = typeof(App).Assembly.GetName().Version ??
                 new Version(0, 7, 0);
             if (release is null)
