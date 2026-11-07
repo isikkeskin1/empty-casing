@@ -23,6 +23,9 @@ public sealed class AppSettings
     public int WatchIntervalSeconds { get; set; } = 45;
     public bool EnablePetting { get; set; } = true;
     public string SpeechVoice { get; set; } = "";
+    // Windows offers only the recognizer languages installed on the PC.
+    // Empty means the first installed recognizer; not an 80-language STT claim.
+    public string SpeechRecognitionLanguage { get; set; } = "";
     public string VoiceProvider { get; set; } = "windows";
     public int MicrophoneDeviceIndex { get; set; } = -1;
     public int SpeakerDeviceIndex { get; set; } = -1;
