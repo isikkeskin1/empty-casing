@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Speech.Recognition;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ComboBox = System.Windows.Controls.ComboBox;
@@ -33,6 +34,31 @@ public partial class InputSettingsWindow : Window
             MicBox.Items.Add(new ComboBoxItem { Content = device.Name, Tag = device.Index });
         foreach (var device in AudioInputDevices.Speakers())
             SpeakerBox.Items.Add(new ComboBoxItem { Content = device.Name, Tag = device.Index });
+
+        SpeechLanguageBox.Items.Add(new ComboBoxItem
+        {
+            Content = "Use first installed Windows speech recognizer", Tag = ""
+        });
+        try
+        {
+            foreach (var recognizer in SpeechRecognitionEngine.InstalledRecognizers())
+                SpeechLanguageBox.Items.Add(new ComboBoxItem
+                {
+                    Content = recognizer.Culture.DisplayName +
+                        " (" + recognizer.Culture.Name + ")",
+                    Tag = recognizer.Culture.Name
+                });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            PlatformNotSupportedException)
+        {
+            StatusText.Text = "Cannot enumerate Windows recognition languages.";
+        }
+        var language = App.Instance.Settings.SpeechRecognitionLanguage;
+        SpeechLanguageBox.SelectedItem = SpeechLanguageBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is string tag &&
+                tag.Equals(language, StringComparison.OrdinalIgnoreCase))
+            ?? SpeechLanguageBox.Items[0];
 
         PickIndex(MicBox, App.Instance.Settings.MicrophoneDeviceIndex);
         PickIndex(SpeakerBox, App.Instance.Settings.SpeakerDeviceIndex);
@@ -127,6 +153,8 @@ public partial class InputSettingsWindow : Window
             var bindings = ReadBindings();
             if (!InputShortcuts.TryValidate(bindings, out var reason))
                 throw new ArgumentException(reason);
+            App.Instance.Settings.SpeechRecognitionLanguage =
+                (SpeechLanguageBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
             var result = App.Instance.ApplyInputSettings(bindings,
                 SelectedIndex(MicBox), SelectedIndex(SpeakerBox));
             App.Instance.Settings.EnablePetting = PettingCheck.IsChecked == true;
