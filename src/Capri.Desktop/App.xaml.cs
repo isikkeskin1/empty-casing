@@ -2133,6 +2133,7 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(() => { CancelScreenLookout(); }));
         context.Items.Add("Show reminders", null, (_, _) => Dispatcher.Invoke(ShowReminderList));
         context.Items.Add("Show / hide Capri", null, (_, _) => Dispatcher.Invoke(ToggleCompanion));
+        context.Items.Add("Import character animation ZIP", null, (_, _) => Dispatcher.Invoke(ImportAnimationPack));
         context.Items.Add("Open character art folder", null, (_, _) => Dispatcher.Invoke(OpenCharacterFolder));
         context.Items.Add("Reload character art", null, (_, _) => Dispatcher.Invoke(() => _companion?.ReloadArt()));
         context.Items.Add("Perch on frontmost window", null,
@@ -2197,6 +2198,46 @@ public partial class App : System.Windows.Application
         }
         _inputSettings.Show();
         _inputSettings.Activate();
+    }
+
+    public void ImportAnimationPack()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose your Capri-Animation-Pack-v0.2.zip",
+            Filter = "Capri animation ZIP|*.zip",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(_chat ?? (System.Windows.Window?)_companion) != true)
+            return;
+        try
+        {
+            var preview = CharacterPackImporter.Validate(dialog.FileName);
+            if (System.Windows.MessageBox.Show(
+                    "Import " + preview.Frames + " PNG animation frames in " +
+                    preview.States + " states?\n\n" +
+                    "Existing imported art will be replaced only after the new " +
+                    "pack validates. This is a local-only operation.\n\n" +
+                    "The user-supplied artwork is for permitted personal, noncommercial use. " +
+                    "Capri will never upload the images to GitHub or a model.",
+                    "Capri — import animation pack",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question,
+                    MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
+            var installed = CharacterPackImporter.Import(dialog.FileName, Store.CharacterFolder);
+            _companion?.ReloadArt();
+            _companion?.ShowReaction(
+                "Character animations loaded: " + installed.Frames + " frames.");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException
+                 or UnauthorizedAccessException or InvalidOperationException)
+        {
+            System.Windows.MessageBox.Show(
+                "Could not import animation ZIP: " + ex.Message +
+                "\n\nYour existing character art was preserved.",
+                "Capri — animation import", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     public void OpenCharacterFolder()
