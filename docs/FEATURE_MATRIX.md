@@ -32,7 +32,9 @@ The original fan project has a broad feature set. This file tracks our independe
 | Versioned release packaging & checksums | Implemented: auto main-branch releases plus manual tag workflow, matching versions, hashes | Validate first automatic main release and signing |
 | GitHub automatic release publishing | Implemented: main-branch validated installer/portable/checksums and versioned GitHub Release on success | Live release credentials/workflow and real update acceptance testing |
 | In-app auto-updates | Implemented: three-hour pinned GitHub checks, staged HTTPS download with SHA256 digest and size verification, owner-triggered Restart to update | Real Windows installer/relaunch QA, code-signing and rollback |
-| Character art pack import | Implemented: seven-state ZIP validation, one-click import, reload, custom-art preservation and optional private build bundling | Public build omits third-party art until redistribution permissions are established |
+| Default character animation | Implemented: seven-state noncommercial upstream WebPs converted at Windows build, bundled as default PNG frames; animated immediately on first launch, original license and notices included | Windows graphical QA, noncommercial redistribution/credit compliance |
+| Character art overrides/import | Implemented: seven-state ZIP validation, one-click import and reload; local imported state overrides default, survives updates | Mixed-DPI and animated timing QA |
+| Mainframe visual redesign | Implemented: wider split chat/animated hero, dark premium panels, magenta/cyan/lime theme, improved onboarding and transcript | Physical Windows layout/contrast/responsiveness QA |
 | Local diagnostics | Implemented: bounded local event/exception-type journal, user-reviewed copyable support report | Real crash/permission and clipboard QA; no telemetry, dumps or stack traces |
 | Installer signing/automatic updates | Not implemented | Trusted signing identity, authenticated auto-update metadata and rollback |
 
