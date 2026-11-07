@@ -4,13 +4,15 @@
 
 Starting with **Capri 0.7**, every successful push to the `main` branch runs the Windows build, core tests, portable packaging, Inno Setup and SHA-256 checksums. After all stages succeed, GitHub Actions publishes a stable GitHub Release tagged **`v0.7.<run-number>`**, attaching `Capri-Setup.exe`, the portable ZIP and `SHA256SUMS.txt`. PRs and failed builds never publish releases. The GitHub token creating that release does not retrigger separate tag workflows. The app and installer versions are injected from the **same** CI build number to allow reliable comparisons.
 
-The desktop app checks the repository's pinned `/releases/latest` endpoint about **35 seconds after startup** and then **every three hours**, with an opt-out under **About / Updates → Automatically check and download verified updates**. It ignores drafts, prereleases, invalid version tags and unexpected download URLs.
+The desktop app checks the repository's pinned `/releases/latest` endpoint about **8 seconds after startup** and then **every ten minutes**, with an opt-out under **About / Updates → Automatically check and download verified updates**. It ignores drafts, prereleases, invalid version tags and unexpected download URLs.
 
 If a newer stable release exists, the updater accepts only a `Capri-Setup.exe` asset whose URL exactly matches the official repository/tag and which includes GitHub's `sha256:` release-asset digest. It downloads over HTTPS, permits only GitHub's expected release-asset redirect hosts, enforces strict file-size limits, and verifies the bytes against the SHA-256 digest before making an installer available.
 
 **Restart to update:** When the verified download is ready, Capri notifies you via the floating companion and enables a system-tray entry and an Update Center button. Clicking it launches the verified per-user installer, closes Capri, and the silent Inno setup relaunches the upgraded companion. Existing `%LOCALAPPDATA%\\CapriDesktop` notes, settings, linked credentials and imported character art remain in place. No unverified executable or script is executed, and updates never interrupt active gameplay automatically.
 
-The process is automatic through **checking, downloading and verification**. The final restart/install action remains user-initiated. This is deliberate while installers are still unsigned; it avoids surprise execution of remotely published software.
+**Direct automatic installation:** normal per-user installations now automatically launch the already verified installer on **ordinary app exit** when both `AutoUpdateEnabled` and `AutoInstallUpdates` are enabled. Capri can also install while idle: at least 3 minutes since local input, 1 minute since download, Capri or Windows Explorer in the foreground, and no live conversation, unsent prompt, voice call, mic/screen watching, OBS clipping, code-agent monitoring, desktop automation or other active work. User controls appear separately under **About / Updates** and can disable unattended installation without disabling release notifications. Unknown/portable installation paths cannot self-replace and require manual updating.
+
+**Existing installations need one bootstrap update.** The prior binaries can stage releases but will never apply them without `Restart to update`; install the first version containing this fix once. Future versions can apply at safe idle/exit. The installer is still unsigned; GitHub SHA-256 metadata protects integrity but is **not** Authenticode or independently signed update metadata. Do not assume that an arbitrary untrusted GitHub repository is safe.
 
 The existing tag-based `release.yml` workflow remains for explicitly created version tags. Ordinary `main` pushes use the automatic workflow above. Preview Actions artifacts remain available for 14 days but are **not** the auto-update channel.
 
@@ -46,6 +48,6 @@ The local data folder also contains other personal data such as `history.json`, 
 3. Download `Capri-Setup.exe` and `SHA256SUMS.txt`, calculate its SHA256 locally, and compare against the checksum from the trusted GitHub release page.
 4. Test installer upgrade over an earlier build; retain a backup of the local data folder.
 5. Test clean Windows installation, immediate default animation playback and private override without reimporting, tray/About navigation, startup and three-hour update checks, verified staging, silent installer/relaunch, and offline/error states.
-6. Establish trusted code signing and update rollback before enabling unattended automatic installer execution.
+6. Obtain trusted code signing and implement rollback before treating this self-update feature as production-grade. Verify unattended idle/exit installs on a real Windows PC and check that games, calls and unsent drafts are not interrupted.
 
 The update checks use the existing Capri process only; no background Windows service is installed.
