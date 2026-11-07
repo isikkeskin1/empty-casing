@@ -67,6 +67,7 @@ public partial class App : System.Windows.Application
     private VoicePlaybackService? _voicePlayback;
     private SystemAudioActivityService? _audioReactions;
     private CancellationTokenSource? _voiceCts;
+    private CancellationTokenSource? _whisperOnceCts;
     private readonly Queue<string> _liveSpeechQueue = new();
     private VoiceSentenceBuffer? _liveSpeechBuffer;
     private bool _liveSpeechSpeaking;
@@ -282,6 +283,24 @@ public partial class App : System.Windows.Application
     public void StartTalkOnce()
     {
         if (_speech is null) return;
+        if (Settings.SpeechRecognitionMode == "whisper")
+        {
+            if (!LocalWhisperTranscriber.ModelInstalled)
+            {
+                _companion?.ShowReaction("Install the local multilingual Whisper model in INPUTS first.");
+                OpenInputSettings();
+                return;
+            }
+            if (CallCompanionActive || Settings.ListenToMicrophone)
+            {
+                _companion?.ShowReaction("End Call Mode or turn MIC OFF before Whisper Talk Once.");
+                return;
+            }
+            CancelCurrentReply();
+            _whisperOnceCts?.Cancel();
+            _ = RunWhisperTalkOnceAsync();
+            return;
+        }
         // The Talk Once hotkey doubles as a deliberate barge-in button:
         // abandon any previous AI generation instead of queuing stale speech.
         CancelCurrentReply();
@@ -299,6 +318,45 @@ public partial class App : System.Windows.Application
         _chat?.SyncCapabilitySwitches();
     }
 
+    private async Task RunWhisperTalkOnceAsync()
+    {
+        using var cts = new CancellationTokenSource();
+        _whisperOnceCts = cts;
+        _companion?.ShowReaction("Multilingual Whisper: recording 6 seconds locally. Speak now.");
+        try
+        {
+            var text = await LocalWhisperTranscriber.CaptureAndTranscribeAsync(
+                Settings.MicrophoneDeviceIndex, TimeSpan.FromSeconds(6), cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(_whisperOnceCts, cts))
+                return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _companion?.ShowReaction("Whisper didn't hear speech. Check the microphone.");
+                return;
+            }
+            // The owner explicitly pressed Talk Once, so this transcription
+            // is an owner-directed prompt, not an ambient wake-word input.
+            CancelVoiceOutput();
+            if (Settings.OpenChatForVoiceRequests || !Settings.SpeakReplies || _quietMode)
+                ShowChat();
+            else
+                EnsureChatWindow();
+            _chat?.SubmitVoiceText(text);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!cts.IsCancellationRequested)
+                _companion?.ShowReaction("Local Whisper unavailable: " +
+                    ex.GetType().Name + ". Check INPUTS and your model.");
+        }
+        finally
+        {
+            if (ReferenceEquals(_whisperOnceCts, cts))
+                _whisperOnceCts = null;
+        }
+    }
+
     private void FinishTalkOnce()
     {
         _talkOnceTimeout.Stop();
@@ -314,6 +372,12 @@ public partial class App : System.Windows.Application
     public void SetMicrophoneEnabled(bool enabled)
     {
         if (_speech is null) return;
+        if (enabled && Settings.SpeechRecognitionMode == "whisper")
+        {
+            _companion?.ShowReaction("Whisper supports manual Talk Once, not continuous wake-word listening. " +
+                "Switch to Windows recognition for hands-free MIC ON.");
+            return;
+        }
         if (!enabled)
         {
             Settings.ListenToMicrophone = false;
@@ -539,6 +603,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        _whisperOnceCts?.Cancel();
         _chaos?.Stop();
         StopCallCompanionMode();
         StopAutonomousTask();
@@ -2805,6 +2870,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _whisperOnceCts?.Cancel();
         _firstUpdateCheck.Stop();
         _regularUpdateCheck.Stop();
         _autoInstallTimer.Stop();
