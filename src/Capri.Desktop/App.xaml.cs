@@ -2075,6 +2075,31 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        // Exact owner commands change Capri's own overlay only; never plan
+        // a desktop action, send to a model, or touch another app's windows.
+        var companionCommand = CompanionCommandPolicy.Parse(command);
+        if (companionCommand != CompanionCommand.None)
+        {
+            if (_companion is null) return "Capri companion window is unavailable.";
+            switch (companionCommand)
+            {
+                case CompanionCommand.RideCursor:
+                    _companion.StartCursorRide();
+                    return "I'm riding your cursor. Press Ctrl+Alt+C to hop off.";
+                case CompanionCommand.HopOff:
+                    _companion.EndCursorRide();
+                    return "Hopped off your cursor.";
+                case CompanionCommand.ComeHere:
+                    _companion.BringNearPointer();
+                    return "Here I am.";
+                case CompanionCommand.Sleep:
+                    _companion.GoToSleep();
+                    return "Going to sleep. Double-click me or say wake up.";
+                case CompanionCommand.Wake:
+                    _companion.Wake();
+                    return "Awake and ready.";
+            }
+        }
         var memoryCommand = PersonalMemoryPolicy.ParseCommand(command);
         if (memoryCommand is not null)
             return HandleMemoryCommand(memoryCommand);
@@ -2442,7 +2467,16 @@ public partial class App : System.Windows.Application
                 _chat?.FocusPrompt();
                 break;
             case nameof(InputShortcuts.ToggleCompanion): ToggleCompanion(); break;
-            case nameof(InputShortcuts.BringHere): _companion?.BringNearPointer(); break;
+            case nameof(InputShortcuts.BringHere):
+                // Ctrl+Alt+C dismounts when riding; otherwise keeps the
+                // existing "bring Capri here" behavior for older users.
+                if (_companion?.CursorRiding == true) _companion.EndCursorRide();
+                else _companion?.BringNearPointer();
+                break;
+            case nameof(InputShortcuts.ToggleQuietMode):
+                SetQuietMode(!_quietMode);
+                _companion?.ShowReaction(_quietMode ? "Quiet mode on." : "Quiet mode off.");
+                break;
             case nameof(InputShortcuts.StopReply): CancelCurrentReply(); break;
             case nameof(InputShortcuts.StopVoice): StopAllInputs(); break;
         }
