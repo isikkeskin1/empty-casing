@@ -42,11 +42,13 @@ try
           !ChaosModePolicy.HeldEscapeLongEnough(false, 1000, 1950),
         "chaos clones require exact bounded requests and hold-Esc is time-gated");
     settings.CallIncomingSpeakerId = "unit-test-speaker-id";
+    settings.CallOutgoingSpeakerIndex = 2;
     settings.CallIncludeRealMicrophone = true;
     settings.SpeechRecognitionLanguage = "en-US";
     store.SaveSettings(settings);
     var storedCall = store.LoadSettings();
     Check(storedCall.CallIncomingSpeakerId == "unit-test-speaker-id" &&
+          storedCall.CallOutgoingSpeakerIndex == 2 &&
           storedCall.CallIncludeRealMicrophone &&
           storedCall.SpeechRecognitionLanguage == "en-US",
         "call audio endpoint, optional microphone mix and STT language persist without starting capture");
