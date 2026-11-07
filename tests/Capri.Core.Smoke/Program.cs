@@ -57,6 +57,11 @@ try
           !File.Exists(Path.Combine(directory, "escape.png")),
         "malicious archive paths rejected without damaging an existing character pack");
 
+    var currentRelease = new Version(0, 6, 0);
+    const string officialReleaseJson =
+        "{\"tag_name\":\"v0.7.1\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1\"," +
+        "\"draft\":false,\"prerelease\":false,\"published_at\":\"2026-11-07T00:00:00Z\"," +
+        "\"assets\":[{\"name\":\"Capri-Setup.exe\"}]}";
     // Verify the exact release asset URI and GitHub-provided digest gate.
     var syntheticDigest = new string('a', 64);
     var verifiedAssetJson = officialReleaseJson.Replace(
@@ -71,16 +76,13 @@ try
               verifiedAssetRelease.InstallerAsset.DownloadUrl, "v0.7.1"),
         "only fixed official GitHub release assets with size and SHA256 can auto-install");
     Check(CapriReleasePolicy.ParseLatestRelease(
-            verifiedAssetJson.Replace("https://github.com/isikkeskin1/",
-                "https://evil.example/isikkeskin1/")) is not { InstallerAsset: not null },
+            verifiedAssetJson.Replace(
+                "releases/download/v0.7.1/Capri-Setup.exe",
+                "releases/download/v0.7.1/SomeOther.exe")) is not { InstallerAsset: not null },
         "untrusted asset host cannot create an auto-installable release");
 
 
-    var currentRelease = new Version(0, 6, 0);
-    const string officialReleaseJson =
-        "{\"tag_name\":\"v0.7.1\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1\"," +
-        "\"draft\":false,\"prerelease\":false,\"published_at\":\"2026-11-07T00:00:00Z\"," +
-        "\"assets\":[{\"name\":\"Capri-Setup.exe\"}]}";
+
     var latestRelease = CapriReleasePolicy.ParseLatestRelease(officialReleaseJson);
     Check(latestRelease is not null &&
           latestRelease.Tag == "v0.7.1" && latestRelease.HasWindowsInstaller &&
