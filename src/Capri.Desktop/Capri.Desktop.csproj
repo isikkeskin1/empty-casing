@@ -17,5 +17,15 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationTypes" />
+    <!-- OAuth client IDs are public identifiers, injected by the publisher.
+         No user token, session cookie or client secret is included in builds. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CapriSpotifyClientId</_Parameter1>
+      <_Parameter2>$(CapriSpotifyClientId)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CapriRobloxClientId</_Parameter1>
+      <_Parameter2>$(CapriRobloxClientId)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>
