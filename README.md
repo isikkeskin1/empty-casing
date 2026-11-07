@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Mainframe v2 — character-first desktop interface
+
+The Mainframe now treats the animated Capri character as the visual centerpiece instead of placing her in a 308-pixel thumbnail panel. Its main conversation page uses a responsive 44/56 split for a full-height character stage and a quieter, readable transcript. The stage uses the existing seven-frame-state art, updating her mood (idle, thinking, talking, error, sleeping, perching, music) alongside the floating companion; the **presence** indicator does not falsely claim the AI brain is online.
+
+Other improvements: compact rail navigation instead of five repetitive outlined buttons, a single input area with visible placeholder, STOP REPLY next to the composer, first-conversation starter prompts, and mic/screenshot shortcuts beneath the character. Every action keeps its original handler, confirmation and privacy policy. The owner's art override and automatic GitHub updates remain unchanged.
+
+The interface compiles and ships through Windows CI, but actual visual spacing, DPI and animations still warrant a Windows desktop check.
+
 ## CAPRI / NEON NOIR MAINFRAME & DEFAULT ANIMATION
 
 The current Windows installer opens with an actual animated Capri character, without the old empty ART SLOT or first-time ZIP picker. All seven states are built into the installed `character-default/` folder with their separate license and copyright notices. Any private frames in `%LOCALAPPDATA%\\CapriDesktop\\character` override the shipped states automatically, and survive updates.
