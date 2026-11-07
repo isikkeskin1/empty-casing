@@ -200,4 +200,39 @@
       </Setter.Value>
     </Setter>
   </Style>
+  <Style x:Key="CapriTitleBarButton" TargetType="Button">
+    <Setter Property="Foreground" Value="#AFBFCC"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+    <Setter Property="FontSize" Value="15"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="HoverSurface" Background="{TemplateBinding Background}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="HoverSurface" Property="Background" Value="#26364A"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="HoverSurface" Property="Background" Value="#31435A"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="HoverSurface" Property="BorderBrush" Value="#53E5DC"/>
+              <Setter TargetName="HoverSurface" Property="BorderThickness" Value="1"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="CapriTitleBarCloseButton" TargetType="Button"
+         BasedOn="{StaticResource CapriTitleBarButton}">
+    <Setter Property="Foreground" Value="#FFB8CB"/>
+    <Setter Property="Background" Value="#231929"/>
+  </Style>
 </ResourceDictionary>
