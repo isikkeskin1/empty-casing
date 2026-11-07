@@ -1,23 +1,35 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- Capri Control Deck palette, inspired by the owner's screen reference.
-       Subdued dark surfaces keep the bright trim legible instead of flooding UI with neon. -->
-  <SolidColorBrush x:Key="CapriBaseBrush" Color="#0A101A"/>
-  <SolidColorBrush x:Key="CapriPanelBrush" Color="#111B28"/>
-  <SolidColorBrush x:Key="CapriRaisedBrush" Color="#172534"/>
-  <SolidColorBrush x:Key="CapriTrimBrush" Color="#4B6674"/>
-  <SolidColorBrush x:Key="CapriYellowBrush" Color="#F2DA55"/>
-  <SolidColorBrush x:Key="CapriCyanBrush" Color="#34E7DE"/>
-  <SolidColorBrush x:Key="CapriPinkBrush" Color="#FA6FA8"/>
-  <SolidColorBrush x:Key="CapriTextBrush" Color="#EFF6FA"/>
-  <SolidColorBrush x:Key="CapriMutedBrush" Color="#ACBFCA"/>
+  <!-- CAPRI / NEON NOIR design system.
+       Quiet graphite canvases allow the artist's magenta-green character art
+       to lead. Bright colors signal focused action, not every surface. -->
+  <SolidColorBrush x:Key="CapriBaseBrush" Color="#090E18"/>
+  <SolidColorBrush x:Key="CapriPanelBrush" Color="#111927"/>
+  <SolidColorBrush x:Key="CapriRaisedBrush" Color="#1A2535"/>
+  <SolidColorBrush x:Key="CapriTrimBrush" Color="#344558"/>
+  <SolidColorBrush x:Key="CapriYellowBrush" Color="#F8CF61"/>
+  <SolidColorBrush x:Key="CapriCyanBrush" Color="#53E5DC"/>
+  <SolidColorBrush x:Key="CapriPinkBrush" Color="#FF407E"/>
+  <SolidColorBrush x:Key="CapriLimeBrush" Color="#A3FF7F"/>
+  <SolidColorBrush x:Key="CapriTextBrush" Color="#F2F6FA"/>
+  <SolidColorBrush x:Key="CapriMutedBrush" Color="#99AFC1"/>
+  <LinearGradientBrush x:Key="CapriHeroBackground" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#291B38" Offset="0"/>
+    <GradientStop Color="#111626" Offset="0.54"/>
+    <GradientStop Color="#0C2030" Offset="1"/>
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="CapriWindowAtmosphere" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#131C2A" Offset="0"/>
+    <GradientStop Color="#0A101B" Offset="0.54"/>
+    <GradientStop Color="#0F1725" Offset="1"/>
+  </LinearGradientBrush>
 
   <Style x:Key="CapriPanel" TargetType="Border">
     <Setter Property="Background" Value="{StaticResource CapriPanelBrush}"/>
     <Setter Property="BorderBrush" Value="{StaticResource CapriTrimBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="CornerRadius" Value="0,9,0,0"/>
-    <Setter Property="Padding" Value="16"/>
+    <Setter Property="CornerRadius" Value="13"/>
+    <Setter Property="Padding" Value="18"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
   </Style>
   <Style x:Key="CapriLabel" TargetType="TextBlock">
@@ -30,22 +42,29 @@
     <Setter Property="Foreground" Value="{StaticResource CapriMutedBrush}"/>
     <Setter Property="FontSize" Value="12"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="LineHeight" Value="18"/>
   </Style>
   <Style x:Key="CapriInput" TargetType="TextBox">
-    <Setter Property="Background" Value="#182A39"/>
+    <Setter Property="Background" Value="#101C2A"/>
     <Setter Property="Foreground" Value="{StaticResource CapriTextBrush}"/>
-    <Setter Property="CaretBrush" Value="{StaticResource CapriCyanBrush}"/>
-    <Setter Property="BorderBrush" Value="#537183"/>
+    <Setter Property="CaretBrush" Value="{StaticResource CapriPinkBrush}"/>
+    <Setter Property="BorderBrush" Value="#426076"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="FontSize" Value="13"/>
-    <Setter Property="Padding" Value="10,8"/>
-    <Setter Property="MinHeight" Value="35"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Padding" Value="13,11"/>
+    <Setter Property="MinHeight" Value="42"/>
+    <Style.Triggers>
+      <Trigger Property="IsKeyboardFocusWithin" Value="True">
+        <Setter Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
   <Style x:Key="CapriToggle" TargetType="CheckBox">
     <Setter Property="Foreground" Value="{StaticResource CapriTextBrush}"/>
     <Setter Property="FontSize" Value="12"/>
-    <Setter Property="Margin" Value="0,0,15,13"/>
-    <Setter Property="MinHeight" Value="25"/>
+    <Setter Property="Margin" Value="0,0,16,14"/>
+    <Setter Property="MinHeight" Value="28"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
   </Style>
   <Style x:Key="CapriButton" TargetType="Button">
@@ -56,8 +75,8 @@
     <Setter Property="FontFamily" Value="Segoe UI"/>
     <Setter Property="FontSize" Value="12"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
-    <Setter Property="Padding" Value="13,9"/>
-    <Setter Property="MinHeight" Value="36"/>
+    <Setter Property="Padding" Value="15,10"/>
+    <Setter Property="MinHeight" Value="40"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -65,13 +84,13 @@
       <Setter.Value>
         <ControlTemplate TargetType="Button">
           <Grid SnapsToDevicePixels="True">
-            <Border x:Name="Frame" CornerRadius="0,8,0,0"
+            <Border x:Name="Frame" CornerRadius="10"
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"/>
-            <Rectangle Height="2" Width="22" VerticalAlignment="Top"
-                       HorizontalAlignment="Right" Margin="0,0,5,0"
-                       Fill="{StaticResource CapriCyanBrush}" IsHitTestVisible="False"/>
+            <Rectangle Height="2" Width="28" VerticalAlignment="Top"
+                       HorizontalAlignment="Right" Margin="0,0,10,0"
+                       Fill="{StaticResource CapriPinkBrush}" IsHitTestVisible="False"/>
             <ContentPresenter VerticalAlignment="Center"
                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                               RecognizesAccessKey="True"
@@ -79,19 +98,18 @@
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Frame" Property="BorderBrush"
-                      Value="{StaticResource CapriCyanBrush}"/>
+              <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
+              <Setter TargetName="Frame" Property="Background" Value="#27364B"/>
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-              <Setter TargetName="Frame" Property="Background" Value="#214051"/>
+              <Setter TargetName="Frame" Property="Background" Value="#453149"/>
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Frame" Property="BorderBrush"
-                      Value="{StaticResource CapriYellowBrush}"/>
+              <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource CapriCyanBrush}"/>
               <Setter TargetName="Frame" Property="BorderThickness" Value="2"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
-              <Setter Property="Opacity" Value="0.40"/>
+              <Setter Property="Opacity" Value="0.38"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -100,28 +118,30 @@
   </Style>
   <Style x:Key="CapriPrimaryButton" TargetType="Button"
          BasedOn="{StaticResource CapriButton}">
-    <Setter Property="Background" Value="#24423F"/>
-    <Setter Property="BorderBrush" Value="{StaticResource CapriCyanBrush}"/>
-    <Setter Property="Foreground" Value="#DAFFFB"/>
+    <Setter Property="Background" Value="#85314E"/>
+    <Setter Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
   </Style>
   <Style x:Key="CapriDangerButton" TargetType="Button"
          BasedOn="{StaticResource CapriButton}">
-    <Setter Property="Background" Value="#512735"/>
-    <Setter Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
-    <Setter Property="Foreground" Value="#FFE5EF"/>
+    <Setter Property="Background" Value="#432335"/>
+    <Setter Property="BorderBrush" Value="#D86C87"/>
+    <Setter Property="Foreground" Value="#FFD9E4"/>
   </Style>
   <Style x:Key="CapriNavButton" TargetType="Button"
          BasedOn="{StaticResource CapriButton}">
     <Setter Property="HorizontalContentAlignment" Value="Left"/>
-    <Setter Property="Margin" Value="0,0,0,8"/>
-    <Setter Property="MinHeight" Value="44"/>
-    <Setter Property="Padding" Value="17,12"/>
+    <Setter Property="Margin" Value="0,0,0,7"/>
+    <Setter Property="MinHeight" Value="46"/>
+    <Setter Property="Padding" Value="15,11"/>
     <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Background" Value="#111B29"/>
+    <Setter Property="BorderBrush" Value="#283B4D"/>
   </Style>
   <Style x:Key="CapriNavActiveButton" TargetType="Button"
          BasedOn="{StaticResource CapriNavButton}">
-    <Setter Property="Background" Value="#24453F"/>
-    <Setter Property="BorderBrush" Value="{StaticResource CapriYellowBrush}"/>
-    <Setter Property="Foreground" Value="{StaticResource CapriYellowBrush}"/>
+    <Setter Property="Background" Value="#362038"/>
+    <Setter Property="BorderBrush" Value="{StaticResource CapriPinkBrush}"/>
+    <Setter Property="Foreground" Value="#FFE7F0"/>
   </Style>
 </ResourceDictionary>
