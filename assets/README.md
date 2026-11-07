@@ -1,6 +1,6 @@
 # Character animation frames
 
-**No Capri character art is committed to this public codebase.** User-supplied animations stay on the user's PC. For third-party artwork restrictions, read [docs/ASSET_RIGHTS.md](../docs/ASSET_RIGHTS.md).
+**No Capri character art is committed to this public codebase.** User-supplied animations stay on the user's PC. The new **Apps & Tools → IMPORT ANIMATION PACK** button accepts your existing seven-state ZIP and immediately activates the frames without manual extraction. For third-party artwork restrictions, read [docs/ASSET_RIGHTS.md](../docs/ASSET_RIGHTS.md).
 
 ## Import WebP animations
 
@@ -36,3 +36,5 @@ The frame list is sorted by file name and played at its encoded delays; if a man
 **Preview controls:** right-click Capri or use the tray's Preview animation menu; choose Reload character art after importing frames. Sleep and perch stay active until you wake or change state. Toss, glitch and talk run as short temporary previews. Window-edge tracking, game awareness, music beat synchronization, and voice are not implemented yet.
 
 Do not commit externally sourced files without checking their redistribution and commercial-use terms.
+
+**Recommended current import:** choose `Capri-Animation-Pack-v0.2.zip` with the new GUI importer. The ZIP is validated and extracted into the character folder; existing art is preserved if validation or replacement fails. The import is local and remains in place when the app updates. Third-party assets cannot be included in public GitHub releases without verifying redistribution rights.\n
