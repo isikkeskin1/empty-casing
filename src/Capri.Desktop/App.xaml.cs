@@ -1752,6 +1752,25 @@ public partial class App : System.Windows.Application
             () => _quietMode || CallCompanionActive);
     }
 
+    public string StartApprovedChaosWindowPrank()
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS for this session first.";
+        if (_chaos?.CloneCount is null or 0)
+            return "Start animated Chaos clones first.";
+        var approval = System.Windows.MessageBox.Show(
+            "Allow Capri's clones to gently wobble ONE supported app window " +
+            "for up to 12 seconds? Capri will restore the original position on " +
+            "STOP ALL / hold Esc, unless you manually move the window. " +
+            "No clicks, typing, resizing or game/system windows are involved.",
+            "Capri — approve reversible window prank",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (approval != MessageBoxResult.Yes)
+            return "Chaos window prank cancelled.";
+        return _chaos.StartWindowPrank();
+    }
+
     public void StopChaosClones() => _chaos?.Stop();
 
     public void OpenCallCompanion()
@@ -2361,6 +2380,10 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        if (command.Equals("start window prank", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("let clones wobble my window", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("have clones move my window", StringComparison.OrdinalIgnoreCase))
+            return StartApprovedChaosWindowPrank();
         var aiClones = ChaosModePolicy.AiCloneCount(command);
         if (aiClones > 0)
             return StartAiChaosClones(aiClones);
