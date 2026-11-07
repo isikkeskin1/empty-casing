@@ -37,8 +37,8 @@
 
     <Border Margin="0,0,0,20" Background="{StaticResource CapriHeroBackground}"
             BorderBrush="#6F3861" BorderThickness="1" CornerRadius="14" Padding="22">
-      <DockPanel>
-        <StackPanel>
+      <DockPanel LastChildFill="False">
+        <StackPanel DockPanel.Dock="Left">
           <TextBlock Text="/// PERSONALIZE YOUR COMPANION" FontFamily="Consolas"
                      FontSize="11" Foreground="{StaticResource CapriCyanBrush}"/>
           <TextBlock Text="Make Capri yours." FontFamily="Bahnschrift SemiCondensed"
