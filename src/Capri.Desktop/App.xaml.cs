@@ -1405,29 +1405,49 @@ public partial class App : System.Windows.Application
 
     public async Task<string> TrySpotifyActionAsync(MediaIntent intent)
     {
-        if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
-            return "Connect Spotify from CONNECTIONS first.";
         if (!Settings.EnableDesktopActions)
             return "Enable DESKTOP ACTIONS or HANDS-FREE to control Spotify.";
         if (intent is not (MediaIntent.Play or MediaIntent.Pause or
             MediaIntent.NextTrack or MediaIntent.PreviousTrack))
             return "Unsupported Spotify control.";
 
+        var linked = LinkedAccounts.IsConnected(LinkedService.Spotify);
+        // No OAuth registration? A Spotify desktop media session is still
+        // controllable through Windows, but NEVER redirect a Spotify-only
+        // command to an unrelated browser, video or other music player.
+        if (!linked)
+        {
+            var current = await NowPlaying.GetCurrentAsync();
+            if (current is null || !MediaMetadataPolicy.IsSpotifyWindowsSession(current))
+                return "No Spotify Windows media session detected. Open Spotify and start " +
+                    "a track, or use generic 'pause music' for another player.";
+        }
+
         var epoch = _actionEpoch;
         if (!Settings.SkipActionConfirmations)
         {
             if (System.Windows.MessageBox.Show(
-                "Send " + intent + " to your linked Spotify account?",
+                (linked ? "Send " + intent + " to your linked Spotify account?" :
+                    "Send " + intent + " to the active local Spotify session?"),
                 "Capri — Spotify control",
                 MessageBoxButton.YesNo, MessageBoxImage.Question,
                 MessageBoxResult.No) != MessageBoxResult.Yes)
                 return "Spotify action cancelled.";
         }
         if (epoch != _actionEpoch || !Settings.EnableDesktopActions)
-            return "Action stopped before contacting Spotify.";
+            return "Spotify action stopped.";
 
-        try { return await LinkedAccounts.SpotifyControlAsync(intent); }
-        catch (Exception ex) { return "Spotify request failed: " + ex.Message; }
+        try
+        {
+            if (linked) return await LinkedAccounts.SpotifyControlAsync(intent);
+            // Re-check the source after the confirmation; active media sessions
+            // can change while the user reads the action preview.
+            var current = await NowPlaying.GetCurrentAsync();
+            if (!MediaMetadataPolicy.IsSpotifyWindowsSession(current))
+                return "Spotify is no longer the active Windows media session.";
+            return await NowPlaying.ExecuteAsync(intent);
+        }
+        catch (Exception ex) { return "Spotify control failed: " + ex.Message; }
     }
 
     public async Task<string> TrySpotifyTrackAsync(SpotifyTrackChoice track)
@@ -2152,7 +2172,7 @@ public partial class App : System.Windows.Application
             request.Equals("linked accounts", StringComparison.OrdinalIgnoreCase))
         {
             OpenConnections();
-            return "CONNECTIONS is open. Register provider apps and authorize your account via the official browser flow.";
+            return "CONNECTIONS is open. Use Spotify/Roblox locally now; official browser authorization becomes available when Capri's publisher has registered the provider apps.";
         }
 
         if (request.Equals("roblox profile", StringComparison.OrdinalIgnoreCase) ||
@@ -2179,7 +2199,16 @@ public partial class App : System.Windows.Application
             request.Equals("what's playing on spotify", StringComparison.OrdinalIgnoreCase))
         {
             if (!LinkedAccounts.IsConnected(LinkedService.Spotify))
-                return "Connect Spotify in CONNECTIONS first.";
+            {
+                try
+                {
+                    var local = await NowPlaying.GetCurrentAsync();
+                    return MediaMetadataPolicy.IsSpotifyWindowsSession(local)
+                        ? "Local Spotify media: " + local!.FriendlyDescription
+                        : "No Spotify media session is active. Open Spotify and play a track.";
+                }
+                catch (Exception ex) { return "Local Spotify status unavailable: " + ex.GetType().Name; }
+            }
             try
             {
                 var playing = await LinkedAccounts.SpotifyPlaybackAsync();
