@@ -100,12 +100,12 @@ try
     };
     using (var zip = System.IO.Compression.ZipFile.Open(
         artZip, System.IO.Compression.ZipArchiveMode.Create))
-        foreach (var state in CharacterPackImporter.States)
+        foreach (var animationState in CharacterPackImporter.States)
         {
-            var image = zip.CreateEntry(state + "/0000.png");
+            var image = zip.CreateEntry(animationState + "/0000.png");
             using (var output = image.Open()) output.Write(pngHeader);
-            var timing = zip.CreateEntry(state + "/timing.json");
-            using var writer = new StreamWriter(timing.Open());
+            var timingEntry = zip.CreateEntry(animationState + "/timing.json");
+            using var writer = new StreamWriter(timingEntry.Open());
             writer.Write("{\"frameDurationsMs\":[100]}");
         }
     var artImport = CharacterPackImporter.Import(artZip, artRoot, overwrite: false);
