@@ -199,9 +199,9 @@ public partial class App : System.Windows.Application
             }
             catch (OperationCanceledException) { }
         });
-        if (!Directory.EnumerateFiles(
-                Path.Combine(Store.CharacterFolder, "idle"), "*.png")
-            .Any() && Directory.Exists(Store.CharacterFolder))
+        var idleFramesPath = Path.Combine(Store.CharacterFolder, "idle");
+        if (!Directory.Exists(idleFramesPath) ||
+            !Directory.EnumerateFiles(idleFramesPath, "*.png").Any())
             Dispatcher.BeginInvoke(() =>
                 _companion?.ShowReaction("Character art not installed. Open Apps & Tools → Import Animation Pack to load your ZIP."));
         if (!Settings.SetupCompleted)
