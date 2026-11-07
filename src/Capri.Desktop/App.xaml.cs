@@ -54,6 +54,7 @@ public partial class App : System.Windows.Application
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
     private CallLoopbackListeningService? _callListener;
     private CallMicrophoneBridge? _callMicBridge;
+    private int? _speakerBeforeCall;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
     public bool CallCompanionActive => _callListener?.IsListening == true;
@@ -568,6 +569,9 @@ public partial class App : System.Windows.Application
 
     public string ApplyInputSettings(InputShortcuts bindings, int microphone, int speaker)
     {
+        if (CallCompanionActive)
+            throw new InvalidOperationException(
+                "End Call Mode before changing microphone or speaker devices.");
         if (!InputShortcuts.TryValidate(bindings, out var reason))
             throw new ArgumentException(reason);
         if (!AudioInputDevices.MicrophoneExists(microphone) ||
@@ -1601,11 +1605,22 @@ public partial class App : System.Windows.Application
         _callWindow.Activate();
     }
 
-    public void ConfigureCallRouting(string speakerDeviceId, bool includeRealMicrophone)
+    public int CallVirtualSpeakerIndex => Settings.CallOutgoingSpeakerIndex == -2
+        ? Settings.SpeakerDeviceIndex : Settings.CallOutgoingSpeakerIndex;
+
+    public void ConfigureCallRouting(string speakerDeviceId, int virtualSpeakerIndex,
+        bool includeRealMicrophone)
     {
+        if (CallCompanionActive)
+            throw new InvalidOperationException("Stop Call Mode before changing audio routing.");
         if (!CallAudioEndpoints.IsAvailable(speakerDeviceId))
             throw new InvalidOperationException("The selected Discord output device is not available.");
+        if (virtualSpeakerIndex < 0 ||
+            !AudioInputDevices.SpeakerExists(virtualSpeakerIndex))
+            throw new InvalidOperationException(
+                "Select an installed, non-default virtual cable playback device for Discord input.");
         Settings.CallIncomingSpeakerId = speakerDeviceId;
+        Settings.CallOutgoingSpeakerIndex = virtualSpeakerIndex;
         Settings.CallIncludeRealMicrophone = includeRealMicrophone;
         Store.SaveSettings(Settings);
     }
@@ -1616,13 +1631,14 @@ public partial class App : System.Windows.Application
             return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
         if (CallCompanionActive)
             return "Call Mode is already running.";
+        var virtualSpeakerIndex = CallVirtualSpeakerIndex;
         if (!CallCompanionPolicy.IsOutputRoutable(
-            Settings.VoiceProvider, Settings.SpeakReplies, Settings.SpeakerDeviceIndex))
-            return "Choose Fish Audio voice, enable SPEAK REPLIES, and select a non-default virtual cable output under INPUTS.";
+            Settings.VoiceProvider, Settings.SpeakReplies, virtualSpeakerIndex))
+            return "Choose Fish Audio voice, enable SPEAK REPLIES, and select a non-default virtual cable output in CALL COMPANION.";
         if (!Secrets.HasKey("fish"))
             return "Configure a Fish Audio API key in Voice Setup before routing call responses.";
-        if (!AudioInputDevices.SpeakerExists(Settings.SpeakerDeviceIndex))
-            return "The selected outgoing playback device is disconnected. Reconfigure INPUTS.";
+        if (!AudioInputDevices.SpeakerExists(virtualSpeakerIndex))
+            return "The selected virtual cable playback device is disconnected. Reconfigure CALL COMPANION.";
         if (!CallAudioEndpoints.IsAvailable(Settings.CallIncomingSpeakerId))
             return "The Discord speaker output device is disconnected. Select it again in CALL COMPANION.";
         if (Settings.CallIncludeRealMicrophone &&
@@ -1653,10 +1669,16 @@ public partial class App : System.Windows.Application
                 // endpoint as Fish Audio, which Windows mixes for Discord's
                 // virtual recording device. Do not change Discord settings.
                 bridge = new CallMicrophoneBridge();
-                bridge.Start(Settings.MicrophoneDeviceIndex, Settings.SpeakerDeviceIndex);
+                bridge.Start(Settings.MicrophoneDeviceIndex, virtualSpeakerIndex);
             }
             if (!listener.IsListening)
                 throw new InvalidOperationException("Call capture stopped before initialization completed.");
+            // One temporary output override: Capri uses the virtual mic only
+            // while Call Mode is active, then goes back to normal speakers.
+            CancelVoiceOutput();
+            _speakerBeforeCall = _voicePlayback?.SpeakerDeviceIndex;
+            if (_voicePlayback is not null)
+                _voicePlayback.SpeakerDeviceIndex = virtualSpeakerIndex;
             _callListener = listener;
             _callMicBridge = bridge;
             _callReplyCts?.Dispose();
@@ -1678,6 +1700,9 @@ public partial class App : System.Windows.Application
             listener.Dispose();
             _callMicBridge = null;
             _callListener = null;
+            if (_speakerBeforeCall is int previous && _voicePlayback is not null)
+                _voicePlayback.SpeakerDeviceIndex = previous;
+            _speakerBeforeCall = null;
             throw;
         }
     }
@@ -1729,6 +1754,9 @@ public partial class App : System.Windows.Application
         _callMicBridge = null;
         bridge?.Dispose();
         if (listener is not null || bridge is not null) CancelVoiceOutput();
+        if (_speakerBeforeCall is int previous && _voicePlayback is not null)
+            _voicePlayback.SpeakerDeviceIndex = previous;
+        _speakerBeforeCall = null;
         _callWindow?.RefreshState();
     }
 
