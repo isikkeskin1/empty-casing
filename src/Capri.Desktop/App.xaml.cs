@@ -1592,6 +1592,18 @@ public partial class App : System.Windows.Application
 
     public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
 
+    public string StartAiChaosClones(int number)
+    {
+        if (!Brain.IsLocal)
+            return "AI clone dialogue uses local Ollama only. Select LOCAL in Voice/Brain setup " +
+                "before starting it; cloud models are never called for background clone chatter.";
+        if (CallCompanionActive)
+            return "Stop Call Mode before starting AI clone conversations.";
+        return Chaos.StartAi(number, Store.CharacterFolder,
+            (prompt, ct) => Brain.ReplyAsync(
+                new[] { new ChatTurn { Role = "user", Text = prompt } }, ct));
+    }
+
     public void StopChaosClones() => _chaos?.Stop();
 
     public void OpenCallCompanion()
@@ -2199,6 +2211,9 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        var aiClones = ChaosModePolicy.AiCloneCount(command);
+        if (aiClones > 0)
+            return StartAiChaosClones(aiClones);
         var discordCommand = command.ToLowerInvariant() switch
         {
             "discord toggle mute" or "toggle discord mute" or "mute toggle discord" =>
