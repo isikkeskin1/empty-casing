@@ -17,6 +17,43 @@ try
     store.SaveHistory(turns);
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
+    Check(settings.AutoUpdateEnabled && settings.AutoInstallUpdates &&
+          store.LoadSettings().AutoInstallUpdates,
+        "automatic verified update and idle/exit installation preferences persist");
+    var managedAppPath = Path.Combine(directory, "Programs", "CapriDesktop",
+        "Capri.Desktop.exe");
+    Check(CapriAutoInstallPolicy.IsManagedInstallation(managedAppPath, directory) &&
+          !CapriAutoInstallPolicy.IsManagedInstallation(
+              Path.Combine(directory, "portable", "Capri.Desktop.exe"), directory) &&
+          !CapriAutoInstallPolicy.IsManagedInstallation(null, directory),
+        "automatic installation is limited to the exact per-user Capri installation");
+    Check(CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              true, true, true, true, false, true,
+              TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(2)) &&
+          CapriAutoInstallPolicy.ShouldApplyOnExit(true, true, true, true),
+        "verified managed updates apply automatically once safe idle/exit conditions hold");
+    Check(!CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              true, true, true, true, true, true,
+              TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(2)) &&
+          !CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              true, true, true, true, false, false,
+              TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(2)) &&
+          !CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              true, true, true, true, false, true,
+              TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(2)) &&
+          !CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              true, true, true, true, false, true,
+              TimeSpan.FromMinutes(4), TimeSpan.FromSeconds(10)),
+        "unattended restart is blocked by active work, unsafe foreground and recent input");
+    Check(!CapriAutoInstallPolicy.ShouldApplyOnExit(true, false, true, true) &&
+          !CapriAutoInstallPolicy.ShouldApplyOnExit(false, true, true, true) &&
+          !CapriAutoInstallPolicy.ShouldApplyOnExit(true, true, false, true) &&
+          !CapriAutoInstallPolicy.ShouldApplyOnExit(true, true, true, false) &&
+          !CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+              false, true, true, true, false, true,
+              TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(2)),
+        "no unattended update when disabled, portable or without verified installer");
+
     var currentRelease = new Version(0, 6, 0);
     const string officialReleaseJson =
         "{\"tag_name\":\"v0.7.1\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1\"," +

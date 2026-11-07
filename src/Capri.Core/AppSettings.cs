@@ -15,6 +15,10 @@ public sealed class AppSettings
     public bool SetupCompleted { get; set; }
     // Background checks and SHA256-verified downloads; installation requires Restart to update.
     public bool AutoUpdateEnabled { get; set; } = true;
+    // Owner may disable automatic installation independently from downloads.
+    // By default, installed Capri applies verified updates at idle or exit;
+    // portable/debug builds are never modified silently.
+    public bool AutoInstallUpdates { get; set; } = true;
     public int ScreenIndex { get; set; } = -1;
     public int WatchIntervalSeconds { get; set; } = 45;
     public bool EnablePetting { get; set; } = true;

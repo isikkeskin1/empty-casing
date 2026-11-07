@@ -97,14 +97,24 @@ public partial class App : System.Windows.Application
     private readonly CapriUpdateDownloader _updateDownloader = new();
     private readonly DispatcherTimer _firstUpdateCheck = new()
     {
-        Interval = TimeSpan.FromSeconds(35)
+        Interval = TimeSpan.FromSeconds(CapriAutoInstallPolicy.CheckAfterLaunchSeconds)
     };
     private readonly DispatcherTimer _regularUpdateCheck = new()
     {
-        Interval = TimeSpan.FromHours(3)
+        Interval = TimeSpan.FromMinutes(CapriAutoInstallPolicy.CheckIntervalMinutes)
     };
     private CancellationTokenSource? _updateDownloadCts;
+    private readonly DispatcherTimer _autoInstallTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(30)
+    };
+    private DateTimeOffset _stagedAtUtc;
+    private bool _updateInstallerLaunched;
     private bool _checkingForUpdates;
+    public bool CanAutomaticallyInstallUpdates =>
+        CapriAutoInstallPolicy.IsManagedInstallation(
+            Environment.ProcessPath,
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
     private CapriRelease? _stagedRelease;
     private string? _stagedInstaller;
     private System.Windows.Forms.ToolStripMenuItem? _restartToUpdateMenu;
@@ -210,6 +220,8 @@ public partial class App : System.Windows.Application
                 await CheckAndStageUpdateAsync();
         };
         _regularUpdateCheck.Start();
+        _autoInstallTimer.Tick += (_, _) => TryApplyUpdateAtIdle();
+        _autoInstallTimer.Start();
         if (Settings.AutoUpdateEnabled) _firstUpdateCheck.Start();
         if (!Settings.SetupCompleted)
             Dispatcher.BeginInvoke(OpenSetup);
@@ -1645,10 +1657,18 @@ public partial class App : System.Windows.Application
         NotifyUpdateState();
     }
 
+    public void SetAutomaticInstallationEnabled(bool enabled)
+    {
+        Settings.AutoInstallUpdates = enabled;
+        Store.SaveSettings(Settings);
+        if (enabled) TryApplyUpdateAtIdle();
+        NotifyUpdateState();
+    }
+
     /// <summary>
-    /// Automatically checks on startup and every three hours. Installer staging
-    /// uses ONLY the official GitHub release and asset SHA256 digest. A staged
-    /// update is never executed until the owner chooses Restart to update.
+    /// Checks shortly after startup and every ten minutes. The installer
+    /// must match official GitHub size and SHA256 metadata before it can be
+    /// staged; a managed installation can subsequently apply at safe idle/exit.
     /// </summary>
     public async Task<string> CheckAndStageUpdateAsync()
     {
@@ -1701,11 +1721,25 @@ public partial class App : System.Windows.Application
                 token.ThrowIfCancellationRequested();
                 _stagedRelease = release;
                 _stagedInstaller = installer;
-                UpdateStatus = "Verified update " + release.Tag +
-                    " is ready. Choose Restart to update. " +
-                    "Your settings, notes and custom art will be preserved.";
-                _companion?.ShowReaction("Capri " + release.Tag +
-                    " ready! Right-click me → Restart to update.");
+                _stagedAtUtc = DateTimeOffset.UtcNow;
+                var automatic = Settings.AutoUpdateEnabled &&
+                    Settings.AutoInstallUpdates && CanAutomaticallyInstallUpdates;
+                UpdateStatus = automatic
+                    ? "Verified " + release.Tag +
+                      " is ready. Capri will install it when safely idle or on exit. " +
+                      "You can also select Restart to update now."
+                    : "Verified " + release.Tag +
+                      " is ready. Choose Restart to update.";
+                _companion?.ShowReaction(automatic
+                    ? "Update " + release.Tag +
+                      " verified. I'll install when you're idle or when you quit."
+                    : "Update " + release.Tag +
+                      " ready! Right-click me → Restart to update.");
+                if (automatic && _tray is not null)
+                    _tray.ShowBalloonTip(4500, "Capri update verified",
+                        "Automatic installation is armed for idle/exit. " +
+                        "Disable it in About / Updates if preferred.",
+                        System.Windows.Forms.ToolTipIcon.Info);
             }
         }
         catch (OperationCanceledException)
@@ -1730,8 +1764,9 @@ public partial class App : System.Windows.Application
         return UpdateStatus;
     }
 
-    public void InstallStagedUpdate()
+    private bool TryLaunchVerifiedInstaller()
     {
+        if (_updateInstallerLaunched) return false;
         if (_stagedRelease is not { } release ||
             _stagedInstaller is not { } installer ||
             !CapriReleasePolicy.IsNewer(
@@ -1742,29 +1777,73 @@ public partial class App : System.Windows.Application
         {
             UpdateStatus = "No valid verified update is staged. Run Check for updates.";
             NotifyUpdateState();
-            return;
+            return false;
         }
-        // Inno Setup runs per-user and restarts Capri only AFTER the silent
-        // installation finishes. No shell interpretation or model-generated args.
         try
         {
-            var process = new ProcessStartInfo
+            // The binary is re-hashed immediately before execution. Inno Setup
+            // runs per-user, closes the old binary and starts Capri after setup.
+            // This is never a model command or untrusted shell string.
+            var process = new ProcessStartInfo(installer)
             {
-                FileName = installer,
-                Arguments = "/SP- /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS",
-                UseShellExecute = true
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(installer)!
             };
+            foreach (var argument in new[] {
+                "/SP-", "/SILENT", "/SUPPRESSMSGBOXES",
+                "/NORESTART", "/CLOSEAPPLICATIONS" })
+                process.ArgumentList.Add(argument);
             if (Process.Start(process) is null)
                 throw new InvalidOperationException("Installer could not be started.");
-            Shutdown();
+            _updateInstallerLaunched = true;
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
             System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             Diagnostics.Record("update-check", ex);
-            UpdateStatus = "Could not launch the update. Open the official release manually.";
+            UpdateStatus = "Could not start the verified installer. " +
+                "Use the official release link to install manually.";
             NotifyUpdateState();
+            return false;
         }
+    }
+
+    public void InstallStagedUpdate()
+    {
+        if (TryLaunchVerifiedInstaller()) Shutdown();
+    }
+
+    private bool HasActiveWorkPreventingAutomaticRestart() =>
+        !Settings.SetupCompleted ||
+        _chat?.HasPendingInteraction == true ||
+        _updatesCenter?.IsVisible == true ||
+        _setup?.IsVisible == true ||
+        _gameCenter?.IsVisible == true ||
+        _screenSketch?.IsVisible == true ||
+        Settings.ListenToMicrophone || Settings.WatchScreen ||
+        Settings.EnableDesktopActions ||
+        _watchBusy || _presenceBusy ||
+        _callReplyBusy || CallCompanionActive ||
+        _routineCts is not null || _autonomousTaskCts is not null ||
+        _voicePlayback?.IsPlaying == true ||
+        _speech?.IsSpeaking == true ||
+        CodeHusk?.Enabled == true ||
+        _obsClipsEnabled;
+
+    private void TryApplyUpdateAtIdle()
+    {
+        if (!CapriAutoInstallPolicy.ShouldApplyDuringIdle(
+            Settings.AutoUpdateEnabled, Settings.AutoInstallUpdates,
+            CanAutomaticallyInstallUpdates,
+            UpdateReady && !_checkingForUpdates && !_updateInstallerLaunched,
+            HasActiveWorkPreventingAutomaticRestart(),
+            AutoUpdateIdleProbe.SafeForeground(),
+            AutoUpdateIdleProbe.TimeSinceInput(),
+            DateTimeOffset.UtcNow - _stagedAtUtc))
+            return;
+        if (TryLaunchVerifiedInstaller())
+            Shutdown();
     }
 
     public bool CharacterArtLoaded =>
@@ -2500,6 +2579,7 @@ public partial class App : System.Windows.Application
     {
         _firstUpdateCheck.Stop();
         _regularUpdateCheck.Stop();
+        _autoInstallTimer.Stop();
         _updateDownloadCts?.Cancel();
         _updateDownloader.Dispose();
         Diagnostics?.Record("shutdown");
@@ -2527,6 +2607,14 @@ public partial class App : System.Windows.Application
             _tray.Visible = false;
             _tray.Dispose();
         }
+        // A verified pending update installs at normal app exit too, even
+        // when the owner was busy with another program and idle restart
+        // correctly waited. Manual Restart to update never launches twice.
+        if (!_updateInstallerLaunched &&
+            CapriAutoInstallPolicy.ShouldApplyOnExit(
+                Settings.AutoUpdateEnabled, Settings.AutoInstallUpdates,
+                CanAutomaticallyInstallUpdates, UpdateReady))
+            TryLaunchVerifiedInstaller();
         base.OnExit(e);
     }
 }

@@ -36,6 +36,15 @@ public partial class AboutUpdatesWindow : Window
         try
         {
             AutoUpdateCheck.IsChecked = App.Instance.Settings.AutoUpdateEnabled;
+            AutoInstallCheck.IsChecked = App.Instance.Settings.AutoInstallUpdates;
+            AutoInstallCheck.IsEnabled = App.Instance.CanAutomaticallyInstallUpdates;
+            AutoInstallExplanation.Text = App.Instance.CanAutomaticallyInstallUpdates
+                ? "Verified updates are installed after 3 minutes without input, " +
+                  "only when Capri/desktop is in front and no chat, voice, gaming " +
+                  "or automation task is active. Closing Capri also applies them."
+                : "This is a portable or custom installation. Capri will still " +
+                  "check and stage updates, but won't silently install over " +
+                  "an unknown path. Use Restart to update or an official installer.";
             UpdateStatus.Text = App.Instance.UpdateStatus;
             _latest = App.Instance.LatestAvailableRelease;
             OpenReleaseButton.IsEnabled = _latest is not null;
@@ -52,6 +61,13 @@ public partial class AboutUpdatesWindow : Window
     {
         if (_syncing) return;
         App.Instance.SetAutomaticUpdatesEnabled(AutoUpdateCheck.IsChecked == true);
+        RefreshUpdateState();
+    }
+
+    private void AutoInstall_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetAutomaticInstallationEnabled(AutoInstallCheck.IsChecked == true);
         RefreshUpdateState();
     }
 

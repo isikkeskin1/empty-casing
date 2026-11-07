@@ -14,6 +14,10 @@ public partial class ChatWindow : Window
 {
     public ObservableCollection<ChatTurn> Messages { get; } = new();
     private bool _busy;
+    // An unsent draft or running reply must never be interrupted by
+    // unattended updater restart, even if keyboard/mouse are currently idle.
+    public bool HasPendingInteraction =>
+        _busy || !string.IsNullOrWhiteSpace(PromptBox?.Text);
     private CancellationTokenSource? _activeReplyCts;
     private string? _queuedVoicePrompt;
     private bool _syncing;
