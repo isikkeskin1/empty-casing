@@ -38,8 +38,8 @@ public partial class CallCompanionWindow : Window
 
     public void SetStatus(string message)
     {
-        StatusText.Text = message;
         RefreshState();
+        StatusText.Text = message;
     }
 
     private void Inputs_Click(object sender, RoutedEventArgs e) =>
