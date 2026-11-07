@@ -7,6 +7,7 @@ public sealed class LocalDataStore
     private readonly string _directory;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private bool _settingsRecoveredFromBackup;
+    private bool _skipSettingsBackupOnNextSave;
 
     /// <summary>
     /// True when settings.json was invalid/unreadable and a previous known-good
@@ -37,12 +38,14 @@ public sealed class LocalDataStore
     public AppSettings LoadSettings()
     {
         _settingsRecoveredFromBackup = false;
+        _skipSettingsBackupOnNextSave = false;
         var primary = Read<AppSettings>("settings.json");
         if (primary is not null) return primary;
         var backup = Read<AppSettings>("settings.json.backup");
         if (backup is not null)
         {
             _settingsRecoveredFromBackup = true;
+            _skipSettingsBackupOnNextSave = true;
             return backup;
         }
         return new AppSettings();
@@ -90,7 +93,7 @@ public sealed class LocalDataStore
         {
             File.WriteAllText(temporary, JsonSerializer.Serialize(content, JsonOptions));
             if (fileName == "settings.json" && File.Exists(path) &&
-                !_settingsRecoveredFromBackup)
+                !_skipSettingsBackupOnNextSave)
             {
                 File.Replace(temporary, path, path + ".backup");
             }
@@ -100,6 +103,8 @@ public sealed class LocalDataStore
                 // backup intact rather than replacing it with broken bytes.
                 File.Move(temporary, path, true);
             }
+            if (fileName == "settings.json")
+                _skipSettingsBackupOnNextSave = false;
         }
         finally
         {
