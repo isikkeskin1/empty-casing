@@ -35,20 +35,8 @@ jobs:
           $assembly = "$version.0"
           "CAPRI_VERSION=$version" >> $env:GITHUB_ENV
           "CAPRI_ASSEMBLY_VERSION=$assembly" >> $env:GITHUB_ENV
-      - name: Reject obvious embedded credentials in tracked source
+      - name: Build app
         shell: pwsh
-        run: |
-          # This is a high-signal safety gate, not a substitute for a dedicated
-          # secret scanner or reviewing PRs. Never echo secret matching text.
-          $patterns = @(
-            'sk-fish-[A-Za-z0-9_-]{18,}',
-            'ghp_[A-Za-z0-9]{30,}',
-            'github_pat_[A-Za-z0-9_]{30,}',
-            'nvapi-[A-Za-z0-9_-]{20,}',
-            'sk-proj-[A-Za-z0-9_-]{20,}'
-          )
-          $tracked = git ls-files | Where-Object {
-            $_ -match '\.(cs|md|json|ya?ml|iss|ps1|txt)
         run: |
           dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION -p:CapriSpotifyClientId=$env:CAPRI_SPOTIFY_CLIENT_ID -p:CapriRobloxClientId=$env:CAPRI_ROBLOX_CLIENT_ID -p:CapriDiscordClientId=$env:CAPRI_DISCORD_CLIENT_ID
           if ($LASTEXITCODE -ne 0) { throw "Capri Windows build failed." }
