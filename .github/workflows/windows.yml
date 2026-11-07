@@ -53,6 +53,47 @@ jobs:
           } else {
             Write-Output "No private animation pack supplied; app offers Import Pack."
           }
+      - name: Setup Python for licensed animation conversion
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Include seven-state Capri character animation in packaged app
+        shell: pwsh
+        run: |
+          # The animation art is not MIT: the upstream PolyForm Noncommercial
+          # licence and mandatory credit travel inside the installer.
+          # Pin the source to one upstream commit; never fetch an unbounded HEAD.
+          $revision = '3d460f3a37ec0d2bb085b00541d1de6dc531f2ef'
+          $root = "https://raw.githubusercontent.com/lachydotmcg/capri-desktop/$revision"
+          New-Item -ItemType Directory -Force -Path 'upstream-character-webps' | Out-Null
+          foreach ($state in @('idle','talk','glitch','tossed','sleep','perch','perch-music')) {
+            Invoke-WebRequest -Uri "$root/assets/readme/$state.webp" -OutFile "upstream-character-webps/$state.webp"
+          }
+          python -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+          if ($LASTEXITCODE -ne 0) { throw "Pillow installation failed." }
+          python tools/import_webp_animations.py --input upstream-character-webps --output publish/character-default
+          if ($LASTEXITCODE -ne 0) { throw "Character art conversion failed." }
+          foreach ($state in @('idle','talk','glitch','tossed','sleep','perch','perch-music')) {
+            if (!(Test-Path "publish/character-default/$state/0000.png") -or
+                !(Test-Path "publish/character-default/$state/timing.json")) {
+              throw "Character art is incomplete: $state"
+            }
+          }
+          Invoke-WebRequest -Uri "$root/LICENSE.md" -OutFile 'publish/character-default/UPSTREAM-LICENSE.md'
+          Invoke-WebRequest -Uri "$root/THIRD-PARTY-NOTICES.md" -OutFile 'publish/character-default/UPSTREAM-THIRD-PARTY-NOTICES.md'
+          $credit = @'
+          CAPRI CHARACTER ANIMATION ART - THIRD-PARTY LICENSE
+          Required Notice: Copyright 2026 Lachy (https://github.com/lachydotmcg)
+          Required Notice: Anyone who uses Capri's code, art, animations or any of its other assets must credit the Capri project (https://github.com/lachydotmcg/capri-desktop).
+          Capri's art and animations are by her artist, who prefers to stay private.
+          These seven animation sequences are supplied separately under PolyForm Noncommercial 1.0.0.
+          Noncommercial use only. The MIT license for this independent app DOES NOT cover the animations.
+          This fan art may also involve rights of CD PROJEKT RED or anime rights holders.
+          Source revision: 3d460f3a37ec0d2bb085b00541d1de6dc531f2ef
+          '@
+          Set-Content -Path 'publish/character-default/ART-LICENSE-AND-CREDIT.txt' -Value $credit -Encoding utf8
+          Write-Output "Packaged all seven default Capri animation states with third-party attribution."
+
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
