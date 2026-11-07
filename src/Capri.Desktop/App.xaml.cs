@@ -159,6 +159,8 @@ public partial class App : System.Windows.Application
         CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
         HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
         Settings = Store.LoadSettings();
+        if (Store.SettingsRecoveredFromBackup)
+            Diagnostics.Record("settings-recovered");
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
         LinkedAccounts = new LinkedAccountService(Settings, Secrets);
@@ -178,6 +180,9 @@ public partial class App : System.Windows.Application
         _companion = new CompanionWindow();
         MainWindow = _companion;
         _companion.Show();
+        if (Store.SettingsRecoveredFromBackup)
+            _companion.ShowReaction(
+                "Recovered settings from a previous valid copy. Review SETUP and INPUTS.");
         _ = Task.Run(() => CharacterPackImporter.InstallBundledIfNeeded(
             AppContext.BaseDirectory, Store.CharacterFolder)).ContinueWith(task =>
         {
