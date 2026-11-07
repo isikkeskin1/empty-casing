@@ -26,6 +26,10 @@ public sealed class AppSettings
     // Windows offers only the recognizer languages installed on the PC.
     // Empty means the first installed recognizer; not an 80-language STT claim.
     public string SpeechRecognitionLanguage { get; set; } = "";
+    // "windows": wake-word/hands-free via installed SAPI engine.
+    // "whisper": on-device multilingual, explicit Talk Once only.
+    public string SpeechRecognitionMode { get; set; } = "windows";
+    public bool EnableDiscordRichPresence { get; set; } = false;
     public string VoiceProvider { get; set; } = "windows";
     public int MicrophoneDeviceIndex { get; set; } = -1;
     public int SpeakerDeviceIndex { get; set; } = -1;
