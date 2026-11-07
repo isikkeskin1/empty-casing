@@ -2,7 +2,7 @@
 
 An **unofficial, noncommercial fan project** building an interactive desktop companion inspired by Capri from *Cyberpunk: Edgerunners 2*.
 
-This is an **independent implementation**. It does not fork or reuse code, animations, sprites, audio, or other assets from lachydotmcg/capri-desktop. No copyrighted character art or voice recordings are bundled. This early build uses a temporary hologram until appropriately licensed/created Capri animation frames are available.
+This is an **independent MIT-licensed implementation** with a separately licensed default character-art component. Windows releases include the seven upstream Capri animated character sequences under **PolyForm Noncommercial 1.0.0**, with required attribution and upstream notices included beside the packaged assets. The art is **not MIT-licensed** and may not be used commercially. The floating companion and Mainframe display real animations immediately after installation, without manual ZIP import. See [character-art rights](docs/ASSET_RIGHTS.md). This is not an official Capri project or endorsed by its creators or anime rights holders.
 
 ## Current milestone: local assistant + desktop presence
 
@@ -29,7 +29,7 @@ This is an **independent implementation**. It does not fork or reuse code, anima
 5. Under HER VOICE, choose a Windows voice or Fish Audio. Fish uses a separate API key and plays MP3 replies without writing audio to disk. Test the selected voice, then click TEST CONNECTION and SAVE & OPEN MAINFRAME.
 6. In Mainframe, enable mic, screen watch, speech output or desktop actions separately if desired. Purchasing and checkout remain blocked.
 
-The installer includes the .NET runtime, **not** Ollama, model weights, copyrighted animation assets, or cloud credits. Developer setup is described in [the guide](docs/SETUP.md).
+The installer includes .NET and **all seven default character animation states** (separately licensed, noncommercial, credited); it does **not** include Ollama, model weights, or cloud credits. An optional imported local pack overrides the bundled character without deleting your own files. Developer setup is described in [the guide](docs/SETUP.md).
 
 **Smart screen input:** Optional WATCH SCREEN uses a tiny in-memory grayscale signature to skip unchanged or blank frames, and stays quiet during voice listening. Ask "what did you see?" for Capri's latest observation from this session (kept in RAM for up to three hours). Gentle mouse rubs over the companion trigger a playful reaction; disable them in INPUTS.
 
@@ -86,9 +86,15 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## CAPRI / NEON NOIR MAINFRAME & DEFAULT ANIMATION
+
+The current Windows installer opens with an actual animated Capri character, without the old empty ART SLOT or first-time ZIP picker. All seven states are built into the installed `character-default/` folder with their separate license and copyright notices. Any private frames in `%LOCALAPPDATA%\\CapriDesktop\\character` override the shipped states automatically, and survive updates.
+
+The Mainframe now uses a wider chat-plus-portrait composition; animated character art remains visible next to streaming chat, with high-contrast magenta, cyan and lime accents, grouped modules, better typography and a persistent message composer. The setup and shared control theme use the same design system.
+
 ## Capri 0.7 — real character animations + GitHub auto-updates
 
-The shipped app now supports **one-click import of the owner's seven-state animation pack**. Right-click the floating Capri character → **Import animation pack ZIP…**, or open **Apps & Tools → About / Updates → Import Animation Pack**. Choose `Capri-Animation-Pack-v0.2.zip` without extracting it. The importer validates its structure and all 256 frames, preserves your existing art unless replacement is confirmed, and reloads the character immediately. Existing frame animations (idle, talk, glitch, tossed, sleep, perch, and music-perch) are then used on every startup. Authorized **private** builds can bundle the ZIP in `assets/private/`; public Releases do not ship third-party art without confirmed redistribution rights. See [Animation assets](assets/README.md).
+**No ZIP import needed for the normal installer.** The Windows build now converts all seven animation WebPs from a pinned upstream revision, retains the upstream PolyForm Noncommercial license and notices, and ships the PNG frames under `character-default/`. The floating character and the rebuilt Mainframe stage animate from those files on first launch. Previously imported custom animations still take priority; the ZIP importer remains available to replace your local override. The Mainframe now features a dedicated animated character stage, readable split-screen conversation, restrained neon-noir surfaces, and a more consistent setup flow. See [Animation assets](assets/README.md) and [Animation rights](docs/ASSET_RIGHTS.md).
 
 **GitHub auto-release and updater:** Each successful push to `main` now automatically publishes a versioned Windows GitHub Release with its installer, portable ZIP and SHA-256 checksums. On startup, Capri checks the pinned official release feed after a short delay, then **every three hours**. She automatically downloads and verifies newer installers, and displays **Restart to update** in the system tray and Update Center when one is ready. Choosing Restart to update performs the per-user installer upgrade and relaunches her. No one needs to re-download installers manually; the final restart remains owner-controlled and won't interrupt a game. Automatic checks can be disabled from About / Updates.
 
@@ -152,7 +158,7 @@ See [Visual Lookout and calendar guide](docs/LOOKOUT_AND_CALENDAR.md) for consen
 
 The desktop Mainframe now uses a consistent Capri-inspired **dark / neon-yellow / cyan / pink** visual language, guided by the owner's reference video. The chat-first layout has a permanent composer, accessible navigation rail, large routine cards, grouped opt-in controls, and a dedicated apps/tools page. Capri's floating desktop character has a small angular speech card with **TALK TO ME** and dismiss actions; the first button activates Talk Once or opens chat if Windows speech isn't configured.
 
-Find the reusable palette and control templates in `src/Capri.Desktop/Themes/CapriTheme.xaml` and read [Control Deck UI guide](docs/CONTROL_DECK_UI.md) for workflow, accessibility and limitations. This is original WPF styling; character art or videos from the reference are not bundled.
+Find the reusable palette and control templates in `src/Capri.Desktop/Themes/CapriTheme.xaml` and read [Control Deck UI guide](docs/CONTROL_DECK_UI.md) for workflow, accessibility and limitations. This is independent WPF code and styling. The seven noncommercial upstream character animations are now separately bundled with explicit credit and original license notices; video footage is not included.
 
 ## Session routines and conversation follow-ups
 
@@ -352,4 +358,4 @@ For third-party artwork restrictions see [docs/ASSET_RIGHTS.md](docs/ASSET_RIGHT
 
 ## Rights
 
-This is not affiliated with CD PROJEKT RED, Netflix, the show's production team or voice performers. Capri and related universe/character elements belong to their respective owners. The independent **source code** in this repository is MIT licensed (see [LICENSE](LICENSE)); that does **not** grant rights to character art, names, trademarks, recorded voices, or other third-party material. Public distribution of a character-faithful build will require a rights review. Commercial distribution would require appropriate permissions.
+This is not affiliated with CD PROJEKT RED, Netflix, the show's production team or voice performers. Capri and related universe/character elements belong to their respective owners. The independent **source code** is MIT licensed (see [LICENSE](LICENSE)); the bundled animation art remains under PolyForm Noncommercial 1.0.0 (attribution included with the installer) and is **not** MIT licensed. This source license does not grant commercial rights in characters, trademarks, recorded voices, artwork or third-party assets. Do not sell or include the art in a commercial product without obtaining appropriate permissions.
