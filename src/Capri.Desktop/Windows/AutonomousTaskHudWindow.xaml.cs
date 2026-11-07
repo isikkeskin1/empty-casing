@@ -35,7 +35,7 @@ public partial class AutonomousTaskHudWindow : Window
             WindowStyle = WindowStyle.None,
             ResizeMode = ResizeMode.NoResize,
             AllowsTransparency = true,
-            Background = Brushes.Transparent,
+            Background = System.Windows.Media.Brushes.Transparent,
             ShowActivated = false,
             ShowInTaskbar = false,
             Topmost = true,
@@ -45,7 +45,7 @@ public partial class AutonomousTaskHudWindow : Window
                 Text = "➤",
                 FontSize = 43,
                 FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(255, 81, 172)),
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 81, 172)),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -89,7 +89,7 @@ public partial class AutonomousTaskHudWindow : Window
         if (!double.IsFinite(pixelX) || !double.IsFinite(pixelY)) return;
         var matrix = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
             ?? Matrix.Identity;
-        var point = matrix.Transform(new Point(pixelX, pixelY));
+        var point = matrix.Transform(new System.Windows.Point(pixelX, pixelY));
         _pointer.Left = Math.Clamp(point.X - 14, SystemParameters.VirtualScreenLeft,
             Math.Max(SystemParameters.VirtualScreenLeft,
                 SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - _pointer.Width));
