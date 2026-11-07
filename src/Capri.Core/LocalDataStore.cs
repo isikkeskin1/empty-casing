@@ -6,6 +6,14 @@ public sealed class LocalDataStore
 {
     private readonly string _directory;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private bool _settingsRecoveredFromBackup;
+
+    /// <summary>
+    /// True when settings.json was invalid/unreadable and a previous known-good
+    /// settings.json.backup was loaded. No chat, personal memory or credentials
+    /// are duplicated into recovery backups.
+    /// </summary>
+    public bool SettingsRecoveredFromBackup => _settingsRecoveredFromBackup;
 
     public LocalDataStore(string? directory = null)
     {
@@ -26,7 +34,19 @@ public sealed class LocalDataStore
         }
     }
 
-    public AppSettings LoadSettings() => Read<AppSettings>("settings.json") ?? new AppSettings();
+    public AppSettings LoadSettings()
+    {
+        _settingsRecoveredFromBackup = false;
+        var primary = Read<AppSettings>("settings.json");
+        if (primary is not null) return primary;
+        var backup = Read<AppSettings>("settings.json.backup");
+        if (backup is not null)
+        {
+            _settingsRecoveredFromBackup = true;
+            return backup;
+        }
+        return new AppSettings();
+    }
     public IReadOnlyList<ChatTurn> LoadHistory() => Read<List<ChatTurn>>("history.json") ?? new List<ChatTurn>();
 
     public IReadOnlyList<PersonalMemory> LoadPersonalMemories() =>
@@ -55,13 +75,36 @@ public sealed class LocalDataStore
         }
         catch (JsonException) { return default; }
         catch (IOException) { return default; }
+        catch (UnauthorizedAccessException) { return default; }
+        catch (NotSupportedException) { return default; }
     }
 
     private void Write<T>(string fileName, T content)
     {
         var path = Path.Combine(_directory, fileName);
-        var temporary = path + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(content, JsonOptions));
-        File.Move(temporary, path, true);
+        // A same-directory temporary file makes replacement atomic on NTFS.
+        // Only settings get a backup: retaining stale chat/memory after a
+        // deliberate deletion would violate the owner's privacy expectations.
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary, JsonSerializer.Serialize(content, JsonOptions));
+            if (fileName == "settings.json" && File.Exists(path) &&
+                !_settingsRecoveredFromBackup)
+            {
+                File.Replace(temporary, path, path + ".backup");
+            }
+            else
+            {
+                // If we recovered from a corrupt primary, keep the good
+                // backup intact rather than replacing it with broken bytes.
+                File.Move(temporary, path, true);
+            }
+        }
+        finally
+        {
+            try { if (File.Exists(temporary)) File.Delete(temporary); }
+            catch (IOException) { }
+        }
     }
 }
