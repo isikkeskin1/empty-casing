@@ -86,6 +86,14 @@ You can ask "what app am I in?" to read the foreground external app's
 process name directly and locally, without turning on continuous sense
 or sending a screenshot. This is not mind reading or game-memory access.
 
+## Character pack importing + automatic verified updates
+
+**Character animation:** Capri now exposes **Apps & Tools → IMPORT ANIMATION PACK** and a tray-menu import action. Choose your local `Capri-Animation-Pack-v0.2.zip`. Capri validates its seven states (idle, talk, glitch, tossed, sleep, perch, perch-music), PNG signatures, frame counts and timing metadata, stages the archive safely, then reloads the live companion immediately. The original user-provided animation ZIP is **not in this public MIT repository** because its third-party notices limit redistribution. Your locally imported pack survives app upgrades.
+
+**Auto-updates:** every successful push to `main` now builds/tests Windows and publishes a numbered GitHub Release with `Capri-Setup.exe`, portable ZIP and SHA256SUMS. Installed Capri copies automatically check official Releases at startup and every 30 minutes, download newer installers only when the official GitHub asset URL, exact size and SHA256 digest validate, and install them automatically **when Capri exits**. You can install sooner through **About / Updates → INSTALL STAGED UPDATE**, or disable automatic updates entirely there. Portable builds can check updates but don't silently modify themselves.
+
+This does not bundle someone else's character artwork into publicly redistributed binaries, and does not claim Authenticode signing. See [Releases & Diagnostics](docs/RELEASES_AND_DIAGNOSTICS.md) for limitations.
+
 ## Update Center and private diagnostics — version 0.6.0
 
 **Apps & Tools → ABOUT / UPDATES** and the tray's **About / updates / support** entry open a new release and support center. Capri checks the fixed official GitHub Releases endpoint **only when you click Check for Updates**. It compares installed and published versions, validates the release's official GitHub URL, and opens that page in a browser when asked. No installer is silently downloaded, executed, or installed. If the repository has no published release yet, Capri says so and links to short-lived Actions preview builds.
