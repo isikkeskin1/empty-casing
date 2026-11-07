@@ -18,9 +18,13 @@ The existing tag-based `release.yml` workflow remains for explicitly created ver
 
 SHA-256 protects the downloaded installer against mismatched or corrupted bytes, as published by the trusted GitHub release. It is **not a digital publisher signature**: account compromise could replace both a package and its metadata. Windows code-signing and trusted rollback support are still needed for a mature release process. Downloaded updates can fail if GitHub is blocked, the asset digest is missing, a local security tool quarantines the installer, or installation fails. Capri reports the error and continues running.
 
-### Private animation art
+### Bundled default animations and private overrides
 
-The standard public build intentionally excludes `Capri-Animation-Pack-v0.2.zip` due third-party art redistribution rights. You can import the ZIP once through the app's character context menu; no manual extraction is needed. Authorized private local builds can place it in `assets/private/` before publishing, and the installer will carry/import it on first run. The public automatic-release job does **not** fetch arbitrary user or third-party art.
+The Windows workflow now downloads seven animation WebPs from a **pinned revision of the original Capri repository** and converts them to PNG frames during the build. Their independent **PolyForm Noncommercial 1.0.0** license and required attribution/third-party notices are included within `publish/character-default/` and every installer. This art is **not MIT licensed**, and bundled public releases must remain noncommercial. The Mainframe also visibly credits the original project; see [asset rights](ASSET_RIGHTS.md).
+
+These default frames appear immediately on a new install without an import prompt. Your optional ZIP can still be imported and will override default animation files state-by-state. Imported files under `%LOCALAPPDATA%\\CapriDesktop\\character` survive app upgrades. Licensed private developer builds may still supply a ZIP under `assets/private/`.
+
+The workflow must verify all seven default state folders and timing.json files, plus upstream notices, before publishing.
 
 ## Local-only support diagnostics
 
@@ -41,7 +45,7 @@ The local data folder also contains other personal data such as `history.json`, 
 2. Confirm the release workflow passed both build and smoke tests.
 3. Download `Capri-Setup.exe` and `SHA256SUMS.txt`, calculate its SHA256 locally, and compare against the checksum from the trusted GitHub release page.
 4. Test installer upgrade over an earlier build; retain a backup of the local data folder.
-5. Test clean Windows installation, first-run import of the private animation ZIP, tray/About navigation, startup and three-hour update checks, verified staging, silent installer/relaunch, and offline/error states.
+5. Test clean Windows installation, immediate default animation playback and private override without reimporting, tray/About navigation, startup and three-hour update checks, verified staging, silent installer/relaunch, and offline/error states.
 6. Establish trusted code signing and update rollback before enabling unattended automatic installer execution.
 
 The update checks use the existing Capri process only; no background Windows service is installed.

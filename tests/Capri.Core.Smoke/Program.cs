@@ -114,6 +114,23 @@ try
           CharacterPackImporter.InstallBundledIfNeeded(
               Path.GetDirectoryName(artZip)!, artRoot).Installed == false,
         "seven-state pack imports atomically and preserves existing custom frames");
+    var defaultArtRoot = Path.Combine(directory, "shipped-default-art");
+    Directory.CreateDirectory(Path.Combine(defaultArtRoot, "idle"));
+    File.WriteAllBytes(Path.Combine(defaultArtRoot, "idle", "0000.png"), pngHeader);
+    var missingCustom = Path.Combine(directory, "never-imported-art");
+    Check(CharacterArtPathResolver.FindStateFolder(
+              missingCustom, defaultArtRoot, "idle") ==
+              Path.Combine(defaultArtRoot, "idle") &&
+          CharacterArtPathResolver.FindStateFolder(
+              artRoot, defaultArtRoot, "idle") ==
+              Path.Combine(artRoot, "idle"),
+        "shipped animation plays by default without manual import, owner frames take priority");
+    var invalidArtStateRejected = false;
+    try { CharacterArtPathResolver.FindStateFolder(artRoot, defaultArtRoot, "../secret"); }
+    catch (ArgumentException) { invalidArtStateRejected = true; }
+    Check(invalidArtStateRejected,
+        "character state resolver rejects arbitrary paths");
+
     var refusedOverwrite = CharacterPackImporter.Import(artZip, artRoot, overwrite: false);
     Check(!refusedOverwrite.Installed &&
           CharacterPackImporter.Import(artZip, artRoot, overwrite: true).Installed,

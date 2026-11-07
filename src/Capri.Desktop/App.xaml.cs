@@ -1767,7 +1767,9 @@ public partial class App : System.Windows.Application
         }
     }
 
-    public bool CharacterArtLoaded => CharacterPackImporter.IsComplete(Store.CharacterFolder);
+    public bool CharacterArtLoaded =>
+        CharacterPackImporter.IsComplete(Store.CharacterFolder) ||
+        CharacterPackImporter.IsComplete(FrameAnimator.DefaultArtFolder);
 
     public async void ImportCharacterPackInteractive()
     {
@@ -1800,6 +1802,7 @@ public partial class App : System.Windows.Application
                 CharacterPackImporter.Import(picker.FileName, Store.CharacterFolder, overwrite));
             if (result.Installed)
                 _companion?.ReloadArt();
+                _chat?.ReloadHeroArt();
             _companion?.ShowReaction(result.Message);
             NotifyUpdateState();
         }

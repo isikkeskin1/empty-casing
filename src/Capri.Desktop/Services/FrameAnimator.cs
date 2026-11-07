@@ -6,14 +6,17 @@ using Capri.Core;
 namespace Capri.Desktop.Services;
 
 /// <summary>
-/// Displays transparent PNG frame sequences supplied by the user. Animation art is
-/// deliberately excluded from the public app repository.
+/// Displays local owner-supplied PNG sequences when present, otherwise the
+/// separately licensed default character animation shipped in the installer.
+/// User art and third-party default art never share the app's MIT code licence.
 /// </summary>
 public sealed class FrameAnimator : IDisposable
 {
     private sealed record Frame(BitmapSource Source, int DelayMs);
 
     private readonly string _baseFolder;
+    public static string DefaultArtFolder =>
+        Path.Combine(AppContext.BaseDirectory, "character-default");
     private readonly Action<BitmapSource?> _onFrame;
     private readonly DispatcherTimer _timer;
     private readonly Dictionary<string, IReadOnlyList<Frame>> _cache = new(StringComparer.OrdinalIgnoreCase);
@@ -59,7 +62,8 @@ public sealed class FrameAnimator : IDisposable
     {
         if (_cache.TryGetValue(state, out var cached)) return cached;
 
-        var path = Path.Combine(_baseFolder, state);
+        var path = CharacterArtPathResolver.FindStateFolder(
+            _baseFolder, DefaultArtFolder, state);
         var frames = new List<Frame>();
         if (Directory.Exists(path))
         {

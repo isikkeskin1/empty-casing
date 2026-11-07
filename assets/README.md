@@ -1,17 +1,14 @@
-# Character animation frames
+# Capri character animations: default + private overrides
 
-**No Capri character art is committed to this public codebase.** User-supplied animations stay on the user's PC. For third-party artwork restrictions, read [docs/ASSET_RIGHTS.md](../docs/ASSET_RIGHTS.md).
+**The normal Windows installer now includes all seven character animation states.** Users no longer need to import a ZIP to see the real animated companion. The build downloads seven animated WebPs from one pinned, official Capri upstream commit, converts them to PNG frame sequences using Pillow, and packages them under `character-default/` beside `Capri.Desktop.exe`. The WPF character renderer uses those files immediately on startup.
 
-## First-run image pack import (v0.7+)
+Default artwork is a **separately licensed noncommercial third-party component**, not part of this repository's MIT source-code license. The Windows installer carries `character-default/UPSTREAM-LICENSE.md`, `UPSTREAM-THIRD-PARTY-NOTICES.md` and `ART-LICENSE-AND-CREDIT.txt`. The Mainframe visibly credits the original project and artist. See [assets licensing](../docs/ASSET_RIGHTS.md). Commercial redistribution would require different permission.
 
-The original animation pack is **Capri-Animation-Pack-v0.2.zip**. It contains all seven states, 256 transparent PNG frames and timing files.
+## Your own animation overrides
 
-1. Open Capri → right-click her placeholder → **Import animation pack ZIP…** (or tray → Import animation ZIP, or About / Updates → Import Animation Pack).
-2. Select the original ZIP file as-is. Capri validates the seven folders, frame numbering, PNG headers and timing before writing. There is no need to extract files manually.
-3. After import, Capri reloads the frames immediately and displays the character in Idle, Talking, Glitch, Tossed, Sleep, Perch and Music-Perch states.
-4. Existing custom art is preserved; you must explicitly confirm replacement. A failed pack import restores the previous state.
+Capri still supports your `Capri-Animation-Pack-v0.2.zip` via the right-click import, tray icon, and About/Updates screen. Imported files go to `%LOCALAPPDATA%\\CapriDesktop\\character`. A present state folder takes precedence over the shipped default; missing custom states automatically fall back to the packaged animation. The importer validates archive structure and frame signatures and will not overwrite existing custom content without confirmation. Your imported art is **never replaced during app updates**.
 
-**Licensed local builds:** you can supply a private `assets/private/Capri-Animation-Pack-v0.2.zip` before running the Windows build/publish workflow on your own PC. The publish job copies it next to the executable, and Capri automatically imports it on first launch when the art folder is still empty. Subsequent updates preserve user art. This private ZIP is ignored by Git and must not be published to public Releases unless you have redistribution rights. Standard public Actions builds do **not** contain this copyrighted pack.
+For private development builds, the optional `assets/private/Capri-Animation-Pack-v0.2.zip` still works and remains excluded from Git. The default installed art now works even without that optional file. Do not mix it into a public release without honoring its license.
 
 ## Import WebP animations
 

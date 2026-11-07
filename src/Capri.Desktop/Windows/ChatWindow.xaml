@@ -1,20 +1,20 @@
 <Window x:Class="Capri.Desktop.Windows.ChatWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Capri — Control Deck" Width="1040" Height="760"
-        MinWidth="780" MinHeight="620" WindowStartupLocation="CenterScreen"
-        Background="{StaticResource CapriBaseBrush}"
+        Title="CAPRI / MAINFRAME" Width="1280" Height="830"
+        MinWidth="1020" MinHeight="690" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource CapriWindowAtmosphere}"
         Foreground="{StaticResource CapriTextBrush}"
         FontFamily="Segoe UI" FontSize="13"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
-  <Grid Margin="18">
+  <Grid Margin="24">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
     <!-- Brand header, with quiet status and a single prominent Setup entrypoint. -->
-    <Grid Margin="0,0,0,16">
+    <Grid Margin="0,0,0,19">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
@@ -22,12 +22,12 @@
       </Grid.ColumnDefinitions>
       <StackPanel>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="CAPRI" FontFamily="Bahnschrift SemiCondensed" FontSize="36"
-                     FontWeight="Bold" Foreground="{StaticResource CapriYellowBrush}"/>
-          <TextBlock Text=" // CONTROL DECK" FontFamily="Consolas" FontSize="13"
-                     Margin="12,15,0,0" Foreground="{StaticResource CapriCyanBrush}"/>
+          <TextBlock Text="CAPRI" FontFamily="Bahnschrift SemiCondensed" FontSize="43"
+                     FontWeight="ExtraBold" Foreground="{StaticResource CapriPinkBrush}"/>
+          <TextBlock Text=" / MAINFRAME  07" FontFamily="Consolas" FontSize="13"
+                     Margin="13,20,0,0" Foreground="{StaticResource CapriCyanBrush}"/>
         </StackPanel>
-        <TextBlock Text="YOUR DESKTOP COMPANION  •  LOCAL PRESENCE / CONNECTED TOOLS"
+        <TextBlock Text="YOUR SPACE. YOUR RULES. YOUR AI COMPANION."
                    Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas" FontSize="10"/>
       </StackPanel>
       <Border Grid.Column="1" VerticalAlignment="Center"
@@ -44,18 +44,18 @@
 
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="200"/>
-        <ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="215"/>
+        <ColumnDefinition Width="19"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
 
       <!-- Static sidebar: navigation stays available at every screen height. -->
-      <Border Grid.Column="0" Style="{StaticResource CapriPanel}" Padding="12">
+      <Border Grid.Column="0" Style="{StaticResource CapriPanel}" Padding="13" Background="#0D1724" BorderBrush="#314052">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Bottom">
             <Border BorderBrush="#3D5962" BorderThickness="0,1,0,0" Padding="2,13,2,9">
               <StackPanel>
-                <TextBlock Text="/// SYSTEM STATE" Style="{StaticResource CapriLabel}"
+                <TextBlock Text="●  SYSTEM STATUS" Style="{StaticResource CapriLabel}"
                            Foreground="{StaticResource CapriYellowBrush}" Margin="0,0,0,8"/>
                 <TextBlock x:Name="QuickMicState" Text="MIC  /  OFF"
                            Foreground="{StaticResource CapriMutedBrush}" FontFamily="Consolas"
@@ -76,7 +76,7 @@
                     ToolTip="Immediately turn off microphone, screen watch and desktop actions."/>
           </StackPanel>
           <StackPanel>
-            <TextBlock Text="/// MODULES" Style="{StaticResource CapriLabel}"
+            <TextBlock Text="/// NAVIGATE" Style="{StaticResource CapriLabel}"
                        Margin="5,5,0,16"/>
             <Button x:Name="NavChat" Content="01   Chat" Tag="CHAT" Click="Navigate_Click"
                     Style="{StaticResource CapriNavActiveButton}"/>
@@ -90,7 +90,7 @@
                     Style="{StaticResource CapriNavButton}"/>
             <Button x:Name="NavMemory" Content="05   My memory" Tag="MEMORY"
                     Click="Navigate_Click" Style="{StaticResource CapriNavButton}"/>
-            <TextBlock Text="TIP  •  Double-click Capri on your desktop to return to chat."
+            <TextBlock Text="TIP  // Double-click the floating character to open the Mainframe."
                        Margin="5,22,4,0" Style="{StaticResource CapriSubtext}"
                        FontSize="11"/>
           </StackPanel>
@@ -110,11 +110,11 @@
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
           <StackPanel>
-            <TextBlock x:Name="PageTitle" Text="Talk to Capri"
-                       FontFamily="Bahnschrift SemiCondensed" FontSize="23"
+            <TextBlock x:Name="PageTitle" Text="Your conversation"
+                       FontFamily="Bahnschrift SemiCondensed" FontSize="29"
                        FontWeight="SemiBold" Foreground="{StaticResource CapriTextBrush}"/>
             <TextBlock x:Name="PageSubtitle"
-                       Text="Ask a question, launch a task or just talk. Capri is here."
+                       Text="She is here. Talk, automate, or hang out."
                        Foreground="{StaticResource CapriMutedBrush}" FontSize="11"/>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -129,63 +129,163 @@
           </StackPanel>
         </Grid>
 
-        <!-- The chat transcript is never recreated when switching modules. -->
+        <!-- Mainframe: a true animated character stage lives beside chat,
+             using the same default art/custom override as the floating Capri. -->
         <Border x:Name="ChatPage" Grid.Row="1" Style="{StaticResource CapriPanel}"
-                Padding="8,13,8,8">
+                Padding="0" ClipToBounds="True" BorderBrush="#36485B">
           <Grid>
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <DockPanel Margin="10,0,10,12">
-              <TextBlock Text="/// LIVE TRANSCRIPT" Style="{StaticResource CapriLabel}"/>
-              <TextBlock DockPanel.Dock="Right" Text="LOCAL HISTORY" FontFamily="Consolas"
-                         Foreground="{StaticResource CapriMutedBrush}" FontSize="10"
-                         HorizontalAlignment="Right"/>
-            </DockPanel>
-            <ScrollViewer x:Name="TranscriptScroll" Grid.Row="1"
-                          VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding Messages}" Margin="10,0,10,5">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel/>
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border x:Name="MessageBackground" Background="#182B39"
-                            BorderBrush="#426674" BorderThickness="1"
-                            CornerRadius="0,8,0,0" Padding="13,11"
-                            Margin="0,0,28,12">
-                      <StackPanel>
-                        <DockPanel Margin="0,0,0,8">
-                          <TextBlock Text="{Binding DisplayRole}" FontFamily="Consolas"
-                                     FontSize="10" FontWeight="Bold"
-                                     Foreground="{StaticResource CapriCyanBrush}"/>
-                          <TextBlock Text="{Binding DisplayTime}"
-                                     DockPanel.Dock="Right" FontFamily="Consolas"
-                                     FontSize="10" Foreground="{StaticResource CapriMutedBrush}"
-                                     HorizontalAlignment="Right"/>
-                        </DockPanel>
-                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                   FontSize="13" LineHeight="20"/>
-                      </StackPanel>
-                    </Border>
-                    <DataTemplate.Triggers>
-                      <DataTrigger Binding="{Binding Role}" Value="user">
-                        <Setter TargetName="MessageBackground" Property="Background" Value="#2C2336"/>
-                        <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#795375"/>
-                        <Setter TargetName="MessageBackground" Property="Margin" Value="28,0,0,12"/>
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Role}" Value="system">
-                        <Setter TargetName="MessageBackground" Property="Background" Value="#33242C"/>
-                        <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#905C69"/>
-                      </DataTrigger>
-                    </DataTemplate.Triggers>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" MinWidth="280"/>
+              <ColumnDefinition Width="308"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Transcript remains stable across navigation and streaming. -->
+            <Grid Margin="18,16,14,16">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+              <DockPanel Margin="2,0,2,17" LastChildFill="False">
+                <StackPanel>
+                  <TextBlock Text="/// LIVE CONVERSATION" Style="{StaticResource CapriLabel}"
+                             Foreground="{StaticResource CapriCyanBrush}"/>
+                  <TextBlock Text="Talk naturally. Nothing here is a command unless you ask."
+                             Style="{StaticResource CapriSubtext}" FontSize="11"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+                <Border DockPanel.Dock="Right" VerticalAlignment="Top"
+                        Background="#1A2A36" BorderBrush="#315B5E"
+                        BorderThickness="1" CornerRadius="9" Padding="9,5">
+                  <TextBlock Text="●  LOCAL HISTORY" FontFamily="Consolas"
+                             Foreground="{StaticResource CapriLimeBrush}" FontSize="10"/>
+                </Border>
+              </DockPanel>
+              <ScrollViewer x:Name="TranscriptScroll" Grid.Row="1"
+                            VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                <ItemsControl ItemsSource="{Binding Messages}" Margin="1,0,2,3">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border x:Name="MessageBackground" Background="#192738"
+                              BorderBrush="#344C60" BorderThickness="1"
+                              CornerRadius="13,13,13,4" Padding="15,13"
+                              Margin="0,0,22,11">
+                        <StackPanel>
+                          <DockPanel Margin="0,0,0,9">
+                            <TextBlock Text="{Binding DisplayRole}" FontFamily="Consolas"
+                                       FontSize="10" FontWeight="Bold"
+                                       Foreground="{StaticResource CapriCyanBrush}"/>
+                            <TextBlock Text="{Binding DisplayTime}" DockPanel.Dock="Right"
+                                       FontFamily="Consolas" FontSize="10"
+                                       Foreground="{StaticResource CapriMutedBrush}"
+                                       HorizontalAlignment="Right"/>
+                          </DockPanel>
+                          <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                     FontSize="14" LineHeight="22"
+                                     Foreground="{StaticResource CapriTextBrush}"/>
+                        </StackPanel>
+                      </Border>
+                      <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Role}" Value="user">
+                          <Setter TargetName="MessageBackground" Property="Background" Value="#38203C"/>
+                          <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#80516F"/>
+                          <Setter TargetName="MessageBackground" Property="CornerRadius" Value="13,13,4,13"/>
+                          <Setter TargetName="MessageBackground" Property="Margin" Value="22,0,0,11"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Role}" Value="system">
+                          <Setter TargetName="MessageBackground" Property="Background" Value="#332333"/>
+                          <Setter TargetName="MessageBackground" Property="BorderBrush" Value="#6A4962"/>
+                        </DataTrigger>
+                      </DataTemplate.Triggers>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Grid>
+
+            <!-- Live character area replaces the old generic ART SLOT.
+                 No fake wallpaper: it displays the real PNG frame playback. -->
+            <Border Grid.Column="1" Background="{StaticResource CapriHeroBackground}"
+                    BorderBrush="#5A365A" BorderThickness="1,0,0,0"
+                    CornerRadius="0,13,13,0">
+              <Grid Margin="17,18,17,17">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="*"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <DockPanel LastChildFill="False">
+                  <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="/// LIVE PRESENCE" FontFamily="Consolas"
+                               Foreground="{StaticResource CapriPinkBrush}"
+                               FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Text="CAPRI.EXE" FontFamily="Bahnschrift SemiCondensed"
+                               FontSize="27" FontWeight="Bold" Margin="0,4,0,0"
+                               Foreground="{StaticResource CapriTextBrush}"/>
+                  </StackPanel>
+                  <Border DockPanel.Dock="Right" VerticalAlignment="Center"
+                          Background="#1C382F" BorderBrush="#477A66"
+                          BorderThickness="1" CornerRadius="7" Padding="7,5">
+                    <TextBlock Text="●  ONLINE" FontSize="10" FontFamily="Consolas"
+                               Foreground="{StaticResource CapriLimeBrush}"/>
+                  </Border>
+                </DockPanel>
+                <Grid Grid.Row="1" Margin="0,5,0,0" ClipToBounds="True">
+                  <Ellipse Width="245" Height="245" VerticalAlignment="Center"
+                           Fill="#0C1C2E" Stroke="#54446D" StrokeThickness="1"
+                           StrokeDashArray="2,7" Opacity="0.65"/>
+                  <Ellipse Width="194" Height="194" VerticalAlignment="Center"
+                           Stroke="#7D3770" StrokeThickness="2" Opacity="0.35">
+                    <Ellipse.Effect>
+                      <DropShadowEffect Color="#FF407E" BlurRadius="42"
+                                        ShadowDepth="0" Opacity="0.55"/>
+                    </Ellipse.Effect>
+                  </Ellipse>
+                  <Image x:Name="HeroArtImage" Stretch="Uniform"
+                         VerticalAlignment="Center" HorizontalAlignment="Center"
+                         MaxWidth="270" MaxHeight="380"
+                         RenderOptions.BitmapScalingMode="HighQuality"/>
+                  <TextBlock x:Name="HeroArtStatus"
+                             Text="INITIALIZING CHARACTER ART"
+                             FontFamily="Consolas" FontSize="10"
+                             Foreground="{StaticResource CapriMutedBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                             Margin="0,0,0,22" TextWrapping="Wrap"/>
+                </Grid>
+                <StackPanel Grid.Row="2" Margin="0,5,0,10">
+                  <TextBlock Text="HERE, EVEN WHEN YOU'RE BUSY"
+                             FontFamily="Consolas" FontSize="10"
+                             Foreground="{StaticResource CapriCyanBrush}"/>
+                  <TextBlock Text="Voice, games, code, music — all one place."
+                             Style="{StaticResource CapriSubtext}" Margin="0,6,0,0"
+                             FontSize="12"/>
+                  <TextBlock Text="ART © 2026 LACHY / POLYFORM NONCOMMERCIAL"
+                             FontFamily="Consolas" Foreground="#C59AAC"
+                             FontSize="9" Margin="0,9,0,0"
+                             ToolTip="Animation source: github.com/lachydotmcg/capri-desktop. Artist prefers privacy. Not MIT-licensed."/>
+                </StackPanel>
+                <Grid Grid.Row="3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Button Grid.Column="0" Content="TALK TO HER"
+                          Click="TalkOnce_Click"
+                          Style="{StaticResource CapriPrimaryButton}"
+                          FontSize="11" Padding="6,9"/>
+                  <Button Grid.Column="2" Content="GAME CENTER"
+                          Click="OpenGames_Click"
+                          Style="{StaticResource CapriButton}"
+                          FontSize="11" Padding="6,9"/>
+                </Grid>
+              </Grid>
+            </Border>
           </Grid>
         </Border>
 
@@ -626,20 +726,25 @@
           </StackPanel>
         </ScrollViewer>
 
-        <!-- Permanent chat composer so switching modules never loses the prompt. -->
-        <Grid Grid.Row="2" Margin="0,12,0,9">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-          </Grid.ColumnDefinitions>
-          <TextBox x:Name="PromptBox" Style="{StaticResource CapriInput}"
-                   AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" MaxHeight="135"
-                   VerticalScrollBarVisibility="Auto" KeyDown="Prompt_KeyDown"
-                   ToolTip="Type a message or request. Enter to send, Shift+Enter for a newline."/>
-          <Button x:Name="SendButton" Grid.Column="1" Content="SEND  ›"
-                  Style="{StaticResource CapriPrimaryButton}" Width="114"
-                  Margin="10,0,0,0" FontSize="13" Click="Send_Click"/>
-        </Grid>
+        <!-- Persistent composer: present across modules, still Shift+Enter multiline. -->
+        <Border Grid.Row="2" Background="#101B29" CornerRadius="13"
+                BorderBrush="#32475A" BorderThickness="1" Margin="0,13,0,11"
+                Padding="12">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="PromptBox" Style="{StaticResource CapriInput}"
+                     Background="#122132" BorderThickness="0"
+                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48" MaxHeight="140"
+                     VerticalScrollBarVisibility="Auto" KeyDown="Prompt_KeyDown"
+                     ToolTip="Enter to send · Shift+Enter for newline"/>
+            <Button x:Name="SendButton" Grid.Column="1" Content="SEND  ↗"
+                    Style="{StaticResource CapriPrimaryButton}" Width="112"
+                    Margin="9,0,0,0" FontSize="13" Click="Send_Click"/>
+          </Grid>
+        </Border>
         <DockPanel Grid.Row="3">
           <Button DockPanel.Dock="Right" Content="CLEAR CHAT" Click="Clear_Click"
                   Style="{StaticResource CapriButton}" Padding="10,5" MinHeight="28"
