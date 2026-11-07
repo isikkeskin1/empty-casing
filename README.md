@@ -35,7 +35,7 @@ The installer includes .NET and **all seven default character animation states**
 
 **Reminders and timers:** Try "remind me in 10 minutes to stretch", "set a timer for 30 seconds", "show reminders" or "cancel reminder #1" in the Mainframe or by voice. Reminders are stored locally and fire while Capri is running (or upon reopening if overdue). They are not cloud calendar events.
 
-**Controls:** drag or quickly toss Capri; double-click to sleep/wake. Shift-drop sits anywhere; Ctrl-drop attaches to a nearby window edge with the existing perch pose. Right-click → Size scales the overlay from 50% to 160% and saves the choice, including positions on secondary monitors. Type **"ride my cursor"** and press **Ctrl+Alt+C** to hop off (or bring her here when she isn't riding). **Ctrl+Alt+H** hides/shows; **Ctrl+Alt+T** focuses chat; **Ctrl+Alt+P** toggles Quiet Mode. Open chat with Ctrl+Shift+Space or the companion context menu. Smooth cursor ride, click-through, and mixed-DPI placement need Windows QA; no global Esc hook, distinct hang frame, or chaos clones have been shipped. Read [interaction parity](docs/INTERACTION_AND_CONNECTION_PARITY.md).
+**Controls:** drag or quickly toss Capri; double-click to sleep/wake. Shift-drop sits anywhere; Ctrl-drop attaches to a nearby window edge with the existing perch pose. Right-click → Size scales the overlay from 50% to 160% and saves the choice, including positions on secondary monitors. Type **"ride my cursor"** and press **Ctrl+Alt+C** to hop off (or bring her here when she isn't riding). **Ctrl+Alt+H** hides/shows; **Ctrl+Alt+T** focuses chat; **Ctrl+Alt+P** toggles Quiet Mode. Open chat with Ctrl+Shift+Space or the companion context menu. Smooth cursor ride and mixed-DPI placement still require Windows QA. Ctrl-drop now uses a procedural hanging sway, or an optional owner-supplied `hang` frame sequence. **Chaos Mode** adds 1–5 animated click-through clones: type "make 3 clones", use the context menu, or hold Esc for ~0.85 seconds to STOP ALL and clear them. Existing AUTO TASK now shows a steps HUD and a visual-only pink pointer over validated accessibility targets. These do not manipulate other app windows or seize the real mouse. Read [Chaos and task visuals](docs/CHAOS_AND_TASK_VISUALS.md) and [interaction parity](docs/INTERACTION_AND_CONNECTION_PARITY.md).
 
 The snap system only reads top-level window rectangles. It does not inspect your app contents or take control of other windows. High-DPI multi-monitor placement and fullscreen game behavior need manual Windows testing.
 
@@ -183,6 +183,12 @@ Capri can now handle an entire local app-launch session in one voice/text comman
 Enable DESKTOP ACTIONS or HANDS-FREE first. A manual routine has one batch preview, not a new confirmation for every app. Every step is revalidated, and **STOP ALL** cancels any remaining launches. No scripts, account changes, purchases, messages or file modifications are part of these routines. See [Session Routines](docs/SESSION_ROUTINES.md).
 
 In INPUTS, enable optional voice follow-ups to keep a *sliding* 20-second conversation window open after each accepted follow-up. When voice interruption is also enabled, **"Capri stop all"** works while Capri is speaking. This is not yet streamed voice or always-on unrestricted computer control.
+
+## Discord — two-way Call Companion audio
+
+**VOICE CALL** can now listen to a *selected* Discord speaker endpoint rather than always default Windows playback. Use a virtual audio cable (for example VB-CABLE) as **Capri's Fish playback device** and as **Discord's recording input**. Optionally bridge your real microphone into that cable so other participants hear both you and Capri. Select the incoming Discord output device separately. All capture is per-session, requires participant consent, and stops when the session is disabled or the selected playback endpoint disconnects. Discord desktop **Toggle Mute** / **Toggle Deafen** buttons send documented local shortcuts only under owner-approved DESKTOP ACTIONS; no self-bot, user token or channel automation. See [two-way Discord audio guide](docs/CALL_COMPANION.md).
+
+Windows voice-input languages are selectable from the installed speech engines under INPUTS; this is **not** a verified 80-language recognition feature.
 
 ## Native Spotify + Roblox account connections (OAuth PKCE)
 
