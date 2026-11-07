@@ -1,3 +1,6 @@
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
 using System.Net;
 using Capri.Core;
 
@@ -17,6 +20,62 @@ try
     store.SaveHistory(turns);
     Check(store.LoadHistory().Count == 2, "history persists");
     Check(Directory.Exists(store.CharacterFolder), "character directory exists");
+    // Full local animation import: all seven official state folders, no
+    // filesystem traversal or hidden code execution from a user ZIP.
+    var animationsZip = Path.Combine(directory, "Capri-Animation-Pack-test.zip");
+    var pngPixel = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLntAAAAABJRU5ErkJggg==");
+    using (var archive = ZipFile.Open(animationsZip, ZipArchiveMode.Create))
+    {
+        foreach (var stateName in CharacterPackImporter.States)
+        {
+            using (var target = archive.CreateEntry(stateName + "/0000.png").Open())
+                target.Write(pngPixel);
+            using (var writer = new StreamWriter(
+                archive.CreateEntry(stateName + "/timing.json").Open()))
+                writer.Write("{\"frameDurationsMs\":[100]}");
+        }
+    }
+    var packPreview = CharacterPackImporter.Validate(animationsZip);
+    Check(packPreview.States == 7 && packPreview.Frames == 7,
+        "Capri validates all seven character animation states before import");
+    var imported = CharacterPackImporter.Import(animationsZip, store.CharacterFolder);
+    Check(imported.Frames == 7 &&
+          CharacterPackImporter.States.All(folder =>
+              File.Exists(Path.Combine(store.CharacterFolder, folder, "0000.png"))),
+        "owner animation pack installs atomically into the character playback folder");
+    var badZip = Path.Combine(directory, "bad-character.zip");
+    using (var archive = ZipFile.Open(badZip, ZipArchiveMode.Create))
+    using (var writer = new StreamWriter(
+        archive.CreateEntry("../escape.png").Open()))
+        writer.Write("malicious content");
+    bool badRejected = false;
+    try { CharacterPackImporter.Import(badZip, store.CharacterFolder); }
+    catch (InvalidDataException) { badRejected = true; }
+    Check(badRejected &&
+          File.Exists(Path.Combine(store.CharacterFolder, "idle", "0000.png")) &&
+          !File.Exists(Path.Combine(directory, "escape.png")),
+        "malicious archive paths rejected without damaging an existing character pack");
+
+    // Verify the exact release asset URI and GitHub-provided digest gate.
+    var syntheticDigest = new string('a', 64);
+    var verifiedAssetJson = officialReleaseJson.Replace(
+        "{\"name\":\"Capri-Setup.exe\"}",
+        "{\"name\":\"Capri-Setup.exe\",\"size\":65000,\"digest\":\"sha256:" +
+            syntheticDigest +
+        "\",\"browser_download_url\":\"https://github.com/isikkeskin1/empty-casing/releases/download/v0.7.1/Capri-Setup.exe\"}");
+    var verifiedAssetRelease = CapriReleasePolicy.ParseLatestRelease(verifiedAssetJson);
+    Check(verifiedAssetRelease?.InstallerAsset is { Size: 65000 } &&
+          verifiedAssetRelease.InstallerAsset.Sha256 == syntheticDigest &&
+          CapriReleasePolicy.IsOfficialInstallerUrl(
+              verifiedAssetRelease.InstallerAsset.DownloadUrl, "v0.7.1"),
+        "only fixed official GitHub release assets with size and SHA256 can auto-install");
+    Check(CapriReleasePolicy.ParseLatestRelease(
+            verifiedAssetJson.Replace("https://github.com/isikkeskin1/",
+                "https://evil.example/isikkeskin1/")) is not { InstallerAsset: not null },
+        "untrusted asset host cannot create an auto-installable release");
+
+
     var currentRelease = new Version(0, 6, 0);
     const string officialReleaseJson =
         "{\"tag_name\":\"v0.7.1\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.1\"," +
