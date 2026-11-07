@@ -14,7 +14,7 @@ Capri is a Windows 10/11 x64 **desktop companion**, with a floating animated cha
 - Optional Discord voice-call audio through a user-installed virtual cable, call participant consent, local mic mixing and mute/deafen shortcuts; Discord Rich Presence requires a publisher-registered app
 - Spotify and Roblox local launch/control without pasted user tokens; provider browser OAuth needs one-time public publisher application registration
 - A bounded, approval-based Windows accessibility navigator, pink *visual-only* task pointer, and guarded desktop/app/media tools
-- Per-user Windows installer, portable ZIP, signed-by-hash GitHub integrity metadata, safe update staging, local diagnostics and an on-demand release readiness audit
+- Per-user Windows installer, portable ZIP, SHA-256 GitHub release integrity metadata (not a publisher signature), safe update staging, local diagnostics and an on-demand release readiness audit
 
 **Release scope:** This is an independent, unofficial **noncommercial fan preview**. The Windows installer is **not Authenticode-signed**, and the separately licensed Capri character artwork is subject to **PolyForm Noncommercial** terms and required credits. Real Windows/audio/device QA, publisher OAuth/Rich Presence app registrations and code signing are still external ship gates. It is not a commercially licensed or provider-certified release.
 
