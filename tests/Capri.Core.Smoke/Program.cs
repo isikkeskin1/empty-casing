@@ -55,11 +55,11 @@ try
             officialReleaseJson.Replace("\"draft\":false", "\"draft\":true")) is null,
         "release checker refuses forged release links and draft releases");
 
-    var journal = new CapriDiagnosticJournal(directory);
+    var diagnosticJournal = new CapriDiagnosticJournal(directory);
     const string syntheticSecret = "sk-fish-PRIVATE-TEST-SECRET-NEVER-PRINT";
-    journal.Record("ui-unhandled", new InvalidOperationException(syntheticSecret));
-    journal.Record("unknown malicious", new IOException("hidden-user-file-name"));
-    var supportReport = journal.ReadSupportReport(currentRelease);
+    diagnosticJournal.Record("ui-unhandled", new InvalidOperationException(syntheticSecret));
+    diagnosticJournal.Record("unknown malicious", new IOException("hidden-user-file-name"));
+    var supportReport = diagnosticJournal.ReadSupportReport(currentRelease);
     Check(supportReport.Contains("ui-unhandled  InvalidOperationException", StringComparison.Ordinal) &&
           supportReport.Contains("unknown  IOException", StringComparison.Ordinal) &&
           supportReport.Contains("App version: 0.6.0", StringComparison.Ordinal) &&
@@ -67,10 +67,10 @@ try
           !supportReport.Contains("hidden-user-file-name", StringComparison.Ordinal),
         "diagnostics retain event category/type but never secret-bearing exception messages");
     for (var i = 0; i < 90; i++)
-        journal.Record("update-check", new HttpRequestException("private-url-" + i));
-    Check(new FileInfo(journal.PathToJournal).Length <= CapriDiagnosticJournal.MaxFileBytes &&
-          File.ReadAllLines(journal.PathToJournal).Length <= CapriDiagnosticJournal.MaxEntryCount,
-        "offline diagnostic journal rotates within bounded file and event limits");
+        diagnosticJournal.Record("update-check", new HttpRequestException("private-url-" + i));
+    Check(new FileInfo(diagnosticJournal.PathToJournal).Length <= CapriDiagnosticJournal.MaxFileBytes &&
+          File.ReadAllLines(diagnosticJournal.PathToJournal).Length <= CapriDiagnosticJournal.MaxEntryCount,
+        "offline diagnostic diagnosticJournal rotates within bounded file and event limits");
 
 
     Check(ScreenSketchPolicy.Parse("draw on screen") == "open" &&
