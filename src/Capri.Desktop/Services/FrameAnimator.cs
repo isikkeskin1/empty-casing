@@ -62,13 +62,8 @@ public sealed class FrameAnimator : IDisposable
     {
         if (_cache.TryGetValue(state, out var cached)) return cached;
 
-        var path = Path.Combine(_baseFolder, state);
-        // Owner-supplied/imported art always takes priority. Without it,
-        // immediately render licensed animation frames shipped with the app,
-        // rather than showing an empty "ART SLOT" and requiring ZIP import.
-        if (!Directory.Exists(path) ||
-            !Directory.EnumerateFiles(path, "*.png").Any())
-            path = Path.Combine(DefaultArtFolder, state);
+        var path = CharacterArtPathResolver.FindStateFolder(
+            _baseFolder, DefaultArtFolder, state);
         var frames = new List<Frame>();
         if (Directory.Exists(path))
         {
