@@ -325,7 +325,8 @@ public partial class App : System.Windows.Application
         }
         try
         {
-            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            _speech.StartListening(Settings.MicrophoneDeviceIndex,
+                Settings.SpeechRecognitionLanguage);
             MicrophoneMuted = false;
             Settings.ListenToMicrophone = true;
             _companion?.ShowReaction("Mic on. Say 'Capri' before a request.");
@@ -349,7 +350,8 @@ public partial class App : System.Windows.Application
         }
         if (MicrophoneMuted)
         {
-            _speech.StartListening(Settings.MicrophoneDeviceIndex);
+            _speech.StartListening(Settings.MicrophoneDeviceIndex,
+                Settings.SpeechRecognitionLanguage);
             MicrophoneMuted = false;
             _companion?.ShowReaction("Microphone unmuted.");
         }
@@ -1634,10 +1636,17 @@ public partial class App : System.Windows.Application
             recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
             () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
                   _speech?.IsSpeaking == true);
+        listener.CaptureStopped += () => Dispatcher.BeginInvoke(() =>
+        {
+            if (!ReferenceEquals(_callListener, listener)) return;
+            StopCallCompanionMode();
+            _callWindow?.SetStatus("Call output disappeared. Incoming capture and mic bridge stopped.");
+        });
         CallMicrophoneBridge? bridge = null;
         try
         {
-            listener.Start(Settings.CallIncomingSpeakerId);
+            listener.Start(Settings.CallIncomingSpeakerId,
+                Settings.SpeechRecognitionLanguage);
             if (Settings.CallIncludeRealMicrophone)
             {
                 // Feed the real microphone into the same virtual playback
@@ -1646,6 +1655,8 @@ public partial class App : System.Windows.Application
                 bridge = new CallMicrophoneBridge();
                 bridge.Start(Settings.MicrophoneDeviceIndex, Settings.SpeakerDeviceIndex);
             }
+            if (!listener.IsListening)
+                throw new InvalidOperationException("Call capture stopped before initialization completed.");
             _callListener = listener;
             _callMicBridge = bridge;
             _callReplyCts?.Dispose();
