@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using Capri.Desktop.Services;
 
 namespace Capri.Desktop.Windows;
@@ -9,6 +10,13 @@ public partial class CallCompanionWindow : Window
     {
         InitializeComponent();
         Owner = App.Instance.MainWindow;
+        foreach (var device in CallAudioEndpoints.Speakers())
+            CallIncomingBox.Items.Add(new ComboBoxItem { Content = device.Name, Tag = device.Id });
+        var chosen = App.Instance.Settings.CallIncomingSpeakerId;
+        CallIncomingBox.SelectedItem = CallIncomingBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is string id && id == chosen)
+            ?? CallIncomingBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
+        IncludeRealMicCheck.IsChecked = App.Instance.Settings.CallIncludeRealMicrophone;
         Loaded += (_, _) => RefreshState();
         Closed += (_, _) => App.Instance.StopCallCompanionMode();
     }
@@ -21,6 +29,8 @@ public partial class CallCompanionWindow : Window
         OutputDeviceText.Text = "OUTGOING: " + (selected?.Name ?? "(no configured output)") +
             " (selected Fish voice playback device)";
         var active = App.Instance.CallCompanionActive;
+        CallIncomingBox.IsEnabled = !active;
+        IncludeRealMicCheck.IsEnabled = !active;
         StartButton.IsEnabled = !active;
         StopButton.IsEnabled = active;
         if (active) StatusText.Text = "CALL MODE LIVE — Say 'Capri' before a question. STOP CALL MODE to revoke listening.";
@@ -39,7 +49,15 @@ public partial class CallCompanionWindow : Window
     {
         try
         {
-            StatusText.Text = App.Instance.StartCallCompanionMode(InformedCheck.IsChecked == true);
+            if (InformedCheck.IsChecked != true)
+            {
+                StatusText.Text = "Inform call participants and check the consent box before starting.";
+                return;
+            }
+            App.Instance.ConfigureCallRouting(
+                (CallIncomingBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "",
+                IncludeRealMicCheck.IsChecked == true);
+            StatusText.Text = App.Instance.StartCallCompanionMode(true);
         }
         catch (Exception ex)
         {
