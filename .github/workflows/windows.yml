@@ -1,4 +1,4 @@
-name: Windows build and installer
+name: Windows build, installer and automatic releases
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write  # Only the main-branch publish step uses this token.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,12 +18,41 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Select uniquely versioned build
+        shell: pwsh
+        run: |
+          # Every successful main push publishes a new stable 0.7.N version.
+          # PR previews stay at 0.7.0 and never publish releases.
+          $version = if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF -eq 'refs/heads/main') {
+            "0.7.$env:GITHUB_RUN_NUMBER"
+          } else { '0.7.0' }
+          $assembly = "$version.0"
+          "CAPRI_VERSION=$version" >> $env:GITHUB_ENV
+          "CAPRI_ASSEMBLY_VERSION=$assembly" >> $env:GITHUB_ENV
       - name: Build app
-        run: dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo
+        shell: pwsh
+        run: |
+          dotnet build src/Capri.Desktop/Capri.Desktop.csproj -c Release --nologo -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Capri Windows build failed." }
       - name: Smoke test core
-        run: dotnet run --project tests/Capri.Core.Smoke/Capri.Core.Smoke.csproj -c Release
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Capri.Core.Smoke/Capri.Core.Smoke.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw "Core regression tests failed." }
       - name: Publish Windows executable
-        run: dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+        shell: pwsh
+        run: |
+          dotnet publish src/Capri.Desktop/Capri.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$env:CAPRI_VERSION -p:AssemblyVersion=$env:CAPRI_ASSEMBLY_VERSION -o publish
+          if ($LASTEXITCODE -ne 0) { throw "Windows publishing failed." }
+          # For LOCAL licensed builds only: a privately supplied ZIP is carried
+          # with the app and imported on first startup. This is not in this public repo.
+          $privatePack = 'assets/private/Capri-Animation-Pack-v0.2.zip'
+          if (Test-Path $privatePack) {
+            Copy-Item $privatePack 'publish/Capri-Animation-Pack-v0.2.zip'
+            Write-Output "Owner-supplied private animation pack included."
+          } else {
+            Write-Output "No private animation pack supplied; app offers Import Pack."
+          }
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
@@ -37,15 +66,17 @@ jobs:
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed: $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed." }
       - name: Build Capri-Setup.exe
         shell: pwsh
         run: |
           $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
-          if (!(Test-Path $compiler)) { throw "Inno Setup compiler was not installed." }
-          & $compiler "/Q" "installer\CapriDesktop.iss"
-          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
-          if (!(Test-Path "installer-output\Capri-Setup.exe")) { throw "Capri installer output missing." }
+          if (!(Test-Path $compiler)) { throw "Inno Setup compiler not installed." }
+          & $compiler '/Q' "/DMyAppVersion=$env:CAPRI_VERSION" 'installer\CapriDesktop.iss'
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed." }
+          if (!(Test-Path 'installer-output/Capri-Setup.exe')) {
+            throw "Capri-Setup.exe was not produced."
+          }
       - name: Generate preview SHA256 checksums
         shell: pwsh
         run: |
@@ -61,3 +92,15 @@ jobs:
             installer-output/Capri-Setup.exe
             installer-output/SHA256SUMS.txt
           retention-days: 14
+      - name: Publish automatic GitHub Release for main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v$env:CAPRI_VERSION"
+          if (gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null) {
+            throw "Refusing to replace existing release $tag."
+          }
+          gh release create $tag 'installer-output/Capri-Setup.exe' 'CapriDesktop-win-x64.zip' 'installer-output/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --notes "Automatically built from verified main commit $env:GITHUB_SHA. SHA-256 checksums are attached. Updates are staged locally and installed only on Restart to update."
+          if ($LASTEXITCODE -ne 0) { throw "GitHub release publishing failed." }

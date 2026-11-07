@@ -8,11 +8,11 @@ namespace Capri.Desktop.Windows;
 
 public partial class AboutUpdatesWindow : Window
 {
-    private readonly CapriReleaseClient _client = new();
     private readonly Version _current = typeof(App).Assembly.GetName().Version ??
         new Version(0, 6, 0);
     private CapriRelease? _latest;
-    private CancellationTokenSource? _check;
+    private bool _checking;
+    private bool _syncing;
 
     public AboutUpdatesWindow()
     {
@@ -20,58 +20,65 @@ public partial class AboutUpdatesWindow : Window
         Owner = App.Instance.MainWindow;
         VersionText.Text = "v" + _current.ToString(3) + "  /  Windows x64";
         RefreshReport();
-        Closed += (_, _) => _check?.Cancel();
+        App.Instance.UpdateStateChanged += RefreshUpdateState;
+        Closed += (_, _) => App.Instance.UpdateStateChanged -= RefreshUpdateState;
+        RefreshUpdateState();
+    }
+
+    public void RefreshUpdateState()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshUpdateState);
+            return;
+        }
+        _syncing = true;
+        try
+        {
+            AutoUpdateCheck.IsChecked = App.Instance.Settings.AutoUpdateEnabled;
+            UpdateStatus.Text = App.Instance.UpdateStatus;
+            _latest = App.Instance.LatestAvailableRelease;
+            OpenReleaseButton.IsEnabled = _latest is not null;
+            RestartUpdateButton.IsEnabled = App.Instance.UpdateReady;
+            CheckButton.IsEnabled = !_checking && !App.Instance.UpdateChecking;
+            ArtStatusText.Text = App.Instance.CharacterArtLoaded
+                ? "ART READY · seven states detected"
+                : "NO ART PACK · currently showing the fallback placeholder";
+        }
+        finally { _syncing = false; }
+    }
+
+    private void AutoUpdate_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+        App.Instance.SetAutomaticUpdatesEnabled(AutoUpdateCheck.IsChecked == true);
+        RefreshUpdateState();
     }
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        if (_check is not null) return;
-        _check = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        if (_checking) return;
+        _checking = true;
         CheckButton.IsEnabled = false;
-        OpenReleaseButton.IsEnabled = false;
-        _latest = null;
-        UpdateStatus.Text = "Checking official Capri GitHub Releases…";
         try
         {
-            var release = await _client.CheckLatestAsync(_check.Token);
-            _latest = release;
-            if (release is null)
-            {
-                UpdateStatus.Text = "No public stable Capri release has been published yet. " +
-                    "You can inspect recent CI preview builds through SEE PREVIEW BUILDS.";
-            }
-            else
-            {
-                OpenReleaseButton.IsEnabled = true;
-                var compare = CapriReleasePolicy.IsNewer(_current, release);
-                UpdateStatus.Text = (compare
-                    ? "A newer release is available: "
-                    : "No newer stable release found. Latest published: ") +
-                    release.Tag + ". " +
-                    (release.HasWindowsInstaller
-                        ? "The release lists a Windows installer."
-                        : "No Capri-Setup.exe is attached to that release.") +
-                    " Press OPEN OFFICIAL RELEASE to inspect it. Nothing was downloaded.";
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            UpdateStatus.Text = "Update check timed out or was cancelled.";
-        }
-        catch (Exception ex) when (ex is HttpRequestException or
-            InvalidDataException or InvalidOperationException or System.Text.Json.JsonException)
-        {
-            App.Instance.Diagnostics.Record("update-check", ex);
-            UpdateStatus.Text = "Update check unavailable: " + ex.Message +
-                " Use SEE PREVIEW BUILDS or try again later.";
+            await App.Instance.CheckAndStageUpdateAsync();
         }
         finally
         {
-            _check.Dispose();
-            _check = null;
-            CheckButton.IsEnabled = true;
+            _checking = false;
+            RefreshUpdateState();
         }
     }
+
+    private void RestartUpdate_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.InstallStagedUpdate();
+
+    private void ImportPack_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.ImportCharacterPackInteractive();
+
+    private void OpenArtFolder_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenCharacterFolder();
 
     private void OpenRelease_Click(object sender, RoutedEventArgs e)
     {

@@ -1,5 +1,7 @@
 #define MyAppName "Capri Desktop (Unofficial)"
-#define MyAppVersion "0.6.0"
+#ifndef MyAppVersion
+#define MyAppVersion "0.7.0"
+#endif
 #define MyAppExeName "Capri.Desktop.exe"
 
 [Setup]
@@ -34,6 +36,9 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; A privately supplied animation ZIP is copied into publish/ during a
+; licensed local build and included automatically by the wildcard above.
+; Public builds contain no third-party art unless an authorized pack is supplied.
 
 [Icons]
 Name: "{autoprograms}\Capri Desktop"; Filename: "{app}\{#MyAppExeName}"
@@ -41,3 +46,5 @@ Name: "{autodesktop}\Capri Desktop"; Filename: "{app}\{#MyAppExeName}"; Tasks: d
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Capri Desktop"; Flags: nowait postinstall skipifsilent
+; Silent verified auto-updates relaunch the upgraded Capri once setup finishes.
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifnotsilent

@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Capri.Desktop</AssemblyName>
-    <Version>0.6.0</Version>
-    <AssemblyVersion>0.6.0.0</AssemblyVersion>
+    <Version>0.7.0</Version>
+    <AssemblyVersion>0.7.0.0</AssemblyVersion>
     <RootNamespace>Capri.Desktop</RootNamespace>
   </PropertyGroup>
   <ItemGroup>

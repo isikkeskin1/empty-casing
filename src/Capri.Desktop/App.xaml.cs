@@ -93,6 +93,27 @@ public partial class App : System.Windows.Application
     public LocalDataStore Store { get; private set; } = null!;
     public CapriDiagnosticJournal Diagnostics { get; private set; } = null!;
     private AboutUpdatesWindow? _updatesCenter;
+    private readonly CapriReleaseClient _releaseClient = new();
+    private readonly CapriUpdateDownloader _updateDownloader = new();
+    private readonly DispatcherTimer _firstUpdateCheck = new()
+    {
+        Interval = TimeSpan.FromSeconds(35)
+    };
+    private readonly DispatcherTimer _regularUpdateCheck = new()
+    {
+        Interval = TimeSpan.FromHours(3)
+    };
+    private CancellationTokenSource? _updateDownloadCts;
+    private bool _checkingForUpdates;
+    private CapriRelease? _stagedRelease;
+    private string? _stagedInstaller;
+    private System.Windows.Forms.ToolStripMenuItem? _restartToUpdateMenu;
+    public event Action? UpdateStateChanged;
+    public string UpdateStatus { get; private set; } =
+        "Automatic updates enabled. Checking official releases soon.";
+    public bool UpdateReady => _stagedRelease is not null && _stagedInstaller is not null;
+    public bool UpdateChecking => _checkingForUpdates;
+    public CapriRelease? LatestAvailableRelease { get; private set; }
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
     private ScreenSketchWindow? _screenSketch;
@@ -135,6 +156,16 @@ public partial class App : System.Windows.Application
         _companion = new CompanionWindow();
         MainWindow = _companion;
         _companion.Show();
+        _ = Task.Run(() => CharacterPackImporter.InstallBundledIfNeeded(
+            AppContext.BaseDirectory, Store.CharacterFolder)).ContinueWith(task =>
+        {
+            if (task.IsCompletedSuccessfully && task.Result.Installed)
+                Dispatcher.BeginInvoke(() =>
+                {
+                    _companion?.ReloadArt();
+                    _companion?.ShowReaction("Character art loaded: all seven animations ready.");
+                });
+        }, TaskScheduler.Default);
         _audioReactions = new SystemAudioActivityService(Dispatcher,
             active => _companion?.SetMusicActivity(active),
             () => _companion?.OnMusicPulse(),
@@ -167,6 +198,19 @@ public partial class App : System.Windows.Application
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
+        _firstUpdateCheck.Tick += async (_, _) =>
+        {
+            _firstUpdateCheck.Stop();
+            if (Settings.AutoUpdateEnabled)
+                await CheckAndStageUpdateAsync();
+        };
+        _regularUpdateCheck.Tick += async (_, _) =>
+        {
+            if (Settings.AutoUpdateEnabled)
+                await CheckAndStageUpdateAsync();
+        };
+        _regularUpdateCheck.Start();
+        if (Settings.AutoUpdateEnabled) _firstUpdateCheck.Start();
         if (!Settings.SetupCompleted)
             Dispatcher.BeginInvoke(OpenSetup);
     }
@@ -1573,6 +1617,198 @@ public partial class App : System.Windows.Application
         _callWindow?.RefreshState();
     }
 
+    private void NotifyUpdateState()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(NotifyUpdateState);
+            return;
+        }
+        if (_restartToUpdateMenu is not null)
+        {
+            _restartToUpdateMenu.Enabled = UpdateReady;
+            _restartToUpdateMenu.Text = UpdateReady
+                ? "Restart to update to " + _stagedRelease!.Tag
+                : "Restart to update (no download ready)";
+        }
+        UpdateStateChanged?.Invoke();
+    }
+
+    public void SetAutomaticUpdatesEnabled(bool enabled)
+    {
+        Settings.AutoUpdateEnabled = enabled;
+        Store.SaveSettings(Settings);
+        if (enabled)
+            _ = CheckAndStageUpdateAsync();
+        else
+            _updateDownloadCts?.Cancel();
+        NotifyUpdateState();
+    }
+
+    /// <summary>
+    /// Automatically checks on startup and every three hours. Installer staging
+    /// uses ONLY the official GitHub release and asset SHA256 digest. A staged
+    /// update is never executed until the owner chooses Restart to update.
+    /// </summary>
+    public async Task<string> CheckAndStageUpdateAsync()
+    {
+        if (_checkingForUpdates) return UpdateStatus;
+        _checkingForUpdates = true;
+        _updateDownloadCts = new CancellationTokenSource();
+        UpdateStatus = "Checking Capri GitHub releases for updates…";
+        NotifyUpdateState();
+        try
+        {
+            var token = _updateDownloadCts.Token;
+            var release = await _releaseClient.CheckLatestAsync(token);
+            LatestAvailableRelease = release;
+            var installedVersion = typeof(App).Assembly.GetName().Version ??
+                new Version(0, 7, 0);
+            if (release is null)
+            {
+                UpdateStatus = "No published stable Capri GitHub release yet.";
+            }
+            else if (!CapriReleasePolicy.IsNewer(installedVersion, release))
+            {
+                UpdateStatus = "Capri is current (v" +
+                    installedVersion.ToString(3) + ").";
+            }
+            else if (!CapriUpdateDownloader.IsValidInstaller(release))
+            {
+                UpdateStatus = release.Tag +
+                    " is available but has no trustworthy SHA-256 installer metadata. " +
+                    "Open the official GitHub release to update manually.";
+            }
+            else
+            {
+                UpdateStatus = "Downloading official Capri " + release.Tag + "…";
+                NotifyUpdateState();
+                var lastReported = -1;
+                var installer = await _updateDownloader.DownloadVerifiedAsync(
+                    release, Store.DataFolder,
+                    (written, total) =>
+                    {
+                        var percent = (int)(written * 100 / total);
+                        if (percent == lastReported || percent % 10 != 0) return;
+                        lastReported = percent;
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            UpdateStatus = "Downloading " + release.Tag +
+                                ": " + percent + "%";
+                            NotifyUpdateState();
+                        });
+                    }, token);
+                token.ThrowIfCancellationRequested();
+                _stagedRelease = release;
+                _stagedInstaller = installer;
+                UpdateStatus = "Verified update " + release.Tag +
+                    " is ready. Choose Restart to update. " +
+                    "Your settings, notes and custom art will be preserved.";
+                _companion?.ShowReaction("Capri " + release.Tag +
+                    " ready! Right-click me → Restart to update.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus = "Update check or download cancelled.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            System.Net.Http.HttpRequestException or InvalidDataException or
+            InvalidOperationException or System.Text.Json.JsonException)
+        {
+            Diagnostics.Record("update-check", ex);
+            UpdateStatus = "Unable to stage update: " + ex.Message +
+                " You can still open the official release page.";
+        }
+        finally
+        {
+            _checkingForUpdates = false;
+            _updateDownloadCts?.Dispose();
+            _updateDownloadCts = null;
+            NotifyUpdateState();
+        }
+        return UpdateStatus;
+    }
+
+    public void InstallStagedUpdate()
+    {
+        if (_stagedRelease is not { } release ||
+            _stagedInstaller is not { } installer ||
+            !CapriReleasePolicy.IsNewer(
+                typeof(App).Assembly.GetName().Version ?? new Version(0, 7, 0),
+                release) ||
+            !CapriUpdateDownloader.IsValidInstaller(release) ||
+            !CapriUpdateDownloader.VerifyFile(installer, release.VerifiedInstaller!))
+        {
+            UpdateStatus = "No valid verified update is staged. Run Check for updates.";
+            NotifyUpdateState();
+            return;
+        }
+        // Inno Setup runs per-user and restarts Capri only AFTER the silent
+        // installation finishes. No shell interpretation or model-generated args.
+        try
+        {
+            var process = new ProcessStartInfo
+            {
+                FileName = installer,
+                Arguments = "/SP- /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS",
+                UseShellExecute = true
+            };
+            if (Process.Start(process) is null)
+                throw new InvalidOperationException("Installer could not be started.");
+            Shutdown();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Diagnostics.Record("update-check", ex);
+            UpdateStatus = "Could not launch the update. Open the official release manually.";
+            NotifyUpdateState();
+        }
+    }
+
+    public bool CharacterArtLoaded => CharacterPackImporter.IsComplete(Store.CharacterFolder);
+
+    public async void ImportCharacterPackInteractive()
+    {
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose your seven-state Capri animation pack ZIP",
+            Filter = "Animation packs (*.zip)|*.zip",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (picker.ShowDialog(MainWindow) != true) return;
+        var overwrite = false;
+        if (Directory.EnumerateDirectories(Store.CharacterFolder)
+            .Any(path => CharacterPackImporter.States.Contains(Path.GetFileName(path)) &&
+                Directory.EnumerateFiles(path, "*.png").Any()))
+        {
+            var response = System.Windows.MessageBox.Show(
+                "Replace all seven existing character animation states with this " +
+                "ZIP? Existing art is backed up during import and restored if it fails.",
+                "Capri — replace animation pack?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No);
+            if (response != MessageBoxResult.Yes) return;
+            overwrite = true;
+        }
+        _companion?.ShowReaction("Importing all seven character animations…");
+        try
+        {
+            var result = await Task.Run(() =>
+                CharacterPackImporter.Import(picker.FileName, Store.CharacterFolder, overwrite));
+            if (result.Installed)
+                _companion?.ReloadArt();
+            _companion?.ShowReaction(result.Message);
+            NotifyUpdateState();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _companion?.ShowReaction("Couldn't import pack: " + ex.GetType().Name);
+        }
+    }
+
     public void OpenUpdatesCenter()
     {
         if (_updatesCenter is null)
@@ -2107,6 +2343,14 @@ public partial class App : System.Windows.Application
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
         context.Items.Add("About / updates / support", null, (_, _) => Dispatcher.Invoke(OpenUpdatesCenter));
+        _restartToUpdateMenu = new System.Windows.Forms.ToolStripMenuItem("Restart to update")
+        {
+            Enabled = false
+        };
+        _restartToUpdateMenu.Click += (_, _) => Dispatcher.Invoke(InstallStagedUpdate);
+        context.Items.Add(_restartToUpdateMenu);
+        context.Items.Add("Import animation ZIP", null, (_, _) =>
+            Dispatcher.Invoke(ImportCharacterPackInteractive));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
@@ -2247,6 +2491,10 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _firstUpdateCheck.Stop();
+        _regularUpdateCheck.Stop();
+        _updateDownloadCts?.Cancel();
+        _updateDownloader.Dispose();
         Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();

@@ -29,8 +29,10 @@ The original fan project has a broad feature set. This file tracks our independe
 | Screen Sketch / owner drawing | Implemented: InkCanvas overlay, neon pen colors, undo/clear/PNG, Esc/STOP ALL/3-minute expiry | Real Windows mouse/stylus, mixed-DPI and borderless-game QA |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |
 | Code/Husk integration | Read-only Codex/Claude Code lifecycle hooks and per-session local activity feed | Test with installed Codex/Claude versions; hook schemas can change; no per-file details |
-| Versioned release packaging & checksums | Implemented: tag-only release workflow with version checks, installer/portable ZIP, SHA256SUMS | First intentional version tag/release not yet published; signing still missing |
-| In-app Update Center | Implemented: manual pinned GitHub Release check, stable version comparison, official page/open preview builds | Real Windows connectivity and offline/error-state QA; no automatic update execution |
+| Versioned release packaging & checksums | Implemented: auto main-branch releases plus manual tag workflow, matching versions, hashes | Validate first automatic main release and signing |
+| GitHub automatic release publishing | Implemented: main-branch validated installer/portable/checksums and versioned GitHub Release on success | Live release credentials/workflow and real update acceptance testing |
+| In-app auto-updates | Implemented: three-hour pinned GitHub checks, staged HTTPS download with SHA256 digest and size verification, owner-triggered Restart to update | Real Windows installer/relaunch QA, code-signing and rollback |
+| Character art pack import | Implemented: seven-state ZIP validation, one-click import, reload, custom-art preservation and optional private build bundling | Public build omits third-party art until redistribution permissions are established |
 | Local diagnostics | Implemented: bounded local event/exception-type journal, user-reviewed copyable support report | Real crash/permission and clipboard QA; no telemetry, dumps or stack traces |
 | Installer signing/automatic updates | Not implemented | Trusted signing identity, authenticated auto-update metadata and rollback |
 

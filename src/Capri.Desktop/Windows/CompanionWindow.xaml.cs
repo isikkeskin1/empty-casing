@@ -353,6 +353,8 @@ public partial class CompanionWindow : Window
     }
 
     private void OpenChat_Click(object sender, RoutedEventArgs e) => App.Instance.ShowChat();
+    private void ImportArt_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.ImportCharacterPackInteractive();
     private void OpenArt_Click(object sender, RoutedEventArgs e) => App.Instance.OpenCharacterFolder();
     private void ReloadArt_Click(object sender, RoutedEventArgs e) => ReloadArt();
     private void Idle_Click(object sender, RoutedEventArgs e)

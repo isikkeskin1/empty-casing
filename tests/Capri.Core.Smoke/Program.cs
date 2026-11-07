@@ -55,6 +55,82 @@ try
             officialReleaseJson.Replace("\"draft\":false", "\"draft\":true")) is null,
         "release checker refuses forged release links and draft releases");
 
+    var publishedDigest = new string('a', 64);
+    var officialAssetJson = "{\"tag_name\":\"v0.7.44\",\"html_url\":\"https://github.com/isikkeskin1/empty-casing/releases/tag/v0.7.44\"," +
+        "\"draft\":false,\"prerelease\":false,\"assets\":[{" +
+        "\"name\":\"Capri-Setup.exe\",\"size\":1000000,\"state\":\"uploaded\"," +
+        "\"digest\":\"sha256:" + publishedDigest + "\"," +
+        "\"browser_download_url\":\"https://github.com/isikkeskin1/empty-casing/releases/download/v0.7.44/Capri-Setup.exe\"}]}";
+    var autoRelease = CapriReleasePolicy.ParseLatestRelease(officialAssetJson)!;
+    Check(CapriUpdateDownloader.IsValidInstaller(autoRelease) &&
+          CapriReleasePolicy.IsNewer(new Version(0, 7, 43), autoRelease) &&
+          !CapriReleasePolicy.IsNewer(new Version(0, 7, 45), autoRelease),
+        "automatic updates accept only versioned GitHub Releases with pinned installer digest");
+    var suspiciousAsset = CapriReleasePolicy.ParseLatestRelease(
+        officialAssetJson.Replace("github.com/isikkeskin1/empty-casing/releases/download",
+            "github.com.attacker.example/isikkeskin1/empty-casing/releases/download"))!;
+    Check(!CapriUpdateDownloader.IsValidInstaller(suspiciousAsset) &&
+          CapriReleasePolicy.ParseLatestRelease(
+            officialAssetJson.Replace("sha256:" + publishedDigest, "sha256:nope"))!
+            .VerifiedInstaller is null,
+        "auto-update refuses remote attacker host and missing SHA-256 integrity metadata");
+    var verifyBytes = new byte[1_000_001];
+    for (var i = 0; i < verifyBytes.Length; i++) verifyBytes[i] = (byte)(i % 251);
+    var verifyDigest = Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(verifyBytes)).ToLowerInvariant();
+    var verifiedAsset = new CapriReleaseAsset(
+        new Uri("https://github.com/isikkeskin1/empty-casing/releases/download/v0.7.44/Capri-Setup.exe"),
+        verifyBytes.Length, verifyDigest);
+    var localVerifierPath = Path.Combine(directory, "test-release.exe");
+    File.WriteAllBytes(localVerifierPath, verifyBytes);
+    Check(CapriUpdateDownloader.VerifyFile(localVerifierPath, verifiedAsset),
+        "downloaded executable passes the published exact SHA-256 verification");
+    verifyBytes[0] ^= 1;
+    File.WriteAllBytes(localVerifierPath, verifyBytes);
+    Check(!CapriUpdateDownloader.VerifyFile(localVerifierPath, verifiedAsset),
+        "modified installer is rejected before it can be launched");
+
+    // Exact seven-state pack, with synthetic tiny PNG headers (no copyrighted
+    // artwork is stored in the public smoke-test codebase).
+    var artRoot = Path.Combine(directory, "test-art");
+    var artZip = Path.Combine(directory, "test-character-pack.zip");
+    var pngHeader = new byte[] {
+        137,80,78,71,13,10,26,10, 0,0,0,13, 73,72,68,82,
+        0,0,0,32, 0,0,0,64
+    };
+    using (var zip = System.IO.Compression.ZipFile.Open(
+        artZip, System.IO.Compression.ZipArchiveMode.Create))
+        foreach (var animationState in CharacterPackImporter.States)
+        {
+            var image = zip.CreateEntry(animationState + "/0000.png");
+            using (var output = image.Open()) output.Write(pngHeader);
+            var timingEntry = zip.CreateEntry(animationState + "/timing.json");
+            using var writer = new StreamWriter(timingEntry.Open());
+            writer.Write("{\"frameDurationsMs\":[100]}");
+        }
+    var artImport = CharacterPackImporter.Import(artZip, artRoot, overwrite: false);
+    Check(artImport.Installed && artImport.FrameCount == 7 &&
+          CharacterPackImporter.IsComplete(artRoot) &&
+          CharacterPackImporter.InstallBundledIfNeeded(
+              Path.GetDirectoryName(artZip)!, artRoot).Installed == false,
+        "seven-state pack imports atomically and preserves existing custom frames");
+    var refusedOverwrite = CharacterPackImporter.Import(artZip, artRoot, overwrite: false);
+    Check(!refusedOverwrite.Installed &&
+          CharacterPackImporter.Import(artZip, artRoot, overwrite: true).Installed,
+        "art pack replacement requires explicit overwrite and does not destroy valid custom art");
+    var traversalZip = Path.Combine(directory, "evil-character-pack.zip");
+    using (var zip = System.IO.Compression.ZipFile.Open(
+        traversalZip, System.IO.Compression.ZipArchiveMode.Create))
+    {
+        var malicious = zip.CreateEntry("../escape.txt");
+        using var writer = new StreamWriter(malicious.Open());
+        writer.Write("must never land outside importer");
+    }
+    Check(!CharacterPackImporter.Import(traversalZip, artRoot, overwrite: true).Installed &&
+          !File.Exists(Path.Combine(directory, "escape.txt")) &&
+          CharacterPackImporter.IsComplete(artRoot),
+        "path traversal or invalid pack is refused without damaging an installed pack");
+
     var diagnosticJournal = new CapriDiagnosticJournal(directory);
     const string syntheticSecret = "sk-fish-PRIVATE-TEST-SECRET-NEVER-PRINT";
     diagnosticJournal.Record("ui-unhandled", new InvalidOperationException(syntheticSecret));

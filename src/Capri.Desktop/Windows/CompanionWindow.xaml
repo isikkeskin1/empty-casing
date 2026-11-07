@@ -18,6 +18,7 @@
       <MenuItem Header="Perch (animation preview)" Click="Perch_Click"/>
       <MenuItem Header="Music perch (preview)" Click="MusicPerch_Click"/>
       <Separator/>
+      <MenuItem Header="Import animation pack ZIP…" Click="ImportArt_Click"/>
       <MenuItem Header="Open character art folder" Click="OpenArt_Click"/>
       <MenuItem Header="Reload character art" Click="ReloadArt_Click"/>
       <MenuItem Header="Hide Capri" Click="Hide_Click"/>
@@ -49,7 +50,7 @@
                          Foreground="#FC93B5" FontFamily="Consolas" FontSize="9" Margin="0,0,0,10"/>
             </Grid>
           </Border>
-          <TextBlock Text="ADD CHARACTER FRAMES" VerticalAlignment="Top" HorizontalAlignment="Center"
+          <TextBlock Text="RIGHT-CLICK → IMPORT ART ZIP" VerticalAlignment="Top" HorizontalAlignment="Center"
                      Foreground="#A0D7E6" FontFamily="Consolas" FontSize="9" Margin="0,7,0,0"/>
         </Grid>
         <Image x:Name="CharacterImage" Canvas.Left="15" Canvas.Top="6" Width="240" Height="348"

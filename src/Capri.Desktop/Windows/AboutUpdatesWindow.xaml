@@ -30,13 +30,21 @@
                        Foreground="{StaticResource CapriCyanBrush}"
                        FontFamily="Consolas" FontSize="20" FontWeight="Bold"
                        Margin="0,8,0,10"/>
-            <TextBlock Text="Update checks are manual. Capri never silently downloads or executes installers."
+            <TextBlock Text="Capri checks official GitHub Releases every three hours, safely downloads verified updates and lets you restart into the new version. No unverified installer runs."
                        Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
                        Margin="0,0,0,13"/>
+            <CheckBox x:Name="AutoUpdateCheck"
+                      Content="Automatically check and download verified updates"
+                      Style="{StaticResource CapriToggle}"
+                      Checked="AutoUpdate_Changed" Unchecked="AutoUpdate_Changed"
+                      Margin="0,0,0,7"/>
             <WrapPanel>
               <Button x:Name="CheckButton" Content="CHECK FOR UPDATES"
                       Click="CheckUpdates_Click" Style="{StaticResource CapriPrimaryButton}"
                       Margin="0,0,9,9"/>
+              <Button x:Name="RestartUpdateButton" Content="RESTART TO UPDATE"
+                      IsEnabled="False" Click="RestartUpdate_Click"
+                      Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,9"/>
               <Button x:Name="OpenReleaseButton" Content="OPEN OFFICIAL RELEASE"
                       IsEnabled="False" Click="OpenRelease_Click"
                       Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
@@ -46,9 +54,27 @@
             <TextBlock x:Name="UpdateStatus" Text="Press CHECK FOR UPDATES to contact official GitHub releases."
                        Foreground="{StaticResource CapriCyanBrush}"
                        TextWrapping="Wrap" Margin="0,7,0,0"/>
-            <TextBlock Text="Preview Actions builds expire after 14 days. They are separate from versioned releases, and may be unsigned. Verify sources before installing."
+            <TextBlock Text="New main-branch releases include the installer, portable ZIP and SHA-256. Installation starts only after Restart to update; builds remain unsigned until code signing is configured. Preview Actions artifacts expire."
                        Style="{StaticResource CapriSubtext}" FontSize="11"
                        TextWrapping="Wrap" Margin="0,11,0,0"/>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
+          <StackPanel>
+            <TextBlock Text="/// CAPRI CHARACTER ART" Style="{StaticResource CapriLabel}"/>
+            <TextBlock x:Name="ArtStatusText"
+                       Text="Checking seven animated states…"
+                       Foreground="{StaticResource CapriCyanBrush}"
+                       FontFamily="Consolas" FontSize="12" Margin="0,9,0,8"/>
+            <TextBlock Text="The original animation pack is private, so public builds don't redistribute it. Select Capri-Animation-Pack-v0.2.zip once to install all seven animations, then Capri loads them automatically on every launch."
+                       Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
+                       Margin="0,0,0,12"/>
+            <WrapPanel>
+              <Button Content="IMPORT ANIMATION PACK" Click="ImportPack_Click"
+                      Style="{StaticResource CapriPrimaryButton}" Margin="0,0,9,8"/>
+              <Button Content="OPEN ART FOLDER" Click="OpenArtFolder_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,8"/>
+            </WrapPanel>
           </StackPanel>
         </Border>
         <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
