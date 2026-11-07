@@ -346,14 +346,14 @@ public partial class ChatWindow : Window
         HandsFreeCheck.Content = App.Instance.Settings.SkipActionConfirmations &&
             !App.Instance.Settings.EnableDesktopActions
                 ? "Hands-free (disarmed)" : "Hands-free · no popups";
-        QuickMicState.Text = App.Instance.MicrophoneMuted ? "MIC  /  MUTED" :
-            App.Instance.Settings.ListenToMicrophone ? "MIC  /  ON" : "MIC  /  OFF";
-        QuickSenseState.Text = App.Instance.Settings.WatchScreen ? "SCREEN  /  WATCHING" :
-            App.Instance.LivePresenceEnabled ? "PRESENCE  /  LOCAL" :
-            App.Instance.Settings.EnableSituationalContext ? "CONTEXT  /  ON" : "SENSE  /  OFF";
+        QuickMicState.Text = App.Instance.MicrophoneMuted ? "Microphone · muted" :
+            App.Instance.Settings.ListenToMicrophone ? "Microphone · listening" : "Microphone · off";
+        QuickSenseState.Text = App.Instance.Settings.WatchScreen ? "Screen · watching" :
+            App.Instance.LivePresenceEnabled ? "Presence · local" :
+            App.Instance.Settings.EnableSituationalContext ? "Context · active" : "Senses · off";
         QuickActionsState.Text = !App.Instance.Settings.EnableDesktopActions ?
-            "ACTIONS  /  DISARMED" : App.Instance.Settings.SkipActionConfirmations ?
-            "ACTIONS  /  HANDS-FREE" : "ACTIONS  /  CONFIRM";
+            "Actions · locked" : App.Instance.Settings.SkipActionConfirmations ?
+            "Actions · hands-free" : "Actions · ask first";
         _syncing = false;
         UpdateLookoutStatus();
         RefreshHuskStatus();
