@@ -13,6 +13,8 @@ public sealed class AppSettings
     public string CloudTextModel { get; set; } = "meta/llama-3.1-70b-instruct";
     public string CloudVisionModel { get; set; } = "";
     public bool SetupCompleted { get; set; }
+    // Background checks and SHA256-verified downloads; installation requires Restart to update.
+    public bool AutoUpdateEnabled { get; set; } = true;
     public int ScreenIndex { get; set; } = -1;
     public int WatchIntervalSeconds { get; set; } = 45;
     public bool EnablePetting { get; set; } = true;
