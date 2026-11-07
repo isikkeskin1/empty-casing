@@ -1,0 +1,22 @@
+<Window x:Class="Capri.Desktop.Windows.ChaosCloneWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="165" Height="254" Background="Transparent"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        Focusable="False" IsHitTestVisible="False"
+        Title="Capri Chaos Clone">
+  <Grid IsHitTestVisible="False">
+    <Image x:Name="CharacterImage" Stretch="Uniform"
+           HorizontalAlignment="Center" VerticalAlignment="Bottom"
+           Width="150" Height="220" RenderOptions.BitmapScalingMode="HighQuality"/>
+    <Border x:Name="Bubble" Background="#F31B1427" BorderBrush="#FC6DAF"
+            BorderThickness="1.5" CornerRadius="7"
+            HorizontalAlignment="Center" VerticalAlignment="Top"
+            Padding="8,4" MaxWidth="150">
+      <TextBlock x:Name="Caption" Foreground="#FFE5F4"
+                 FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"
+                 Text="CLONE ONLINE" TextWrapping="Wrap"/>
+    </Border>
+  </Grid>
+</Window>
