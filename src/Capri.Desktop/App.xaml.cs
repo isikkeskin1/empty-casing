@@ -48,6 +48,8 @@ public partial class App : System.Windows.Application
     public bool LivePresenceEnabled => _livePresenceEnabled;
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
+    private ChaosController? _chaos;
+    private ChaosController Chaos => _chaos ??= new ChaosController(StopAllInputs);
     private ConnectionsWindow? _connections;
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
     private CallLoopbackListeningService? _callListener;
@@ -534,6 +536,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
+        _chaos?.Stop();
         StopCallCompanionMode();
         StopAutonomousTask();
         StopSessionRoutine();
@@ -1552,6 +1555,10 @@ public partial class App : System.Windows.Application
         return null;
     }
 
+    public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
+
+    public void StopChaosClones() => _chaos?.Stop();
+
     public void OpenCallCompanion()
     {
         if (_callWindow is null)
@@ -2111,6 +2118,22 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        if (ChaosModePolicy.StopRequested(command))
+        {
+            _chaos?.Stop();
+            return "Chaos Mode off. All visual clones closed.";
+        }
+
+        var clones = ChaosModePolicy.CloneCount(command);
+        if (clones > 0)
+            return Chaos.Start(clones, Store.CharacterFolder);
+
+        if (command.Equals("capri you are annoying", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("you're annoying capri", StringComparison.OrdinalIgnoreCase))
+            return Random.Shared.Next(3) == 0
+                ? Chaos.Start(1, Store.CharacterFolder)
+                : "Pff. No clones this time.";
+
         // Exact owner commands change Capri's own overlay only; never plan
         // a desktop action, send to a model, or touch another app's windows.
         var companionCommand = CompanionCommandPolicy.Parse(command);
@@ -2684,6 +2707,7 @@ public partial class App : System.Windows.Application
         Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();
+        _chaos?.Dispose();
         LinkedAccounts.Dispose();
         _mediaSessionTimer.Stop();
         _presenceTimer.Stop();
