@@ -1708,10 +1708,24 @@ public partial class App : System.Windows.Application
         {
             Settings.EnableDiscordRichPresence = false;
             _discordPresenceTimer.Stop();
-            _discordPresence?.Dispose();
+            var connection = _discordPresence;
             _discordPresence = null;
             Store.SaveSettings(Settings);
-            return "Discord Rich Presence disabled; local connection closed.";
+            if (connection is null)
+                return "Discord Rich Presence is off.";
+            try
+            {
+                // Disable the activity at Discord itself before closing IPC.
+                await connection.ClearActivityAsync();
+                return "Discord Rich Presence cleared and disabled.";
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or
+                OperationCanceledException or System.Text.Json.JsonException)
+            {
+                return "Discord status disabled locally. Discord was unreachable while " +
+                    "clearing activity; its desktop client should drop the old status.";
+            }
+            finally { connection.Dispose(); }
         }
         if (!DiscordPresenceService.HasPublisherAppId)
             return "Discord presence needs Capri's public application ID configured ONCE " +
