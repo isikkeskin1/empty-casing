@@ -1,0 +1,31 @@
+<Window x:Class="Capri.Desktop.Windows.AutonomousTaskHudWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="320" Height="225" WindowStyle="None"
+        ResizeMode="NoResize" AllowsTransparency="True"
+        Background="Transparent" ShowInTaskbar="False"
+        Topmost="True" ShowActivated="False"
+        Title="Capri — Active task steps">
+  <Border CornerRadius="12" Background="#F20A1120" BorderBrush="#F64EAD"
+          BorderThickness="2" Padding="14" >
+    <DockPanel>
+      <DockPanel DockPanel.Dock="Top" LastChildFill="False">
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <TextBlock Text="CAPRI // ACTIVE TASK" Foreground="#FF92CB"
+                     FontFamily="Consolas" FontWeight="Bold" FontSize="13"/>
+        </StackPanel>
+        <Button DockPanel.Dock="Right" Content="STOP" Click="Stop_Click"
+                Background="#7A2448" Foreground="White" Padding="8,4"
+                BorderBrush="#FF9DCE" FontSize="11" Cursor="Hand"/>
+      </DockPanel>
+      <TextBlock DockPanel.Dock="Top" Margin="0,11,0,8"
+                 Text="Pink pointer = planned UIA target, not a second mouse."
+                 TextWrapping="Wrap" Foreground="#A7C7D9" FontSize="10"/>
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <TextBlock x:Name="StepsText" TextWrapping="Wrap"
+                   Text="Task authorized. Checking target…" Foreground="#E8F3FD"
+                   FontFamily="Consolas" FontSize="11"/>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</Window>
