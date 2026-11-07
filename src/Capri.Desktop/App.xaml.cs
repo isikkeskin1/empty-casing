@@ -49,6 +49,13 @@ public partial class App : System.Windows.Application
     private GameCenterWindow? _gameCenter;
     private CallCompanionWindow? _callWindow;
     private ChaosController? _chaos;
+    private DiscordPresenceService? _discordPresence;
+    private readonly DispatcherTimer _discordPresenceTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(25)
+    };
+    private bool _discordPresenceBusy;
+    private CompanionMood _discordMood = CompanionMood.Idle;
     private ChaosController Chaos => _chaos ??= new ChaosController(StopAllInputs);
     private ConnectionsWindow? _connections;
     public LinkedAccountService LinkedAccounts { get; private set; } = null!;
@@ -210,6 +217,12 @@ public partial class App : System.Windows.Application
         };
         _mediaSessionTimer.Tick += async (_, _) => await ObserveNowPlayingAsync();
         _presenceTimer.Tick += async (_, _) => await ObservePresenceAsync();
+        _discordPresenceTimer.Tick += async (_, _) => await RefreshDiscordPresenceAsync();
+        if (Settings.EnableDiscordRichPresence && DiscordPresenceService.HasPublisherAppId)
+        {
+            _discordPresenceTimer.Start();
+            _ = RefreshDiscordPresenceAsync();
+        }
         _watchTimer.Tick += async (_, _) => await WatchOnceAsync();
         RegisterGlobalHotkey();
         CreateTray();
@@ -604,6 +617,7 @@ public partial class App : System.Windows.Application
     public void StopAllInputs()
     {
         _whisperOnceCts?.Cancel();
+        _ = SetDiscordPresenceEnabledAsync(false);
         _chaos?.Stop();
         StopCallCompanionMode();
         StopAutonomousTask();
@@ -1653,6 +1667,74 @@ public partial class App : System.Windows.Application
         if (!Settings.EnableDesktopActions || _actionEpoch != epoch)
             return "Discord shortcut stopped.";
         return DiscordDesktopShortcuts.Send(command);
+    }
+
+    private (string Details, string State) DiscordActivity()
+    {
+        if (CallCompanionActive) return ("Voice call companion", "Responding as an AI in a call");
+        if (_chaos?.CloneCount > 0)
+            return ("Chaos Mode", _chaos.CloneCount + " animated Capri clones");
+        return _discordMood switch
+        {
+            CompanionMood.Sleeping => ("Capri is sleeping", "Dreaming on the desktop"),
+            CompanionMood.Talking => ("Chatting with Capri", "AI companion is speaking"),
+            CompanionMood.MusicPerch => ("Listening to music", "Vibing on the desktop"),
+            CompanionMood.Thinking => ("Capri is thinking", "A question is in progress"),
+            _ => ("Capri Desktop", "Your cyberpunk AI companion")
+        };
+    }
+
+    private async Task RefreshDiscordPresenceAsync()
+    {
+        if (!Settings.EnableDiscordRichPresence || _discordPresenceBusy ||
+            !DiscordPresenceService.HasPublisherAppId) return;
+        _discordPresenceBusy = true;
+        try
+        {
+            _discordPresence ??= new DiscordPresenceService();
+            var (details, state) = DiscordActivity();
+            await _discordPresence.SetActivityAsync(details, state);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Discord presence unavailable: " + ex.GetType().Name);
+        }
+        finally { _discordPresenceBusy = false; }
+    }
+
+    public async Task<string> SetDiscordPresenceEnabledAsync(bool enabled)
+    {
+        if (!enabled)
+        {
+            Settings.EnableDiscordRichPresence = false;
+            _discordPresenceTimer.Stop();
+            _discordPresence?.Dispose();
+            _discordPresence = null;
+            Store.SaveSettings(Settings);
+            return "Discord Rich Presence disabled; local connection closed.";
+        }
+        if (!DiscordPresenceService.HasPublisherAppId)
+            return "Discord presence needs Capri's public application ID configured ONCE " +
+                "by its publisher (CAPRI_DISCORD_CLIENT_ID). No user token is required.";
+
+        try
+        {
+            _discordPresence ??= new DiscordPresenceService();
+            var (details, state) = DiscordActivity();
+            await _discordPresence.SetActivityAsync(details, state);
+            Settings.EnableDiscordRichPresence = true;
+            Store.SaveSettings(Settings);
+            _discordPresenceTimer.Start();
+            return "Discord Rich Presence enabled using Discord's local desktop IPC. " +
+                "It does not read messages or join calls.";
+        }
+        catch (Exception ex)
+        {
+            _discordPresence?.Dispose();
+            _discordPresence = null;
+            return "Cannot connect Discord desktop Rich Presence: " +
+                ex.GetType().Name + ". Open Discord and enable activity sharing.";
+        }
     }
 
     public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
@@ -2857,6 +2939,7 @@ public partial class App : System.Windows.Application
 
     public void SetMood(CompanionMood mood)
     {
+        _discordMood = mood;
         _companion?.SetMood(mood);
         _chat?.SetHeroMood(mood);
     }
@@ -2871,6 +2954,8 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         _whisperOnceCts?.Cancel();
+        _discordPresenceTimer.Stop();
+        _discordPresence?.Dispose();
         _firstUpdateCheck.Stop();
         _regularUpdateCheck.Stop();
         _autoInstallTimer.Stop();
