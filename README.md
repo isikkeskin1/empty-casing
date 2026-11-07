@@ -184,6 +184,14 @@ Enable DESKTOP ACTIONS or HANDS-FREE first. A manual routine has one batch previ
 
 In INPUTS, enable optional voice follow-ups to keep a *sliding* 20-second conversation window open after each accepted follow-up. When voice interruption is also enabled, **"Capri stop all"** works while Capri is speaking. This is not yet streamed voice or always-on unrestricted computer control.
 
+## Local AI clones, Whisper multilingual voice, and Discord Rich Presence
+
+**AI Chaos:** type `make 3 AI clones` or `let the clones talk`, or choose the AI Chaos companion context menu entry. Up to five animated clones generate **10 separate short local Ollama replies** with fictional personalities. No hidden cloud calls, no private user chat as context, and STOP ALL / hold-Esc cancels the loop. Basic scripted clones remain available without Ollama.
+
+**Whisper Talk Once:** INPUTS now offers an opt-in multilingual on-device recognition engine. Press **INSTALL VERIFIED 148 MB WHISPER MODEL** (explicit consent + official SHA-256 verification), then select **Whisper local** and SAVE. Press Talk Once to record six seconds in RAM and transcribe locally using automatic language detection. This is not always-on Whisper hotword recognition; MIC ON and Discord Call Mode continue to use installed Windows recognizers. The installed model must be tested for language accuracy and CPU performance.
+
+**Discord presence:** a separate **DISCORD STATUS ON/OFF** button publishes text Rich Presence over Discord desktop's supported local IPC. The publisher must first register ONE Discord application and configure the public `CAPRI_DISCORD_CLIENT_ID` build variable (no personal tokens or user credentials). Without this registration the app explains why publishing is unavailable. Rich Presence does not join voice calls or send messages. See [Whisper / AI clones / Discord RPC](docs/LOCAL_WHISPER_DISCORD_AND_AI_CLONES.md).
+
 ## Discord — two-way Call Companion audio
 
 **VOICE CALL** can now listen to a *selected* Discord speaker endpoint rather than always default Windows playback. Use a virtual audio cable (for example VB-CABLE) as **Capri's temporary call-only playback device** and as **Discord's recording input**. Capri switches back to its normal speaker device when Call Mode stops. Optionally bridge your real microphone into that cable so other participants hear both you and Capri. Select the incoming Discord output device separately. All capture is per-session, requires participant consent, and stops when the session is disabled or the selected playback endpoint disconnects. Discord desktop **Toggle Mute** / **Toggle Deafen** buttons send documented local shortcuts only under owner-approved DESKTOP ACTIONS; no self-bot, user token or channel automation. See [two-way Discord audio guide](docs/CALL_COMPANION.md).
