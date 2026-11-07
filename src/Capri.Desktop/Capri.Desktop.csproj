@@ -31,5 +31,10 @@
       <_Parameter1>CapriRobloxClientId</_Parameter1>
       <_Parameter2>$(CapriRobloxClientId)</_Parameter2>
     </AssemblyAttribute>
+    <!-- One public publisher-owned Discord application ID. No tokens. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CapriDiscordClientId</_Parameter1>
+      <_Parameter2>$(CapriDiscordClientId)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>
