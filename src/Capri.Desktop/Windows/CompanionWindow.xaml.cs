@@ -73,11 +73,18 @@ public partial class CompanionWindow : Window
             ? Math.Clamp(settings.OverlayScale, 0.5, 1.6) : 1.0;
         Width = 270 * scale;
         Height = 480 * scale;
-        var area = SystemParameters.WorkArea;
+        var virtualLeft = SystemParameters.VirtualScreenLeft;
+        var virtualTop = SystemParameters.VirtualScreenTop;
+        var virtualRight = virtualLeft + SystemParameters.VirtualScreenWidth;
+        var virtualBottom = virtualTop + SystemParameters.VirtualScreenHeight;
+        // Keep a saved position on ANY connected monitor, including those to
+        // the left of the primary display (negative Windows coordinates).
         Left = settings.OverlayLeft is double left && double.IsFinite(left) &&
-               left >= area.Left && left < area.Right - 50 ? left : area.Right - Width - 20;
+               left >= virtualLeft && left < virtualRight - 50
+            ? left : Math.Max(virtualLeft, virtualRight - Width - 20);
         Top = settings.OverlayTop is double top && double.IsFinite(top) &&
-              top >= area.Top && top < area.Bottom - 50 ? top : area.Bottom - Height - 25;
+              top >= virtualTop && top < virtualBottom - 50
+            ? top : Math.Max(virtualTop, virtualBottom - Height - 25);
 
         var bob = new DoubleAnimation(0, -6, TimeSpan.FromSeconds(1.9))
         {
