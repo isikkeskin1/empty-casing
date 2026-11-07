@@ -100,6 +100,25 @@ jobs:
           Set-Content -Path 'publish/character-default/ART-LICENSE-AND-CREDIT.txt' -Value $credit -Encoding utf8
           Write-Output "Packaged all seven default Capri animation states with third-party attribution."
 
+      - name: Verify release payload and art license
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'publish/Capri.Desktop.exe')) { throw 'Missing executable.' }
+          if ((Get-Item 'publish/Capri.Desktop.exe').Length -lt 10000000) {
+            throw 'Desktop executable unexpectedly small.'
+          }
+          foreach ($state in @('idle','talk','glitch','tossed','sleep','perch','perch-music')) {
+            if (!(Test-Path "publish/character-default/$state/0000.png") -or
+                !(Test-Path "publish/character-default/$state/timing.json")) {
+              throw "Missing $state animation."
+            }
+          }
+          foreach ($notice in @('UPSTREAM-LICENSE.md','UPSTREAM-THIRD-PARTY-NOTICES.md','ART-LICENSE-AND-CREDIT.txt')) {
+            if (!(Test-Path "publish/character-default/$notice")) {
+              throw "Missing attribution file: $notice"
+            }
+          }
+          Write-Output 'Packaged animation and legal notices verified.'
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
@@ -123,6 +142,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed." }
           if (!(Test-Path 'installer-output/Capri-Setup.exe')) {
             throw "Capri-Setup.exe was not produced."
+          }
+      - name: Verify installer size
+        shell: pwsh
+        run: |
+          $size = (Get-Item 'installer-output/Capri-Setup.exe').Length
+          if ($size -lt 1000000 -or $size -gt 250000000) {
+            throw 'Installer outside verified updater size limit.'
           }
       - name: Generate preview SHA256 checksums
         shell: pwsh
@@ -149,5 +175,24 @@ jobs:
           if (gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null) {
             throw "Refusing to replace existing release $tag."
           }
-          gh release create $tag 'installer-output/Capri-Setup.exe' 'CapriDesktop-win-x64.zip' 'installer-output/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --notes "Automatically built from verified main commit $env:GITHUB_SHA. SHA-256 checksums are attached. Updates are staged locally and installed only on Restart to update."
+          $change = git log -1 --pretty=%s
+          $notes = @"
+          Capri Desktop $tag — Noncommercial Public Preview
+
+          Commit: $env:GITHUB_SHA
+          Latest merged change: $change
+
+          In About / Updates, RUN READINESS CHECK before enabling features.
+          In CALL COMPANION, TEST DISCORD MIC ROUTE for virtual cable setup.
+
+          UNSIGNED installer: SHA256SUMS is attached, but is not a publisher signature.
+          Character animation art is third-party POLYFORM NONCOMMERCIAL with
+          required attribution. Do not sell the packaged installer.
+
+          Publisher OAuth/Discord registrations, real PC QA, code signing
+          and commercial licensing remain separate ship gates.
+          Release checklist: docs/PUBLIC_PREVIEW_ACCEPTANCE.md
+          "@
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          gh release create $tag 'installer-output/Capri-Setup.exe' 'CapriDesktop-win-x64.zip' 'installer-output/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw "GitHub release publishing failed." }

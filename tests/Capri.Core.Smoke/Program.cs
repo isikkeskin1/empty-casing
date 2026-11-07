@@ -29,6 +29,49 @@ try
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
     Check(store.LoadSettings().OverlayLeft == 101, "settings persist");
+
+    // Corrupt settings should recover to the last known-good version, never
+    // overwrite it with corrupt bytes on the first recovery save. History
+    // and saved memories must NOT retain stale backup copies after deletion.
+    var restoreStore = new LocalDataStore(Path.Combine(directory, "recover"));
+    restoreStore.SaveSettings(new AppSettings { OllamaModel = "known-good" });
+    restoreStore.SaveSettings(new AppSettings { OllamaModel = "later-update" });
+    var settingsPath = Path.Combine(restoreStore.DataFolder, "settings.json");
+    File.WriteAllText(settingsPath, "{ damaged json, no privacy data here");
+    var recoveredSettings = restoreStore.LoadSettings();
+    Check(recoveredSettings.OllamaModel == "known-good" &&
+          restoreStore.SettingsRecoveredFromBackup,
+        "corrupted settings recover the previous known-good version");
+    restoreStore.SaveSettings(recoveredSettings);
+    Check(restoreStore.LoadSettings().OllamaModel == "known-good" &&
+          !restoreStore.SettingsRecoveredFromBackup,
+        "settings recovery writes a valid primary without corrupting the backup");
+    restoreStore.SaveHistory(new[]
+    {
+        new ChatTurn { Role = "user", Text = "private test only" }
+    });
+    restoreStore.SaveHistory(Array.Empty<ChatTurn>());
+    Check(restoreStore.LoadHistory().Count == 0 &&
+          !File.Exists(Path.Combine(restoreStore.DataFolder, "history.json.backup")),
+        "cleared private chat history never survives in recovery backups");
+
+    var sampleModelPath = Path.Combine(directory, "tiny-model-fixture.bin");
+    var sampleModel = System.Text.Encoding.UTF8.GetBytes("model fixture data");
+    File.WriteAllBytes(sampleModelPath, sampleModel);
+    var sampleSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(sampleModel));
+    Check(VerifiedLocalModelPolicy.IsVerified(
+              sampleModelPath, sampleModel.LongLength, sampleSha) &&
+          !VerifiedLocalModelPolicy.IsVerified(
+              sampleModelPath, sampleModel.LongLength + 1, sampleSha) &&
+          !VerifiedLocalModelPolicy.IsVerified(
+              sampleModelPath, sampleModel.LongLength, new string('a', 64)) &&
+          !VerifiedLocalModelPolicy.IsVerified(
+              sampleModelPath, sampleModel.LongLength, "not-a-valid-sha"),
+        "Whisper model policy checks full SHA256, size and digest validity");
+    File.WriteAllBytes(sampleModelPath, System.Text.Encoding.UTF8.GetBytes("model fixture datB"));
+    Check(!VerifiedLocalModelPolicy.IsVerified(
+              sampleModelPath, sampleModel.LongLength, sampleSha),
+        "same-size Whisper model corruption is rejected before native model loading");
     Check(ChaosModePolicy.AiCloneCount("make 3 AI clones") == 3 &&
           ChaosModePolicy.AiCloneCount("make talking clones") == 3 &&
           ChaosModePolicy.AiCloneCount("capri, make 5 talking clones") == 5 &&

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using NAudio.Wave;
 using Whisper.net;
+using Capri.Core;
 
 namespace Capri.Desktop.Services;
 
@@ -26,17 +27,53 @@ public static class LocalWhisperTranscriber
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "CapriDesktop", "models", "ggml-base.bin");
 
-    public static bool ModelInstalled =>
-        File.Exists(ModelPath) && new FileInfo(ModelPath).Length == ModelLength;
+    private static readonly object VerificationGate = new();
+    private static readonly SemaphoreSlim InstallGate = new(1, 1);
+    private static DateTime _cachedWriteUtc;
+    private static long _cachedLength = -1;
+    private static bool _cachedVerified;
+
+    // One full digest check per process/model file change. This prevents
+    // corrupt or modified same-size weights from being loaded into native code.
+    public static bool ModelInstalled
+    {
+        get
+        {
+            try
+            {
+                var info = new FileInfo(ModelPath);
+                if (!info.Exists || info.Length != ModelLength) return false;
+                lock (VerificationGate)
+                {
+                    if (_cachedVerified && _cachedLength == info.Length &&
+                        _cachedWriteUtc == info.LastWriteTimeUtc)
+                        return true;
+                    var verified = VerifiedLocalModelPolicy.IsVerified(
+                        ModelPath, ModelLength, ModelSha256);
+                    _cachedVerified = verified;
+                    _cachedLength = info.Length;
+                    _cachedWriteUtc = info.LastWriteTimeUtc;
+                    return verified;
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+    }
 
     public static async Task InstallModelAsync(
         IProgress<double>? progress, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(ModelPath)!);
-        if (ModelInstalled) return;
-        var pending = ModelPath + ".partial";
+        await InstallGate.WaitAsync(cancellationToken);
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(ModelPath)!);
+            if (ModelInstalled) return;
+            var pending = ModelPath + ".partial";
+            try
+            {
             using var client = new HttpClient
             {
                 Timeout = TimeSpan.FromMinutes(15)
@@ -78,12 +115,23 @@ public static class LocalWhisperTranscriber
                     throw new InvalidDataException("Model SHA-256 mismatch.");
             }
             File.Move(pending, ModelPath, overwrite: true);
+            var info = new FileInfo(ModelPath);
+            lock (VerificationGate)
+            {
+                // The download was hashed immediately before the atomic move.
+                _cachedVerified = true;
+                _cachedLength = info.Length;
+                _cachedWriteUtc = info.LastWriteTimeUtc;
+            }
             progress?.Report(1);
+            }
+            finally
+            {
+                try { if (File.Exists(pending)) File.Delete(pending); }
+                catch (IOException) { }
+            }
         }
-        finally
-        {
-            if (File.Exists(pending)) File.Delete(pending);
-        }
+        finally { InstallGate.Release(); }
     }
 
     public static async Task<string> CaptureAndTranscribeAsync(

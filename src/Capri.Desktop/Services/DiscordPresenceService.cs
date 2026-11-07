@@ -74,6 +74,38 @@ public sealed class DiscordPresenceService : IDisposable
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Explicitly clear Capri's presence when the owner toggles it off,
+    /// instead of merely closing the named pipe and leaving stale activity.
+    /// No new connection is created for a disabled integration.
+    /// </summary>
+    public async Task ClearActivityAsync(CancellationToken cancellationToken = default)
+    {
+        if (_disposed || _pipe?.IsConnected != true) return;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(3));
+        await _gate.WaitAsync(timeout.Token);
+        try
+        {
+            if (_pipe?.IsConnected != true) return;
+            await WriteFrameAsync(_pipe, 1, new
+            {
+                cmd = "SET_ACTIVITY",
+                nonce = Guid.NewGuid().ToString("N"),
+                args = new { pid = Environment.ProcessId, activity = (object?)null }
+            }, timeout.Token);
+            using var reply = await ReadFrameAsync(_pipe, timeout.Token);
+            if (reply.RootElement.TryGetProperty("evt", out var evt) &&
+                evt.ValueKind == JsonValueKind.String && evt.GetString() == "ERROR")
+                throw new InvalidOperationException("Discord did not accept clearing Capri's status.");
+        }
+        finally
+        {
+            ClosePipe();
+            _gate.Release();
+        }
+    }
+
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)
     {
         if (_pipe?.IsConnected == true) return;

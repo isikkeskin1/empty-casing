@@ -70,6 +70,32 @@
         </Border>
         <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
           <StackPanel>
+            <TextBlock Text="/// PRE-PUBLISH READINESS" Style="{StaticResource CapriLabel}"/>
+            <TextBlock Text="Run a local preflight for the AI brain, animation pack, audio, installed model and publisher account registrations. This does NOT contact your linked accounts, record audio or certify hardware."
+                       Style="{StaticResource CapriSubtext}" TextWrapping="Wrap"
+                       Margin="0,8,0,10"/>
+            <TextBox x:Name="ReadinessReportBox" IsReadOnly="True"
+                     Text="Run the readiness check to see configured, optional and publisher-blocked features."
+                     Background="#0C1822" Foreground="{StaticResource CapriTextBrush}"
+                     BorderBrush="#436778" BorderThickness="1"
+                     FontFamily="Consolas" FontSize="11"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     Height="238" Padding="10"/>
+            <WrapPanel Margin="0,12,0,0">
+              <Button x:Name="ReadinessButton" Content="RUN READINESS CHECK"
+                      Click="Readiness_Click" Style="{StaticResource CapriPrimaryButton}"
+                      Margin="0,0,9,9"/>
+              <Button Content="COPY CHECK RESULTS" Click="CopyReadiness_Click"
+                      Style="{StaticResource CapriButton}" Margin="0,0,9,9"/>
+            </WrapPanel>
+            <TextBlock x:Name="ReadinessFeedback"
+                       Text="This checks setup, not physical-device performance. Review before sharing."
+                       Foreground="{StaticResource CapriCyanBrush}" TextWrapping="Wrap"
+                       FontSize="11"/>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CapriPanel}" Padding="16" Margin="0,0,0,14">
+          <StackPanel>
             <TextBlock Text="/// CAPRI CHARACTER ART" Style="{StaticResource CapriLabel}"/>
             <TextBlock x:Name="ArtStatusText"
                        Text="Checking seven animated states…"

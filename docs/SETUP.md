@@ -1,12 +1,22 @@
 # Capri Desktop setup guide
 
-This is an independent, unofficial fan project. **Do not confuse the original developer's installer with ours.** Our builds are available at https://github.com/isikkeskin1/empty-casing/actions .
+This is an independent, unofficial fan project. **Do not confuse the original developer's installer with ours.** Download the official latest release from https://github.com/isikkeskin1/empty-casing/releases/latest . Capri's default animation art is third-party and NONCOMMERCIAL, with mandatory attribution.
 
 ## Install
 
-Download the Capri-Setup artifact from a successful Windows CI run and extract its ZIP to get Capri-Setup.exe. Verify the source before running unsigned software. It installs for the current Windows user, without an administrator prompt, offers Start menu and desktop shortcuts, and opens the setup wizard on first run.
+Download **Capri-Setup.exe** and the accompanying **SHA256SUMS.txt** from the official GitHub Release, verify the installer digest, and launch it. The installer is currently unsigned: inspect any SmartScreen or antivirus warning instead of assuming it is a false positive. It installs for the current Windows user, without administrator installation privileges, adds a Start menu shortcut and an optional desktop shortcut, and opens the wizard on first run.
 
-The app installer bundles its own .NET runtime. It does not bundle Ollama, models, copyrighted character animations, paid API access or custom voices. Uninstall does not delete local app data, settings, history or encrypted keys, which remain under %LOCALAPPDATA%\CapriDesktop.
+The installer includes the self-contained .NET app, an auto-update client, and **seven credited third-party animation sequences** under PolyForm Noncommercial terms. It does not include Ollama, local AI/Whisper model weights, paid API access, audio cable drivers or custom licensed voices. Uninstall leaves settings, history, personal memories and encrypted provider credentials under %LOCALAPPDATA%\CapriDesktop unless you explicitly delete that folder. A previous known-good settings.json.backup may remain for crash recovery; chat/memory/reminder files are not duplicated into retained backups.
+
+Open **About / Updates → RUN READINESS CHECK** to see exactly what is set up and what still requires the publisher or your PC's hardware. This is a local readiness check; it does not upload the support report.
+
+## Discord voice and optional multilingual microphone input
+
+- For local multilingual **Talk Once**, open INPUTS and install the official SHA-256-verified ~148 MB Whisper base model. Select Whisper mode and use the Talk Once shortcut. MIC ON / "Hey Capri" still require a Windows-installed speech recognizer.
+- For voice calls, install VB-CABLE from the official VB-Audio website. In CALL COMPANION, choose your Discord speaker output as **Hear Your Call**; choose CABLE Input as Capri's **call-only** speaker; choose CABLE Output as Discord's microphone. Use **TEST DISCORD MIC ROUTE** while Discord's input meter is open. The optional real-mic mix is armed only when you start Call Mode, and both paths stop when Call Mode ends.
+- Call audio loopback hears all applications routed to the selected Windows output device; it is not per-Discord-app isolation. Use headphones, avoid a feedback loop, obtain consent from participants, and prefer a dedicated call output device.
+- Spotify and Roblox login buttons use official provider browser OAuth, but require a one-time publisher registered app ID in the build. Consumers never need to paste account cookies or access tokens. Discord Rich Presence similarly requires a publisher public Discord app ID.
+- This does not automatically join Discord voice channels, access user DMs, or turn normal Discord accounts into self-bots. For tests, refer to [CALL COMPANION](CALL_COMPANION.md) and [release acceptance](PUBLIC_PREVIEW_ACCEPTANCE.md).
 
 ## Choose her brain
 

@@ -4,32 +4,34 @@ An **unofficial, noncommercial fan project** building an interactive desktop com
 
 This is an **independent MIT-licensed implementation** with a separately licensed default character-art component. Windows releases include the seven upstream Capri animated character sequences under **PolyForm Noncommercial 1.0.0**, with required attribution and upstream notices included beside the packaged assets. The art is **not MIT-licensed** and may not be used commercially. The floating companion and Mainframe display real animations immediately after installation, without manual ZIP import. See [character-art rights](docs/ASSET_RIGHTS.md). This is not an official Capri project or endorsed by its creators or anime rights holders.
 
-## Current milestone: local assistant + desktop presence
+## Capri today — public noncommercial preview
 
-- Transparent, always-on-top, draggable companion with window-edge snapping, follow-on-move, detach on minimize/close and bounded toss motion
-- Optional user-provided PNG sequences for idle, talk, glitch, sleep, toss, perch and music-perch; individual frame timing supported
-- Local Ollama or optional NVIDIA, Gemini, OpenRouter and OpenAI cloud chat, with editable model IDs
-- Local JSON history, settings and persistent reminders/timers with notification bubbles
-- Tray menu, show/hide shortcut (Ctrl+Shift+Space), and opening the animation folder
-- Screen questions: **LOOK NOW** captures the chosen monitor and sends a JPEG to the selected local or cloud vision model with permission
-- Opt-in watch mode: capture every 45 seconds and show brief AI reactions as a temporary character bubble
-- Windows microphone recognition: toggle MIC ON or use Ctrl+Alt+V, then start a request with **"Capri"**; native Windows text-to-speech output can be enabled separately
-- Approval-gated desktop actions: launch selected applications, open HTTPS pages and send media keys. No purchases, arbitrary clicks, command execution, typing, deletion or messaging
-- Per-user Windows installer, first-run brain and voice wizard, optional Fish Audio speech output with encrypted cloud keys using Windows DPAPI
-- Windows CI builds a portable ZIP and installer executable
+Capri is a Windows 10/11 x64 **desktop companion**, with a floating animated character, an opt-in local Ollama or cloud AI brain, optional Fish Audio speech, screen/game context, media controls and approval-gated desktop actions. It includes:
 
-**Not yet implemented:** seamless streamed voice conversation, character-specific voice, multi-monitor vision selection, game-event understanding, Discord call participation, general computer use, semantic memory or an updater. Current speech uses the Windows-installed recognizer and voice; current vision is a **single primary-monitor snapshot**, not a continuous video feed. The current action allowlist is deliberately limited and every action needs consent. See [docs/ASSISTANT_FEATURES.md](docs/ASSISTANT_FEATURES.md).
+- Seven bundled default animation states, saved overlay size/position, window perching, tosses, sleep/wake, cursor riding and optional visual/AI Chaos clones
+- Mainframe chat, one-shot image understanding, opt-in screen lookout, reminders, local history and personal notes, game tips and OBS clips
+- Local Windows speech recognition for MIC ON; separate optional **multilingual Whisper Talk Once** with an explicitly downloaded, SHA-256-verified model
+- Optional Discord voice-call audio through a user-installed virtual cable, call participant consent, local mic mixing and mute/deafen shortcuts; Discord Rich Presence requires a publisher-registered app
+- Spotify and Roblox local launch/control without pasted user tokens; provider browser OAuth needs one-time public publisher application registration
+- A bounded, approval-based Windows accessibility navigator, pink *visual-only* task pointer, and guarded desktop/app/media tools
+- Per-user Windows installer, portable ZIP, SHA-256 GitHub release integrity metadata (not a publisher signature), safe update staging, local diagnostics and an on-demand release readiness audit
 
-## Get started (Windows 10/11 x64)
+**Release scope:** This is an independent, unofficial **noncommercial fan preview**. The Windows installer is **not Authenticode-signed**, and the separately licensed Capri character artwork is subject to **PolyForm Noncommercial** terms and required credits. Real Windows/audio/device QA, publisher OAuth/Rich Presence app registrations and code signing are still external ship gates. It is not a commercially licensed or provider-certified release.
 
-1. Open [GitHub Actions](https://github.com/isikkeskin1/empty-casing/actions), choose a successful **Windows build and installer** run, download the **Capri-Setup** artifact, extract its ZIP and open Capri-Setup.exe. Verify the source and provenance before running unsigned software.
-2. The first-launch **CAPRI // SETUP** wizard opens. Choose LOCAL — Ollama or an optional cloud provider.
-3. **Local:** click DOWNLOAD OLLAMA to visit the official download page, install Ollama, then click DOWNLOAD LOCAL MODELS for the text and vision models (defaults qwen3:4b and qwen3-vl:4b).
-4. **Cloud:** open the selected provider's official API-key page, paste your key, select the exact model ID, and optionally set a vision-capable model. Providers can charge or impose rate limits.
-5. Under HER VOICE, choose a Windows voice or Fish Audio. Fish uses a separate API key and plays MP3 replies without writing audio to disk. Test the selected voice, then click TEST CONNECTION and SAVE & OPEN MAINFRAME.
-6. In Mainframe, enable mic, screen watch, speech output or desktop actions separately if desired. Purchasing and checkout remain blocked.
+**Not offered:** unrestricted computer input or sensitive-account automation, silent Discord channel joining/user-account messaging, independently validated 80-language always-on voice, or guaranteed reversibility of unrelated desktop actions. Capri must be explicitly armed before listening or controlling apps.
 
-The installer includes .NET and **all seven default character animation states** (separately licensed, noncommercial, credited); it does **not** include Ollama, model weights, or cloud credits. An optional imported local pack overrides the bundled character without deleting your own files. Developer setup is described in [the guide](docs/SETUP.md).
+See the [public-preview acceptance checklist](docs/PUBLIC_PREVIEW_ACCEPTANCE.md) and [feature matrix](docs/FEATURE_MATRIX.md) for exact capabilities and limits.
+
+## Get started (Windows x64)
+
+1. Open the **[official latest GitHub release](https://github.com/isikkeskin1/empty-casing/releases/latest)** and get `Capri-Setup.exe` (or the portable ZIP). Review `SHA256SUMS.txt` and the noncommercial art notices. The executable is currently unsigned, so only run the repository's official release assets.
+2. Launch Capri. The **CAPRI // SETUP** wizard lets you choose LOCAL — Ollama (install from its official site and pull the selected model) or a supported cloud provider. Cloud provider calls may incur costs; credentials are saved encrypted for your Windows account.
+3. Choose **Windows voice** for offline speech, or configure Fish Audio with your own provider key. Test the brain and voice; finish the setup wizard.
+4. Open **INPUTS** to select/test the microphone and recognition language. Optionally install the verified ~148 MB multilingual Whisper model for manual Talk Once. `MIC ON` continues to use installed Windows recognition.
+5. Open **CALL COMPANION** only when you want call audio; configure Discord's output, install and select a virtual cable as the call-only mic route, then use **TEST DISCORD MIC ROUTE**. Inform participants and obtain permission before enabling call listening.
+6. Open **ABOUT / UPDATES → RUN READINESS CHECK** to see which local features are configured and which publisher-side connections are still unavailable. Optional mic/screen/desktop permissions remain off until explicitly enabled.
+
+The installer includes .NET, Capri's app and the seven third-party animation states; it does **not** bundle Ollama, Whisper model weights, cloud credits or audio cable drivers. Locally imported character artwork and user settings survive verified updates. Developer setup is in [docs/SETUP.md](docs/SETUP.md).
 
 **Smart screen input:** Optional WATCH SCREEN uses a tiny in-memory grayscale signature to skip unchanged or blank frames, and stays quiet during voice listening. Ask "what did you see?" for Capri's latest observation from this session (kept in RAM for up to three hours). Gentle mouse rubs over the companion trigger a playful reaction; disable them in INPUTS.
 

@@ -159,6 +159,8 @@ public partial class App : System.Windows.Application
         CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
         HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
         Settings = Store.LoadSettings();
+        if (Store.SettingsRecoveredFromBackup)
+            Diagnostics.Record("settings-recovered");
         Secrets = new SecretStore();
         Brain = new BrainRouter(Settings, Secrets);
         LinkedAccounts = new LinkedAccountService(Settings, Secrets);
@@ -178,6 +180,9 @@ public partial class App : System.Windows.Application
         _companion = new CompanionWindow();
         MainWindow = _companion;
         _companion.Show();
+        if (Store.SettingsRecoveredFromBackup)
+            _companion.ShowReaction(
+                "Recovered settings from a previous valid copy. Review SETUP and INPUTS.");
         _ = Task.Run(() => CharacterPackImporter.InstallBundledIfNeeded(
             AppContext.BaseDirectory, Store.CharacterFolder)).ContinueWith(task =>
         {
@@ -1708,10 +1713,24 @@ public partial class App : System.Windows.Application
         {
             Settings.EnableDiscordRichPresence = false;
             _discordPresenceTimer.Stop();
-            _discordPresence?.Dispose();
+            var connection = _discordPresence;
             _discordPresence = null;
             Store.SaveSettings(Settings);
-            return "Discord Rich Presence disabled; local connection closed.";
+            if (connection is null)
+                return "Discord Rich Presence is off.";
+            try
+            {
+                // Disable the activity at Discord itself before closing IPC.
+                await connection.ClearActivityAsync();
+                return "Discord Rich Presence cleared and disabled.";
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or
+                OperationCanceledException or System.Text.Json.JsonException)
+            {
+                return "Discord status disabled locally. Discord was unreachable while " +
+                    "clearing activity; its desktop client should drop the old status.";
+            }
+            finally { connection.Dispose(); }
         }
         if (!DiscordPresenceService.HasPublisherAppId)
             return "Discord presence needs Capri's public application ID configured ONCE " +
