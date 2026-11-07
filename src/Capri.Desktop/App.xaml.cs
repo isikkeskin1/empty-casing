@@ -1555,6 +1555,26 @@ public partial class App : System.Windows.Application
         return null;
     }
 
+    public string TryDiscordDesktopShortcut(DiscordDesktopShortcuts.Command command)
+    {
+        if (!Settings.EnableDesktopActions)
+            return "Enable DESKTOP ACTIONS or HANDS-FREE before controlling Discord.";
+        var epoch = _actionEpoch;
+        if (!Settings.SkipActionConfirmations &&
+            System.Windows.MessageBox.Show(
+                "Send Discord's standard Ctrl+Shift+" +
+                (command == DiscordDesktopShortcuts.Command.ToggleMute ? "M" : "D") +
+                " shortcut? This TOGGLES the current state; Capri cannot read " +
+                "or verify whether you are currently muted/deafened.",
+                "Capri — Discord local shortcut",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+            return "Discord shortcut cancelled.";
+        if (!Settings.EnableDesktopActions || _actionEpoch != epoch)
+            return "Discord shortcut stopped.";
+        return DiscordDesktopShortcuts.Send(command);
+    }
+
     public string StartChaosClones(int number) => Chaos.Start(number, Store.CharacterFolder);
 
     public void StopChaosClones() => _chaos?.Stop();
@@ -2118,6 +2138,16 @@ public partial class App : System.Windows.Application
     public async Task<string?> TryHandleActionAsync(string request)
     {
         var command = request.Trim();
+        var discordCommand = command.ToLowerInvariant() switch
+        {
+            "discord toggle mute" or "toggle discord mute" or "mute toggle discord" =>
+                DiscordDesktopShortcuts.Command.ToggleMute,
+            "discord toggle deafen" or "toggle discord deafen" or "deafen toggle discord" =>
+                DiscordDesktopShortcuts.Command.ToggleDeafen,
+            _ => (DiscordDesktopShortcuts.Command?)null
+        };
+        if (discordCommand.HasValue)
+            return TryDiscordDesktopShortcut(discordCommand.Value);
         if (ChaosModePolicy.StopRequested(command))
         {
             _chaos?.Stop();
