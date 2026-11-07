@@ -100,6 +100,32 @@ jobs:
           Set-Content -Path 'publish/character-default/ART-LICENSE-AND-CREDIT.txt' -Value $credit -Encoding utf8
           Write-Output "Packaged all seven default Capri animation states with third-party attribution."
 
+      - name: Verify release payload and third-party notices
+        shell: pwsh
+        run: |
+          $exe = 'publish/Capri.Desktop.exe'
+          if (!(Test-Path $exe) -or (Get-Item $exe).Length -lt 10000000) {
+            throw "Release does not contain a usable, self-contained Capri desktop executable."
+          }
+          foreach ($state in @('idle','talk','glitch','tossed','sleep','perch','perch-music')) {
+            if (!(Test-Path "publish/character-default/$state/0000.png") -or
+                !(Test-Path "publish/character-default/$state/timing.json")) {
+              throw "Missing licensed character animation: $state"
+            }
+          }
+          foreach ($notice in @(
+              'UPSTREAM-LICENSE.md',
+              'UPSTREAM-THIRD-PARTY-NOTICES.md',
+              'ART-LICENSE-AND-CREDIT.txt')) {
+            if (!(Test-Path "publish/character-default/$notice")) {
+              throw "Missing mandatory license notice: $notice"
+            }
+          }
+          $credit = Get-Content 'publish/character-default/ART-LICENSE-AND-CREDIT.txt' -Raw
+          if (!$credit.Contains('PolyForm Noncommercial') -or !$credit.Contains('lachydotmcg')) {
+            throw "Art license/author attribution is incomplete."
+          }
+          Write-Output "Verified executable, 7 animation states, and mandatory license/credit notices."
       - name: Package executable
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath CapriDesktop-win-x64.zip -Force
@@ -124,6 +150,14 @@ jobs:
           if (!(Test-Path 'installer-output/Capri-Setup.exe')) {
             throw "Capri-Setup.exe was not produced."
           }
+      - name: Validate installer size for the in-app updater
+        shell: pwsh
+        run: |
+          $installer = Get-Item 'installer-output/Capri-Setup.exe'
+          if ($installer.Length -lt 1000000 -or $installer.Length -gt 250000000) {
+            throw "Installer is outside the hard-coded in-app updater size limits."
+          }
+          Write-Output "Installer within Capri verified-downloader size limits."
       - name: Generate preview SHA256 checksums
         shell: pwsh
         run: |
@@ -149,5 +183,31 @@ jobs:
           if (gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null) {
             throw "Refusing to replace existing release $tag."
           }
-          gh release create $tag 'installer-output/Capri-Setup.exe' 'CapriDesktop-win-x64.zip' 'installer-output/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --notes "Automatically built from verified main commit $env:GITHUB_SHA. SHA-256 checksums are attached. Updates are staged locally and installed only on Restart to update."
+          $change = git log -1 --pretty=%s
+          $notes = @"
+          ## Capri Desktop $tag — Public Noncommercial Preview
+
+          Release built from verified main commit \`$env:GITHUB_SHA\`.
+
+          **Latest change:** $change
+
+          ### Getting started
+          - Install \`Capri-Setup.exe\` on Windows x64 or use the portable ZIP.
+          - Open SET UP BRAIN to configure Ollama or a supported cloud provider.
+          - In About / Updates, select **RUN READINESS CHECK** for setup requirements.
+          - In INPUTS, configure devices, test microphone and optionally install verified multilingual Whisper.
+          - In CALL COMPANION, connect a virtual audio cable for Discord, then use **TEST DISCORD MIC ROUTE** before joining an informed call.
+
+          ### Integrity and license
+          - SHA-256 checksums are attached for the installer and portable ZIP.
+          - The installer is **not Authenticode-signed**. GitHub checksums do not replace a publisher signature.
+          - Bundled Capri character animations carry **PolyForm Noncommercial** license and mandatory upstream attribution. Noncommercial distribution only.
+          - Spotify/Roblox account OAuth and Discord Rich Presence need **publisher-registered public application IDs** before consumer account connection can operate.
+
+          ### Release readiness
+          Source/build smoke tests and packaging passed. Live Windows device testing, publisher approval, signing, and commercial rights remain external acceptance gates.
+          See [Public Preview Acceptance](https://github.com/isikkeskin1/empty-casing/blob/main/docs/PUBLIC_PREVIEW_ACCEPTANCE.md).
+          "@
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          gh release create $tag 'installer-output/Capri-Setup.exe' 'CapriDesktop-win-x64.zip' 'installer-output/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Capri Desktop $tag" --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw "GitHub release publishing failed." }
