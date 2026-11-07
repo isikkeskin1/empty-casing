@@ -92,7 +92,7 @@ public partial class AboutUpdatesWindow : Window
     {
         try
         {
-            Clipboard.SetText(ReportBox.Text);
+            System.Windows.Clipboard.SetText(ReportBox.Text);
             ReportFeedback.Text = "Report copied. Review it before sharing.";
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException
