@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
@@ -22,6 +23,12 @@ public sealed class ChaosController : IDisposable
     private long _escDownAt;
     private bool _disposed;
     private int _turn;
+    private Func<string, CancellationToken, Task<string>>? _localDialogue;
+    private CancellationTokenSource? _dialogueCts;
+    private bool _dialogueBusy;
+    private int _dialogueTurns;
+    private string _lastDialogue = "We're all here. Who's the original Capri?";
+    private const int MaxDialogueTurns = 10;
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int key);
@@ -118,9 +125,90 @@ public sealed class ChaosController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Explicit AI mode uses exactly one local-model inference at a time,
+    /// limited to ten short turns. It never reads owner chat, secrets or
+    /// the desktop, and no clone can initiate actions.
+    /// </summary>
+    public string StartAi(int count, string artFolder,
+        Func<string, CancellationToken, Task<string>> localModel)
+    {
+        ArgumentNullException.ThrowIfNull(localModel);
+        var result = Start(count, artFolder);
+        if (_clones.Count != count) return result;
+        _localDialogue = localModel;
+        _dialogueCts = new CancellationTokenSource();
+        _dialogueTurns = 0;
+        _lastDialogue = "We're all here. Who is the real Capri?";
+        _chatter.Interval = TimeSpan.FromSeconds(10);
+        _ = ConverseWithLocalModelAsync();
+        return "AI Chaos: " + count +
+            " clones now chat using your LOCAL Ollama model, up to 10 turns. " +
+            "No private chat, cloud API or desktop access. Hold Esc to stop.";
+    }
+
+    private async Task ConverseWithLocalModelAsync()
+    {
+        var model = _localDialogue;
+        var cts = _dialogueCts;
+        if (model is null || cts is null || _dialogueBusy ||
+            _dialogueTurns >= MaxDialogueTurns || _clones.Count == 0) return;
+        _dialogueBusy = true;
+        var turnNumber = _dialogueTurns++;
+        var speaker = turnNumber % _clones.Count;
+        var character = new[] { "Glitch", "Pixel", "Nova", "Echo", "Spark" }[speaker];
+        var prompt = "You are " + character +
+            ", a FICTIONAL animated Capri clone on a Windows desktop. " +
+            "Write ONE playful, short line (maximum 18 words) to another clone. " +
+            "Personalities: Glitch is chaotic, Pixel is technical, Nova confident, " +
+            "Echo dreamy, Spark witty. " +
+            "This is harmless pretend banter, NOT a desktop command. " +
+            "Do not claim to read files, see screens, hear audio or access chats; " +
+            "do not reveal secrets, issue commands, show links or use profanity. " +
+            "Prior clone said: " + _lastDialogue + "\n" +
+            "Respond ONLY with your new dialogue line.";
+        try
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+            deadline.CancelAfter(TimeSpan.FromSeconds(18));
+            var line = await model(prompt, deadline.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(cts, _dialogueCts) ||
+                _clones.Count == 0) return;
+            line = Regex.Replace(line ?? "", @"\s+", " ").Trim().Trim('"', '\'');
+            if (line.Length > 115) line = line[..115] + "…";
+            if (line.Length < 2) return;
+            _lastDialogue = line;
+            _turn++;
+            for (var i = 0; i < _clones.Count; i++)
+            {
+                if (i == speaker) _clones[i].SpeakBubble(character + ": " + line);
+                else _clones[i].SetIdle();
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (ReferenceEquals(cts, _dialogueCts) && _clones.Count > 0)
+            {
+                _clones[speaker].SpeakBubble("AI banter unavailable (" +
+                    ex.GetType().Name + ").");
+                _localDialogue = null;
+            }
+        }
+        finally
+        {
+            _dialogueBusy = false;
+        }
+    }
+
     private void Converse()
     {
         if (_clones.Count == 0) return;
+        if (_localDialogue is not null)
+        {
+            _ = ConverseWithLocalModelAsync();
+            return;
+        }
         var lines = new[]
         {
             "We're multiplying.", "Who's the real Capri?", "Choom. CHOOM.",
@@ -162,6 +250,12 @@ public sealed class ChaosController : IDisposable
     {
         _tick.Stop();
         _chatter.Stop();
+        _chatter.Interval = TimeSpan.FromSeconds(5);
+        _dialogueCts?.Cancel();
+        _dialogueCts?.Dispose();
+        _dialogueCts = null;
+        _localDialogue = null;
+        _dialogueTurns = 0;
         _escDownAt = 0;
         foreach (var clone in _clones) clone.Close();
         _clones.Clear();
