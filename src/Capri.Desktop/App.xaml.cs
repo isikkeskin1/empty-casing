@@ -91,6 +91,8 @@ public partial class App : System.Windows.Application
     public static App Instance => (App)Current;
     public AppSettings Settings { get; private set; } = new();
     public LocalDataStore Store { get; private set; } = null!;
+    public CapriDiagnosticJournal Diagnostics { get; private set; } = null!;
+    private AboutUpdatesWindow? _updatesCenter;
     public PersonalMemoryVault Memories { get; private set; } = null!;
     private GameCoachHudWindow? _gameCoachHud;
     private ScreenSketchWindow? _screenSketch;
@@ -102,6 +104,14 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
         Store = new LocalDataStore();
+        Diagnostics = new CapriDiagnosticJournal(Store.DataFolder);
+        Diagnostics.Record("startup");
+        DispatcherUnhandledException += (_, args) =>
+            Diagnostics.Record("ui-unhandled", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Diagnostics.Record("app-unhandled", args.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+            Diagnostics.Record("task-unobserved", args.Exception);
         Memories = new PersonalMemoryVault(Store);
         CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
         HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
@@ -1563,6 +1573,17 @@ public partial class App : System.Windows.Application
         _callWindow?.RefreshState();
     }
 
+    public void OpenUpdatesCenter()
+    {
+        if (_updatesCenter is null)
+        {
+            _updatesCenter = new AboutUpdatesWindow();
+            _updatesCenter.Closed += (_, _) => _updatesCenter = null;
+        }
+        _updatesCenter.Show();
+        _updatesCenter.Activate();
+    }
+
     public void OpenGameCenter()
     {
         if (_gameCenter is null)
@@ -2085,6 +2106,7 @@ public partial class App : System.Windows.Application
         var context = new System.Windows.Forms.ContextMenuStrip();
         context.Items.Add("Open chat", null, (_, _) => Dispatcher.Invoke(ShowChat));
         context.Items.Add("Set up her brain / voice", null, (_, _) => Dispatcher.Invoke(OpenSetup));
+        context.Items.Add("About / updates / support", null, (_, _) => Dispatcher.Invoke(OpenUpdatesCenter));
         context.Items.Add("Input settings / hotkeys", null, (_, _) => Dispatcher.Invoke(OpenInputSettings));
         context.Items.Add("Game Center / Steam library", null, (_, _) => Dispatcher.Invoke(OpenGameCenter));
         context.Items.Add("Now Playing / media", null, (_, _) => Dispatcher.Invoke(OpenNowPlaying));
@@ -2225,6 +2247,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Diagnostics?.Record("shutdown");
         StopCallCompanionMode();
         StopAutonomousTask();
         LinkedAccounts.Dispose();
