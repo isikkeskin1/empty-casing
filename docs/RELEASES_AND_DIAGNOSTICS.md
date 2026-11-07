@@ -1,5 +1,17 @@
 # Capri Desktop — Releases, updates and local diagnostics
 
+## Automatic GitHub releases and updates
+
+After every successful **main branch** Windows build, the same workflow now publishes an official stable GitHub Release with a unique version `v0.7.<workflow-run-number>`, including the exact installer, portable zip and SHA256SUMS. The version is stamped into the Windows assembly and Inno Setup installer, so the running app can recognize newer builds. PR checks never publish releases. The older tag-triggered release workflow skips these automatic `v0.7.*` tags to prevent duplicate jobs.
+
+Installed copies have **Automatic Updates ON by default**. After startup and then every 30 minutes, Capri checks the pinned GitHub API for a newer stable release. Only a `Capri-Setup.exe` asset with the exact approved GitHub URL, a bounded asset size and a `sha256:` digest is downloadable. The archive is streamed to a local temporary file with a size cap, hashed, moved into staged storage only after verification, and rehashed before installation.
+
+A verified download is **installed on Capri's next exit** using the existing per-user Inno Setup installer. A tray notification explains it is staged. To install immediately, use **About / Updates → INSTALL STAGED UPDATE**; this closes Capri first. Turning Automatic Updates off clears the pending install action. Portable copies don't auto-install because they may have custom paths. No update can start microphone capture, desktop action permissions, or transfer your personal memories.
+
+Local character animations in `%LOCALAPPDATA%\\CapriDesktop\\character` are deliberately outside the install directory and preserved. **The public Windows installer does not bundle the third-party Capri animation pack**; use the new import button on your PC to activate the seven-state ZIP.
+
+Limitations: downloaded installers are not yet Authenticode signed, and the GitHub-provided SHA256 digest is metadata trusted from the repository's Releases endpoint; it is not a separately signed software-update manifest. Real reboot/recovery, offline retries, anti-virus false-positive and installer replacement tests on Windows are still needed.
+
 ## Update Center
 
 Open **Control Deck → Apps & Tools → ABOUT / UPDATES** or **system-tray icon → About / updates / support**. The Update Center displays the currently installed Windows assembly version (starting in this release: **0.6.0**). No update check runs automatically at startup.
@@ -8,7 +20,7 @@ Open **Control Deck → Apps & Tools → ABOUT / UPDATES** or **system-tray icon
 
 **OPEN OFFICIAL RELEASE** opens the confirmed GitHub release page in your default browser. You choose whether to download and run any installer. **SEE PREVIEW BUILDS** opens the repository's GitHub Actions Windows workflow. Actions artifacts expire after 14 days and aren't the same as stable Releases.
 
-There are **currently no stable GitHub Releases** published for this repository. Until a maintainer publishes the first one, the update checker correctly reports “no public stable release yet” rather than inventing a release.
+The first stable release will be automatically published by the next successful main-branch workflow; until that happens, the updater reports no stable release.
 
 ### Publish the first stable release
 
