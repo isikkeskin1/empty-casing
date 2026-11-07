@@ -1,6 +1,7 @@
 using System.Speech.AudioFormat;
 using System.Speech.Recognition;
 using NAudio.Wave;
+using NAudio.CoreAudioApi;
 using NAudio.Wave.SampleProviders;
 
 namespace Capri.Desktop.Services;
@@ -15,6 +16,7 @@ public sealed class CallLoopbackListeningService : IDisposable
     private readonly Action<string> _heard;
     private readonly Func<bool> _capriIsSpeaking;
     private WasapiLoopbackCapture? _capture;
+    private MMDevice? _selectedDevice;
     private SpeechRecognitionEngine? _recognizer;
     private BufferedMicrophoneStream? _stream;
     private BufferedWaveProvider? _buffered;
@@ -32,7 +34,7 @@ public sealed class CallLoopbackListeningService : IDisposable
         _capriIsSpeaking = capriIsSpeaking;
     }
 
-    public void Start()
+    public void Start(string? playbackEndpointId = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_active) return;
@@ -44,7 +46,18 @@ public sealed class CallLoopbackListeningService : IDisposable
 
         try
         {
-            _capture = new WasapiLoopbackCapture();
+            // The selected Windows speaker endpoint is used for call audio.
+            // Windows WASAPI loopback may also hear other apps routed there.
+            if (string.IsNullOrWhiteSpace(playbackEndpointId))
+                _capture = new WasapiLoopbackCapture();
+            else
+            {
+                if (!CallAudioEndpoints.IsAvailable(playbackEndpointId))
+                    throw new InvalidOperationException("Selected call speaker endpoint disconnected.");
+                using var enumerator = new MMDeviceEnumerator();
+                _selectedDevice = enumerator.GetDevice(playbackEndpointId);
+                _capture = new WasapiLoopbackCapture(_selectedDevice);
+            }
             var format = _capture.WaveFormat;
             if (format.Channels is < 1 or > 2)
                 throw new InvalidOperationException(
@@ -141,6 +154,8 @@ public sealed class CallLoopbackListeningService : IDisposable
         try { capture?.StopRecording(); }
         catch (InvalidOperationException) { }
         capture?.Dispose();
+        _selectedDevice?.Dispose();
+        _selectedDevice = null;
 
         _stream?.Complete();
         var recognizer = _recognizer;
