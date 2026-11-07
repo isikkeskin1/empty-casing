@@ -29,7 +29,10 @@ The original fan project has a broad feature set. This file tracks our independe
 | Screen Sketch / owner drawing | Implemented: InkCanvas overlay, neon pen colors, undo/clear/PNG, Esc/STOP ALL/3-minute expiry | Real Windows mouse/stylus, mixed-DPI and borderless-game QA |
 | Mini-games, skins and clones | Not implemented | UI/rendering and assets |
 | Code/Husk integration | Read-only Codex/Claude Code lifecycle hooks and per-session local activity feed | Test with installed Codex/Claude versions; hook schemas can change; no per-file details |
-| Installer signing/updates | Not implemented | Safe release/update verification |
+| Versioned release packaging & checksums | Implemented: tag-only release workflow with version checks, installer/portable ZIP, SHA256SUMS | First intentional version tag/release not yet published; signing still missing |
+| In-app Update Center | Implemented: manual pinned GitHub Release check, stable version comparison, official page/open preview builds | Real Windows connectivity and offline/error-state QA; no automatic update execution |
+| Local diagnostics | Implemented: bounded local event/exception-type journal, user-reviewed copyable support report | Real crash/permission and clipboard QA; no telemetry, dumps or stack traces |
+| Installer signing/automatic updates | Not implemented | Trusted signing identity, authenticated auto-update metadata and rollback |
 
 Suggested order: clean setup → voice and mic selection → multi-monitor and media context → UIA computer use with per-step approvals, hard cancellation and permanently prohibited purchases → reminders/files/call integrations.
 
