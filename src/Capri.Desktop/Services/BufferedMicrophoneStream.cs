@@ -26,8 +26,7 @@ internal sealed class BufferedMicrophoneStream : Stream
             _queue.TryTake(out _);
             _queue.TryAdd(copy);
         }
-        catch (InvalidOperationException) { } // Recording stopped while the callback was running.
-        catch (ObjectDisposedException) { } // SAPI/capture raced with an explicit STOP.
+        catch (InvalidOperationException) { } // Includes disposed collection on STOP race.
     }
 
     public void Complete()
@@ -60,8 +59,7 @@ internal sealed class BufferedMicrophoneStream : Stream
             Interlocked.Add(ref _readPosition, copied);
             return copied;
         }
-        catch (InvalidOperationException) { return 0; }
-        catch (ObjectDisposedException) { return 0; } // Normal when STOP closes a SAPI read.
+        catch (InvalidOperationException) { return 0; } // Includes disposed queue.
     }
 
     public override bool CanRead => !_closed;
