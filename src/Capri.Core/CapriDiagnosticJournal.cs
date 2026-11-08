@@ -17,7 +17,7 @@ public sealed class CapriDiagnosticJournal
     private static readonly HashSet<string> AllowedEvents =
         new(StringComparer.Ordinal)
         { "startup", "shutdown", "ui-unhandled", "app-unhandled",
-          "task-unobserved", "update-check", "settings-recovered", "unknown" };
+          "task-unobserved", "update-check", "settings-recovered", "voice-device-error", "unknown" };
 
     public CapriDiagnosticJournal(string directory)
     {
