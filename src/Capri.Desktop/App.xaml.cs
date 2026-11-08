@@ -249,7 +249,15 @@ public partial class App : System.Windows.Application
                 TaskCanceledException) { }
         };
         _speech.SpeechFinished += () =>
-            Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+        {
+            try
+            {
+                if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+                    Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { } // Voice finished during WPF shutdown.
+        };
         _voicePlayback.PlaybackFinished += OnVoicePlaybackFinished;
 
         _companion = new CompanionWindow();
