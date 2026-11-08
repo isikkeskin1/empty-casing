@@ -100,6 +100,35 @@ public partial class App : System.Windows.Application
     private readonly DispatcherTimer _talkOnceTimeout = new() { Interval = TimeSpan.FromSeconds(20) };
     private bool _talkOnceRestoresOff;
 
+    public VoiceCapturePhase VoicePhase { get; private set; } = VoiceCapturePhase.Ready;
+    public string VoiceCaptureMessage { get; private set; } =
+        "Ready when you are. No microphone is recording.";
+
+    private void UpdateVoiceCapture(VoiceCapturePhase phase, string message)
+    {
+        VoicePhase = phase;
+        VoiceCaptureMessage = message;
+        _chat?.SyncCapabilitySwitches();
+    }
+
+    private static string FriendlyVoiceError(Exception ex) => ex switch
+    {
+        UnauthorizedAccessException =>
+            "Windows microphone permission is off. Enable it under Privacy & security → Microphone.",
+        System.Runtime.InteropServices.COMException =>
+            "The Windows speech engine did not start. Try Windows recognition language setup.",
+        NAudio.Wave.MmException =>
+            "Windows could not open that microphone. Select another device in INPUTS.",
+        InvalidOperationException when
+            ex.Message.Contains("language", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("recognizer", StringComparison.OrdinalIgnoreCase) =>
+            "No usable Windows speech recognizer is installed. Choose a supported language in INPUTS.",
+        InvalidOperationException =>
+            "The microphone or speech engine could not start. Test the device in INPUTS.",
+        _ => "Voice capture failed (" + ex.GetType().Name +
+            "). Test your microphone in INPUTS or type your message instead."
+    };
+
     public static App Instance => (App)Current;
     public AppSettings Settings { get; private set; } = new();
     public LocalDataStore Store { get; private set; } = null!;
@@ -150,11 +179,39 @@ public partial class App : System.Windows.Application
         Diagnostics = new CapriDiagnosticJournal(Store.DataFolder);
         Diagnostics.Record("startup");
         DispatcherUnhandledException += (_, args) =>
+        {
             Diagnostics.Record("ui-unhandled", args.Exception);
+            // An unexpected WPF callback from Windows SAPI or NAudio must
+            // never make Speak Now close Capri. Do not swallow unrelated UI
+            // failures: only known audio failure types from known code paths.
+            var stack = args.Exception.StackTrace ?? "";
+            if (stack.Contains("Capri.Desktop.Services.SpeechService",
+                    StringComparison.Ordinal) ||
+                stack.Contains("Capri.Desktop.Services.BufferedMicrophoneStream",
+                    StringComparison.Ordinal) ||
+                stack.Contains("Capri.Desktop.Windows.ChatWindow.TalkOnce_Click",
+                    StringComparison.Ordinal))
+            {
+                args.Handled = true;
+                try
+                {
+                    SetMicrophoneEnabled(false);
+                    UpdateVoiceCapture(VoiceCapturePhase.Error,
+                        FriendlyVoiceError(args.Exception));
+                }
+                catch (Exception recovery)
+                {
+                    Diagnostics.Record("voice-device-error", recovery);
+                }
+            }
+        };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             Diagnostics.Record("app-unhandled", args.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
             Diagnostics.Record("task-unobserved", args.Exception);
+            args.SetObserved();
+        };
         Memories = new PersonalMemoryVault(Store);
         CodeHusk = new CodeHuskBridge(ReceiveCodeHuskEvent);
         HuskHooks = new CodeHuskHookInstaller(CodeHusk.Root);
@@ -172,7 +229,25 @@ public partial class App : System.Windows.Application
         };
         Reminders = new ReminderScheduler(Store, NotifyReminder);
         _speech = new SpeechService(text =>
-            Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text)));
+        {
+            try
+            {
+                if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+                    Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { }
+        });
+        _speech.CaptureFailed += message =>
+        {
+            try
+            {
+                if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+                    Dispatcher.BeginInvoke(() => HandleSpeechCaptureFailure(message));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { }
+        };
         _speech.SpeechFinished += () =>
             Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
         _voicePlayback.PlaybackFinished += OnVoicePlaybackFinished;
@@ -216,8 +291,9 @@ public partial class App : System.Windows.Application
                 _voiceRouter.DisarmOneShot();
                 if (_talkOnceRestoresOff) SetMicrophoneEnabled(false);
                 _talkOnceRestoresOff = false;
+                UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                    "No speech detected before the 20-second limit. Try again or type instead.");
                 _companion?.ShowReaction("Talk Once timed out. No request sent.");
-                _chat?.SyncCapabilitySwitches();
             }
         };
         _mediaSessionTimer.Tick += async (_, _) => await ObserveNowPlayingAsync();
@@ -294,85 +370,188 @@ public partial class App : System.Windows.Application
     }
 
     /// <summary>
-    /// Explicitly arms one utterance and requires no wake prefix. This does not create
-    /// an always-on hotword service, and the recording device closes after one turn if
-    /// it was initially off.
+    /// One deliberate voice turn. All microphone and recognition failures
+    /// are handled here instead of escaping a button, tray or hotkey callback.
+    /// A second Speak Now press cancels an active turn.
     /// </summary>
     public void StartTalkOnce()
     {
-        if (_speech is null) return;
+        if (VoiceCaptureUiState.IsActive(VoicePhase))
+        {
+            StopTalkOnce();
+            return;
+        }
+        if (_speech is null)
+        {
+            UpdateVoiceCapture(VoiceCapturePhase.Error,
+                "Voice is not initialized. Open INPUTS or type in chat.");
+            return;
+        }
+        if (CallCompanionActive)
+        {
+            UpdateVoiceCapture(VoiceCapturePhase.Error,
+                "Stop Call Mode before opening another microphone session.");
+            return;
+        }
+
         if (Settings.SpeechRecognitionMode == "whisper")
         {
             if (!LocalWhisperTranscriber.ModelInstalled)
             {
-                _companion?.ShowReaction("Install the local multilingual Whisper model in INPUTS first.");
-                OpenInputSettings();
+                UpdateVoiceCapture(VoiceCapturePhase.Error,
+                    "Whisper model is missing or damaged. Reinstall it through INPUTS.");
                 return;
             }
-            if (CallCompanionActive || Settings.ListenToMicrophone)
+            if (Settings.ListenToMicrophone)
             {
-                _companion?.ShowReaction("End Call Mode or turn MIC OFF before Whisper Talk Once.");
+                UpdateVoiceCapture(VoiceCapturePhase.Error,
+                    "Turn MIC OFF before Whisper Speak Now. Only one capture path can run.");
                 return;
             }
             CancelCurrentReply();
-            _whisperOnceCts?.Cancel();
+            UpdateVoiceCapture(VoiceCapturePhase.Starting,
+                "Starting a private six-second Whisper recording…");
             _ = RunWhisperTalkOnceAsync();
             return;
         }
-        // The Talk Once hotkey doubles as a deliberate barge-in button:
-        // abandon any previous AI generation instead of queuing stale speech.
-        CancelCurrentReply();
-        var wasOff = !Settings.ListenToMicrophone;
-        if (wasOff)
-            SetMicrophoneEnabled(true);
-        else if (MicrophoneMuted)
-            ToggleMicrophoneMute();
 
-        _talkOnceRestoresOff = wasOff || _talkOnceRestoresOff;
-        _voiceRouter.ArmOneShot(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(20));
-        _talkOnceTimeout.Stop();
-        _talkOnceTimeout.Start();
-        _companion?.ShowReaction("Talk Once — speak now. I'll listen for one request.");
-        _chat?.SyncCapabilitySwitches();
+        // Windows recognition: open the actual microphone and confirm the
+        // recognizer has started before arming a one-shot timeout.
+        var wasOff = !Settings.ListenToMicrophone;
+        UpdateVoiceCapture(VoiceCapturePhase.Starting,
+            "Connecting to your Windows microphone…");
+        try
+        {
+            CancelCurrentReply();
+            if (wasOff)
+                SetMicrophoneEnabled(true);
+            else if (MicrophoneMuted)
+                ToggleMicrophoneMute();
+
+            if (!Settings.ListenToMicrophone || MicrophoneMuted || !_speech.IsListening)
+                throw new InvalidOperationException(
+                    "Windows did not start voice capture on the selected microphone.");
+
+            _talkOnceRestoresOff = wasOff || _talkOnceRestoresOff;
+            _voiceRouter.ArmOneShot(DateTimeOffset.UtcNow,
+                TimeSpan.FromSeconds(20));
+            _talkOnceTimeout.Stop();
+            _talkOnceTimeout.Start();
+            UpdateVoiceCapture(VoiceCapturePhase.Listening,
+                "Listening to one request. Click STOP LISTENING to cancel.");
+        }
+        catch (Exception ex)
+        {
+            _voiceRouter.DisarmOneShot();
+            _talkOnceTimeout.Stop();
+            _talkOnceRestoresOff = false;
+            try
+            {
+                if (wasOff || !_speech.IsListening)
+                    SetMicrophoneEnabled(false);
+            }
+            catch (Exception cleanup)
+            {
+                Diagnostics.Record("voice-device-error", cleanup);
+            }
+            Diagnostics.Record("voice-device-error", ex);
+            UpdateVoiceCapture(VoiceCapturePhase.Error, FriendlyVoiceError(ex));
+            _companion?.ShowReaction("Microphone unavailable. Try INPUTS or type to Capri.");
+        }
     }
 
     private async Task RunWhisperTalkOnceAsync()
     {
         using var cts = new CancellationTokenSource();
         _whisperOnceCts = cts;
-        _companion?.ShowReaction("Multilingual Whisper: recording 6 seconds locally. Speak now.");
+        UpdateVoiceCapture(VoiceCapturePhase.Listening,
+            "Recording locally for six seconds. Click STOP LISTENING to cancel.");
         try
         {
             var text = await LocalWhisperTranscriber.CaptureAndTranscribeAsync(
-                Settings.MicrophoneDeviceIndex, TimeSpan.FromSeconds(6), cts.Token);
-            if (cts.IsCancellationRequested || !ReferenceEquals(_whisperOnceCts, cts))
-                return;
+                Settings.MicrophoneDeviceIndex,
+                TimeSpan.FromSeconds(6), cts.Token,
+                () =>
+                {
+                    if (!cts.IsCancellationRequested &&
+                        ReferenceEquals(_whisperOnceCts, cts))
+                        UpdateVoiceCapture(VoiceCapturePhase.Transcribing,
+                            "Transcribing on your device. No raw audio is uploaded.");
+                });
+            if (cts.IsCancellationRequested ||
+                !ReferenceEquals(_whisperOnceCts, cts)) return;
+
+            UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                "Voice captured. You can speak again or keep typing.");
             if (string.IsNullOrWhiteSpace(text))
             {
-                _companion?.ShowReaction("Whisper didn't hear speech. Check the microphone.");
+                UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                    "No speech heard. Check the mic level in INPUTS.");
                 return;
             }
-            // The owner explicitly pressed Talk Once, so this transcription
-            // is an owner-directed prompt, not an ambient wake-word input.
             CancelVoiceOutput();
-            if (Settings.OpenChatForVoiceRequests || !Settings.SpeakReplies || _quietMode)
+            if (Settings.OpenChatForVoiceRequests ||
+                !Settings.SpeakReplies || _quietMode)
                 ShowChat();
-            else
-                EnsureChatWindow();
+            else EnsureChatWindow();
             _chat?.SubmitVoiceText(text);
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException)
+        {
+            if (ReferenceEquals(_whisperOnceCts, cts))
+                UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                    "Recording cancelled. Your microphone is closed.");
+        }
         catch (Exception ex)
         {
             if (!cts.IsCancellationRequested)
-                _companion?.ShowReaction("Local Whisper unavailable: " +
-                    ex.GetType().Name + ". Check INPUTS and your model.");
+            {
+                Diagnostics.Record("voice-device-error", ex);
+                UpdateVoiceCapture(VoiceCapturePhase.Error,
+                    FriendlyVoiceError(ex));
+                _companion?.ShowReaction(
+                    "Whisper couldn't record. Check INPUTS or use typing.");
+            }
         }
         finally
         {
             if (ReferenceEquals(_whisperOnceCts, cts))
                 _whisperOnceCts = null;
+            _chat?.SyncCapabilitySwitches();
         }
+    }
+
+    private void HandleSpeechCaptureFailure(string message)
+    {
+        if (Settings.ListenToMicrophone || VoiceCaptureUiState.IsActive(VoicePhase))
+        {
+            try { SetMicrophoneEnabled(false); }
+            catch (Exception ex) { Diagnostics.Record("voice-device-error", ex); }
+            _voiceRouter.DisarmOneShot();
+            _talkOnceTimeout.Stop();
+            _talkOnceRestoresOff = false;
+            UpdateVoiceCapture(VoiceCapturePhase.Error, message);
+            _companion?.ShowReaction("Speech input stopped. Check INPUTS or type instead.");
+        }
+    }
+
+    /// <summary>
+    /// Idempotent cancellation for Speak Now, usable from chat, hotkeys and
+    /// the floating companion. Does not disable an independently armed MIC ON.
+    /// </summary>
+    public void StopTalkOnce()
+    {
+        _whisperOnceCts?.Cancel();
+        _voiceRouter.DisarmOneShot();
+        _talkOnceTimeout.Stop();
+        if (_talkOnceRestoresOff)
+        {
+            try { SetMicrophoneEnabled(false); }
+            catch (Exception ex) { Diagnostics.Record("voice-device-error", ex); }
+        }
+        _talkOnceRestoresOff = false;
+        UpdateVoiceCapture(VoiceCapturePhase.Ready,
+            "Stopped. No one-shot recording is active.");
     }
 
     private void FinishTalkOnce()
@@ -380,12 +559,16 @@ public partial class App : System.Windows.Application
         _talkOnceTimeout.Stop();
         _voiceRouter.DisarmOneShot();
         if (_talkOnceRestoresOff)
-            SetMicrophoneEnabled(false);
+        {
+            try { SetMicrophoneEnabled(false); }
+            catch (Exception ex) { Diagnostics.Record("voice-device-error", ex); }
+        }
         _talkOnceRestoresOff = false;
-        _chat?.SyncCapabilitySwitches();
+        UpdateVoiceCapture(VoiceCapturePhase.Ready,
+            "Heard you. Preparing a reply…");
     }
 
-    public bool TalkOnceArmed => _voiceRouter.OneShotArmed;
+    public bool TalkOnceArmed => VoiceCaptureUiState.IsActive(VoicePhase);
 
     public void SetMicrophoneEnabled(bool enabled)
     {
