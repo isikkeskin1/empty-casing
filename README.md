@@ -22,6 +22,12 @@ Capri is a Windows 10/11 x64 **desktop companion**, with a floating animated cha
 
 See the [public-preview acceptance checklist](docs/PUBLIC_PREVIEW_ACCEPTANCE.md) and [feature matrix](docs/FEATURE_MATRIX.md) for exact capabilities and limits.
 
+## New: stable Speak Now voice console
+
+Mainframe's **VOICE LINK** panel now shows CONNECTING, LISTENING, TRANSCRIBING, MIC STANDBY or MIC NEEDS ATTENTION; it also provides a dedicated **STOP** button and direct **INPUTS** access. Windows Speech/NAudio callback failures are contained with inline recovery messages rather than a blocking dialog. **SPEAK NOW** only arms one request once the Windows recognizer and selected device are live; a second click cancels it. Whisper's optional six-second local recording displays a separate transcribing state.
+
+Voice input remains optional: **you can always type in Mainframe** when your microphone, Windows speech language or audio driver is unavailable. See [Speak Now diagnostics and device QA](docs/VOICE_INPUT_RECOVERY.md). Windows CI passing is not proof of compatibility with every real microphone driver.
+
 ## Get started (Windows x64)
 
 1. Open the **[official latest GitHub release](https://github.com/isikkeskin1/empty-casing/releases/latest)** and get `Capri-Setup.exe` (or the portable ZIP). Review `SHA256SUMS.txt` and the noncommercial art notices. The executable is currently unsigned, so only run the repository's official release assets.
