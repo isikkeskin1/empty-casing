@@ -17,7 +17,10 @@ internal sealed class BufferedMicrophoneStream : Stream
 
     public void Push(byte[] bytes, int count)
     {
-        if (_closed || count <= 0) return;
+        if (_closed || bytes is null || count <= 0) return;
+        // A buggy audio driver must never allocate an arbitrarily large
+        // buffer or throw on the native capture thread due to an invalid count.
+        if (count > bytes.Length || count > 128 * 1024) return;
         var copy = new byte[count];
         Buffer.BlockCopy(bytes, 0, copy, 0, count);
         try
