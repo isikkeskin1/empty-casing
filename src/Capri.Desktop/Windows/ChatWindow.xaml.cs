@@ -311,15 +311,31 @@ public partial class ChatWindow : Window
     }
     private void TalkOnce_Click(object sender, RoutedEventArgs e)
     {
-        // Never pop a blocking exception dialog or assume capture started:
-        // the app owns startup, cancellation and recovery.
-        App.Instance.StartTalkOnce();
-        RefreshVoiceCapturePanel();
-        if (App.Instance.VoicePhase == VoiceCapturePhase.Error)
-            UpdateStatus("MIC NEEDS ATTENTION", Colors.OrangeRed);
-        else if (VoiceCaptureUiState.IsActive(App.Instance.VoicePhase))
-            UpdateStatus("VOICE INPUT ACTIVE", Colors.LightSkyBlue);
-        else UpdateStatus("READY TO TYPE", Colors.LightGreen);
+        // Never pop a modal exception dialog or assume capture started.
+        try
+        {
+            App.Instance.StartTalkOnce();
+            RefreshVoiceCapturePanel();
+            if (App.Instance.VoicePhase == VoiceCapturePhase.Error)
+                UpdateStatus("MIC NEEDS ATTENTION", Colors.OrangeRed);
+            else if (VoiceCaptureUiState.IsActive(App.Instance.VoicePhase))
+                UpdateStatus("VOICE INPUT ACTIVE", Colors.LightSkyBlue);
+            else UpdateStatus("READY TO TYPE", Colors.LightGreen);
+        }
+        catch (Exception ex)
+        {
+            // A last-resort UI boundary: microphone/COM errors should not
+            // escape a WPF click handler and terminate the whole application.
+            App.Instance.Diagnostics.Record("voice-device-error", ex);
+            VoiceHelpText.Text = "Speak Now couldn't start (" +
+                ex.GetType().Name + "). Open INPUTS to test your mic, or type here.";
+            VoiceStatusText.Text = "MIC NEEDS ATTENTION";
+            VoiceStatusDot.Fill = new SolidColorBrush(Colors.OrangeRed);
+            CancelTalkButton.IsEnabled = false;
+            VoiceBusyIndicator.Visibility = Visibility.Collapsed;
+            TalkOnceButton.Content = "◉  SPEAK NOW";
+            UpdateStatus("MIC UNAVAILABLE", Colors.OrangeRed);
+        }
     }
 
     private void StopTalkOnce_Click(object sender, RoutedEventArgs e)
