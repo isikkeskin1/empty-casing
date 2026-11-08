@@ -586,6 +586,11 @@ public partial class App : System.Windows.Application
             _speech.StopListening();
             _voiceRouter.Reset();
             _talkOnceTimeout.Stop();
+            _talkOnceRestoresOff = false;
+            if (VoiceCaptureUiState.IsActive(VoicePhase) &&
+                _whisperOnceCts is null)
+                UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                    "Microphone closed. Click Speak Now to try again.");
             _chat?.SyncCapabilitySwitches();
             return;
         }
@@ -804,7 +809,7 @@ public partial class App : System.Windows.Application
 
     public void StopAllInputs()
     {
-        _whisperOnceCts?.Cancel();
+        StopTalkOnce();
         _ = SetDiscordPresenceEnabledAsync(false);
         _chaos?.Stop();
         StopCallCompanionMode();
