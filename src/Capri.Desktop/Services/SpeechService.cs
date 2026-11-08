@@ -138,7 +138,10 @@ public sealed class SpeechService : IDisposable
         }
         catch
         {
-            StopListening();
+            // Never let a second native teardown exception obscure the
+            // original microphone/recognizer setup failure.
+            try { StopListening(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { }
             throw;
         }
     }
@@ -165,10 +168,9 @@ public sealed class SpeechService : IDisposable
         var capture = _capture;
         _capture = null;
         try { capture?.StopRecording(); }
-        catch (Exception ex) when (ex is InvalidOperationException or
-            COMException or System.ComponentModel.Win32Exception) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         try { capture?.Dispose(); }
-        catch (ObjectDisposedException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
 
         var stream = _pcmStream;
         _pcmStream = null;
@@ -177,12 +179,11 @@ public sealed class SpeechService : IDisposable
         var recognizer = _recognizer;
         _recognizer = null;
         try { recognizer?.RecognizeAsyncCancel(); }
-        catch (Exception ex) when (ex is InvalidOperationException or
-            ObjectDisposedException or COMException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         try { recognizer?.Dispose(); }
-        catch (Exception ex) when (ex is ObjectDisposedException or COMException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         try { stream?.Dispose(); }
-        catch (ObjectDisposedException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
     }
 
     public static string[] AvailableVoices()
@@ -213,7 +214,11 @@ public sealed class SpeechService : IDisposable
             // Never mark the new playback as idle from that cancellation.
             if (args.Cancelled) return;
             _speaking = false;
-            if (!_disposed) SpeechFinished?.Invoke();
+            if (!_disposed)
+            {
+                try { SpeechFinished?.Invoke(); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }
+            }
         };
         return speaker;
     }
@@ -221,7 +226,8 @@ public sealed class SpeechService : IDisposable
     public void StopSpeaking()
     {
         _speaking = false;
-        _speaker?.SpeakAsyncCancelAll();
+        try { _speaker?.SpeakAsyncCancelAll(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
     }
 
     public void Dispose()
@@ -229,6 +235,7 @@ public sealed class SpeechService : IDisposable
         if (_disposed) return;
         _disposed = true;
         StopListening();
-        _speaker?.Dispose();
+        try { _speaker?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
     }
 }
