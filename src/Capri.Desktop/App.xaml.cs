@@ -2084,16 +2084,46 @@ public partial class App : System.Windows.Application
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
         if (Settings.ListenToMicrophone) SetMicrophoneEnabled(false);
-        var listener = new CallLoopbackListeningService(
-            recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
+        CallLoopbackListeningService? startingListener = null;
+        startingListener = new CallLoopbackListeningService(
+            recognized =>
+            {
+                try
+                {
+                    if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                        return;
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        // A queued phrase from a disconnected OLD call cannot
+                        // enter a fresh call session and trigger a new reply.
+                        if (ReferenceEquals(_callListener, startingListener) &&
+                            startingListener?.IsListening == true)
+                            _ = ReceiveCallUtteranceAsync(recognized);
+                    });
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    TaskCanceledException) { }
+            },
             () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
                   _speech?.IsSpeaking == true);
-        listener.CaptureStopped += () => Dispatcher.BeginInvoke(() =>
+        var listener = startingListener;
+        listener.CaptureStopped += () =>
         {
-            if (!ReferenceEquals(_callListener, listener)) return;
-            StopCallCompanionMode();
-            _callWindow?.SetStatus("Call output disappeared. Incoming capture and mic bridge stopped.");
-        });
+            try
+            {
+                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                    return;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!ReferenceEquals(_callListener, listener)) return;
+                    StopCallCompanionMode();
+                    _callWindow?.SetStatus(
+                        "Call output disconnected. Incoming capture and mic bridge stopped.");
+                });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { }
+        };
         CallMicrophoneBridge? bridge = null;
         try
         {
@@ -2105,6 +2135,24 @@ public partial class App : System.Windows.Application
                 // endpoint as Fish Audio, which Windows mixes for Discord's
                 // virtual recording device. Do not change Discord settings.
                 bridge = new CallMicrophoneBridge();
+                var monitoredBridge = bridge;
+                bridge.BridgeStopped += () =>
+                {
+                    try
+                    {
+                        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                            return;
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            if (!ReferenceEquals(_callMicBridge, monitoredBridge)) return;
+                            StopCallCompanionMode();
+                            _callWindow?.SetStatus(
+                                "Real microphone or virtual cable disconnected. Call Mode stopped.");
+                        });
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or
+                        TaskCanceledException) { }
+                };
                 bridge.Start(Settings.MicrophoneDeviceIndex, virtualSpeakerIndex);
             }
             if (!listener.IsListening)
