@@ -871,6 +871,9 @@ public partial class App : System.Windows.Application
 
     public string ApplyInputSettings(InputShortcuts bindings, int microphone, int speaker)
     {
+        if (VoiceCaptureUiState.IsActive(VoicePhase) || _whisperOnceCts is not null)
+            throw new InvalidOperationException(
+                "Finish or stop Speak Now before switching audio devices or shortcuts.");
         if (CallCompanionActive)
             throw new InvalidOperationException(
                 "End Call Mode before changing microphone or speaker devices.");
@@ -2047,6 +2050,8 @@ public partial class App : System.Windows.Application
             return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
         if (CallCompanionActive)
             return "Call Mode is already running.";
+        if (VoiceCaptureUiState.IsActive(VoicePhase) || _whisperOnceCts is not null)
+            return "Stop Speak Now and let its microphone close before entering Call Mode.";
         if (_quietMode)
             return "Turn off Quiet Mode before starting a call: Capri's voice is intentionally silenced.";
         var virtualSpeakerIndex = CallVirtualSpeakerIndex;
