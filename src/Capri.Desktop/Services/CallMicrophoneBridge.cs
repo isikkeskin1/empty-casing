@@ -14,7 +14,18 @@ public sealed class CallMicrophoneBridge : IDisposable
     private WaveOutEvent? _cableOutput;
     private BufferedWaveProvider? _buffer;
     private bool _disposed;
-    public bool Active => _capture is not null && _cableOutput is not null;
+    private volatile bool _active;
+    public bool Active => _active && _capture is not null && _cableOutput is not null;
+    /// <summary>Raised if the mic/cable unexpectedly stops. The owner must rearm.</summary>
+    public event Action? BridgeStopped;
+
+    private void UnexpectedStop()
+    {
+        if (!_active) return;
+        _active = false;
+        try { BridgeStopped?.Invoke(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+    }
 
     public void Start(int microphoneIndex, int virtualSpeakerIndex)
     {
@@ -46,9 +57,17 @@ public sealed class CallMicrophoneBridge : IDisposable
             _capture = AudioInputDevices.CreateCapture(microphoneIndex);
             _capture.DataAvailable += (_, args) =>
             {
+                if (!_active) return;
                 try { _buffer?.AddSamples(args.Buffer, 0, args.BytesRecorded); }
-                catch (InvalidOperationException) { }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    ArgumentException)
+                {
+                    UnexpectedStop();
+                }
             };
+            _capture.RecordingStopped += (_, _) => UnexpectedStop();
+            _cableOutput.PlaybackStopped += (_, _) => UnexpectedStop();
+            _active = true;
             _cableOutput.Play();
             _capture.StartRecording();
         }
@@ -61,17 +80,20 @@ public sealed class CallMicrophoneBridge : IDisposable
 
     public void Stop()
     {
+        _active = false;
         var capture = _capture;
         _capture = null;
         try { capture?.StopRecording(); }
-        catch (InvalidOperationException) { }
-        capture?.Dispose();
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { capture?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
 
         var output = _cableOutput;
         _cableOutput = null;
         try { output?.Stop(); }
-        catch (InvalidOperationException) { }
-        output?.Dispose();
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { output?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         _buffer = null;
     }
 
