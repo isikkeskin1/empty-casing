@@ -27,12 +27,17 @@ internal sealed class BufferedMicrophoneStream : Stream
             _queue.TryAdd(copy);
         }
         catch (InvalidOperationException) { } // Recording stopped while the callback was running.
+        catch (ObjectDisposedException) { } // SAPI/capture raced with an explicit STOP.
     }
 
     public void Complete()
     {
         _closed = true;
-        if (!_queue.IsAddingCompleted) _queue.CompleteAdding();
+        try
+        {
+            if (!_queue.IsAddingCompleted) _queue.CompleteAdding();
+        }
+        catch (ObjectDisposedException) { } // A second STOP/callback may arrive after teardown.
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -56,6 +61,7 @@ internal sealed class BufferedMicrophoneStream : Stream
             return copied;
         }
         catch (InvalidOperationException) { return 0; }
+        catch (ObjectDisposedException) { return 0; } // Normal when STOP closes a SAPI read.
     }
 
     public override bool CanRead => !_closed;
@@ -79,7 +85,13 @@ internal sealed class BufferedMicrophoneStream : Stream
     protected override void Dispose(bool disposing)
     {
         Complete();
-        if (disposing) _queue.Dispose();
+        if (disposing)
+        {
+            // A COM recognition worker may still be blocked in Read during
+            // StopListening. Complete wakes it; disposing the collection is
+            // safe now because concurrent readers tolerate disposal.
+            _queue.Dispose();
+        }
         base.Dispose(disposing);
     }
 }
