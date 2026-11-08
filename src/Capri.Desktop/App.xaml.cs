@@ -404,6 +404,14 @@ public partial class App : System.Windows.Application
 
         if (Settings.SpeechRecognitionMode == "whisper")
         {
+            // Stop and immediately re-clicking must never open two capture
+            // handles while Windows is still closing the previous device.
+            if (_whisperOnceCts is not null)
+            {
+                UpdateVoiceCapture(VoiceCapturePhase.Ready,
+                    "Previous microphone session is closing. Try again after it stops.");
+                return;
+            }
             if (!LocalWhisperTranscriber.ModelInstalled)
             {
                 UpdateVoiceCapture(VoiceCapturePhase.Error,
