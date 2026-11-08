@@ -154,6 +154,7 @@ public static class LocalWhisperTranscriber
         var gate = new object();
         var recording = true;
         var capturing = 0;
+        var signal = new VoiceSignalGate();
         var unexpectedStop = new TaskCompletionSource<Exception?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using (var writer = new WaveFileWriter(buffer, new WaveFormat(16000, 16, 1)))
@@ -166,6 +167,7 @@ public static class LocalWhisperTranscriber
                     if (!recording || cancellationToken.IsCancellationRequested) return;
                     try
                     {
+                        signal.ObservePcm16(args.Buffer, args.BytesRecorded);
                         writer.Write(args.Buffer, 0, args.BytesRecorded);
                     }
                     catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -203,11 +205,15 @@ public static class LocalWhisperTranscriber
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        // Do not allow a silent or all-zero 6-second clip to generate an
+        // imaginary Whisper phrase and submit it as the owner's command.
+        // This is an amplitude preflight, not a speech classifier.
+        if (!signal.HasAudibleInput) return string.Empty;
         onTranscribing?.Invoke();
         cancellationToken.ThrowIfCancellationRequested();
         var bytes = buffer.ToArray();
         if (bytes.Length < 16000)
-            throw new InvalidOperationException("Not enough microphone audio captured.");
+            return string.Empty; // Clean, quiet input is not a fatal error.
 
         return await Task.Run(async () =>
         {
