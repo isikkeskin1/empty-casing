@@ -72,6 +72,18 @@ try
     Check(!VerifiedLocalModelPolicy.IsVerified(
               sampleModelPath, sampleModel.LongLength, sampleSha),
         "same-size Whisper model corruption is rejected before native model loading");
+    Check(VoiceCaptureUiState.ButtonLabel(VoiceCapturePhase.Ready) == "◉  SPEAK NOW" &&
+          VoiceCaptureUiState.ButtonLabel(VoiceCapturePhase.Starting).Contains("STOP") &&
+          VoiceCaptureUiState.StatusLabel(VoiceCapturePhase.Listening) == "LISTENING" &&
+          VoiceCaptureUiState.StatusLabel(VoiceCapturePhase.Transcribing) == "TRANSCRIBING" &&
+          VoiceCaptureUiState.StatusLabel(VoiceCapturePhase.Error) == "MIC NEEDS ATTENTION" &&
+          VoiceCaptureUiState.IsActive(VoiceCapturePhase.Starting) &&
+          VoiceCaptureUiState.IsActive(VoiceCapturePhase.Listening) &&
+          VoiceCaptureUiState.IsActive(VoiceCapturePhase.Transcribing) &&
+          !VoiceCaptureUiState.IsActive(VoiceCapturePhase.Ready) &&
+          !VoiceCaptureUiState.IsActive(VoiceCapturePhase.Error),
+        "Speak Now UI exposes cancellable recording states without false listening indication");
+
     Check(ChaosModePolicy.AiCloneCount("make 3 AI clones") == 3 &&
           ChaosModePolicy.AiCloneCount("make talking clones") == 3 &&
           ChaosModePolicy.AiCloneCount("capri, make 5 talking clones") == 5 &&

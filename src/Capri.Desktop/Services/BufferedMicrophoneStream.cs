@@ -26,13 +26,17 @@ internal sealed class BufferedMicrophoneStream : Stream
             _queue.TryTake(out _);
             _queue.TryAdd(copy);
         }
-        catch (InvalidOperationException) { } // Recording stopped while the callback was running.
+        catch (InvalidOperationException) { } // Includes disposed collection on STOP race.
     }
 
     public void Complete()
     {
         _closed = true;
-        if (!_queue.IsAddingCompleted) _queue.CompleteAdding();
+        try
+        {
+            if (!_queue.IsAddingCompleted) _queue.CompleteAdding();
+        }
+        catch (ObjectDisposedException) { } // A second STOP/callback may arrive after teardown.
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -55,7 +59,7 @@ internal sealed class BufferedMicrophoneStream : Stream
             Interlocked.Add(ref _readPosition, copied);
             return copied;
         }
-        catch (InvalidOperationException) { return 0; }
+        catch (InvalidOperationException) { return 0; } // Includes disposed queue.
     }
 
     public override bool CanRead => !_closed;
@@ -79,7 +83,13 @@ internal sealed class BufferedMicrophoneStream : Stream
     protected override void Dispose(bool disposing)
     {
         Complete();
-        if (disposing) _queue.Dispose();
+        if (disposing)
+        {
+            // A COM recognition worker may still be blocked in Read during
+            // StopListening. Complete wakes it; disposing the collection is
+            // safe now because concurrent readers tolerate disposal.
+            _queue.Dispose();
+        }
         base.Dispose(disposing);
     }
 }

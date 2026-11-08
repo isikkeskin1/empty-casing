@@ -311,17 +311,71 @@ public partial class ChatWindow : Window
     }
     private void TalkOnce_Click(object sender, RoutedEventArgs e)
     {
+        // Never pop a modal exception dialog or assume capture started.
         try
         {
             App.Instance.StartTalkOnce();
-            UpdateStatus("LISTENING ONCE", Colors.LightGreen);
+            RefreshVoiceCapturePanel();
+            if (App.Instance.VoicePhase == VoiceCapturePhase.Error)
+                UpdateStatus("MIC NEEDS ATTENTION", Colors.OrangeRed);
+            else if (VoiceCaptureUiState.IsActive(App.Instance.VoicePhase))
+                UpdateStatus("VOICE INPUT ACTIVE", Colors.LightSkyBlue);
+            else UpdateStatus("READY TO TYPE", Colors.LightGreen);
         }
         catch (Exception ex)
         {
+            // A last-resort UI boundary: microphone/COM errors should not
+            // escape a WPF click handler and terminate the whole application.
+            App.Instance.Diagnostics.Record("voice-device-error", ex);
+            VoiceHelpText.Text = "Speak Now couldn't start (" +
+                ex.GetType().Name + "). Open INPUTS to test your mic, or type here.";
+            VoiceStatusText.Text = "MIC NEEDS ATTENTION";
+            VoiceStatusDot.Fill = new SolidColorBrush(Colors.OrangeRed);
+            CancelTalkButton.IsEnabled = false;
+            VoiceBusyIndicator.Visibility = Visibility.Collapsed;
+            TalkOnceButton.Content = "◉  SPEAK NOW";
             UpdateStatus("MIC UNAVAILABLE", Colors.OrangeRed);
-            System.Windows.MessageBox.Show(ex.Message, "Talk Once", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
+
+    private void StopTalkOnce_Click(object sender, RoutedEventArgs e)
+    {
+        App.Instance.StopTalkOnce();
+        RefreshVoiceCapturePanel();
+        UpdateStatus("VOICE CAPTURE STOPPED", Colors.LightSkyBlue);
+    }
+
+    private void VoiceSettings_Click(object sender, RoutedEventArgs e) =>
+        App.Instance.OpenInputSettings();
+
+    private void RefreshVoiceCapturePanel()
+    {
+        var phase = App.Instance.VoicePhase;
+        var active = VoiceCaptureUiState.IsActive(phase);
+        TalkOnceButton.Content = VoiceCaptureUiState.ButtonLabel(phase);
+        TalkOnceButton.ToolTip = active
+            ? "Click to stop the current recording."
+            : "Record one request without a wake word. You can cancel anytime.";
+        CancelTalkButton.IsEnabled = active;
+        VoiceBusyIndicator.Visibility = active
+            ? Visibility.Visible : Visibility.Collapsed;
+        VoiceStatusText.Text = VoiceCaptureUiState.StatusLabel(phase);
+        var color = phase switch
+        {
+            VoiceCapturePhase.Error => Colors.OrangeRed,
+            VoiceCapturePhase.Listening => Colors.LightGreen,
+            VoiceCapturePhase.Transcribing => Colors.LightSkyBlue,
+            VoiceCapturePhase.Starting => Colors.Plum,
+            _ => Colors.Turquoise
+        };
+        VoiceStatusDot.Fill = new SolidColorBrush(color);
+        VoiceStatusText.Foreground = new SolidColorBrush(color);
+        VoiceHelpText.Text = string.IsNullOrWhiteSpace(App.Instance.VoiceCaptureMessage)
+            ? VoiceCaptureUiState.ShortHelp(
+                phase, App.Instance.Settings.SpeechRecognitionMode == "whisper")
+            : App.Instance.VoiceCaptureMessage;
+    }
+
     private void StopVoice_Click(object sender, RoutedEventArgs e) => App.Instance.StopVoiceOutput();
     public void FocusPrompt()
     {
@@ -339,7 +393,7 @@ public partial class ChatWindow : Window
         PresenceCheck.IsChecked = App.Instance.LivePresenceEnabled;
         MicCheck.IsChecked = App.Instance.Settings.ListenToMicrophone;
         MicCheck.Content = App.Instance.MicrophoneMuted ? "MIC MUTED" : "MIC ON";
-        TalkOnceButton.Content = App.Instance.TalkOnceArmed ? "●  Listening…" : "◉  Talk once";
+        RefreshVoiceCapturePanel();
         SpeakCheck.IsChecked = App.Instance.Settings.SpeakReplies;
         QuietCheck.IsChecked = App.Instance.QuietModeEnabled;
         HuskWatchCheck.IsChecked = App.Instance.CodeHusk.Enabled;
