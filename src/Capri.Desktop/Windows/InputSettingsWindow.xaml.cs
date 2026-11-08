@@ -249,6 +249,9 @@ public partial class InputSettingsWindow : Window
             // (shortcuts, output device, unplugged mic) failed validation.
             App.Instance.Settings.SpeechRecognitionMode = previousMode;
             App.Instance.Settings.SpeechRecognitionLanguage = previousLanguage;
+            try { App.Instance.Store.SaveSettings(App.Instance.Settings); }
+            catch (Exception recovery) when (recovery is IOException or
+                UnauthorizedAccessException) { }
             StatusText.Text = "Save failed: " + ex.Message;
         }
     }
