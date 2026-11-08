@@ -61,6 +61,17 @@ try
         "fresh microphone starts always get a unique session token");
     micSession.End();
 
+    var parallelStarts = new AudioCaptureSessionGate();
+    var startTasks = Enumerable.Range(0, 80)
+        .Select(_ => Task.Run(parallelStarts.Begin)).ToArray();
+    var uniqueTokens = await Task.WhenAll(startTasks);
+    Check(uniqueTokens.Distinct().Count() == 80 &&
+          uniqueTokens.Count(parallelStarts.IsCurrent) == 1,
+        "simultaneous audio starts issue unique IDs with exactly one active capture");
+    parallelStarts.End();
+    Check(uniqueTokens.All(t => !parallelStarts.IsCurrent(t)),
+        "STOP invalidates even racing microphone start requests");
+
     // Real worker threads can be blocked inside SAPI's PCM Read when STOP
     // releases a microphone. Completion must wake the blocked reader.
     using (var blockedMic = new BufferedMicrophoneStream())
