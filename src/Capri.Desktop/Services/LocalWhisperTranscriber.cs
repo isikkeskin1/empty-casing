@@ -146,11 +146,16 @@ public static class LocalWhisperTranscriber
         if (duration < TimeSpan.FromSeconds(2) || duration > TimeSpan.FromSeconds(7))
             throw new ArgumentOutOfRangeException(nameof(duration));
 
-        // WaveInEvent is 16-kHz mono, 16-bit from AudioInputDevices.CreateCapture.
-        // A WAV stream in RAM is accepted directly by Whisper.net.
+        // Audio is kept in a RAM-only WAV. A disconnected device should
+        // complete immediately, not leave the user on a fake 6-second timer.
+        // Stop/dispose are guarded against late WaveIn worker callbacks.
+        cancellationToken.ThrowIfCancellationRequested();
         using var buffer = new MemoryStream();
         var gate = new object();
         var recording = true;
+        var capturing = 0;
+        var unexpectedStop = new TaskCompletionSource<Exception?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         using (var writer = new WaveFileWriter(buffer, new WaveFormat(16000, 16, 1)))
         using (var capture = AudioInputDevices.CreateCapture(microphoneIndex))
         {
@@ -158,17 +163,41 @@ public static class LocalWhisperTranscriber
             {
                 lock (gate)
                 {
-                    if (recording)
+                    if (!recording || cancellationToken.IsCancellationRequested) return;
+                    try
+                    {
                         writer.Write(args.Buffer, 0, args.BytesRecorded);
+                    }
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        recording = false;
+                        unexpectedStop.TrySetResult(ex);
+                    }
                 }
             };
-            capture.StartRecording();
-            try { await Task.Delay(duration, cancellationToken); }
+            capture.RecordingStopped += (_, args) =>
+            {
+                if (Volatile.Read(ref capturing) != 0)
+                    unexpectedStop.TrySetResult(args.Exception);
+            };
+            try
+            {
+                Volatile.Write(ref capturing, 1);
+                capture.StartRecording();
+                var delay = Task.Delay(duration, cancellationToken);
+                var finished = await Task.WhenAny(delay, unexpectedStop.Task);
+                if (finished == unexpectedStop.Task)
+                    throw new InvalidOperationException(
+                        "Microphone disconnected during recording. Reconnect it in INPUTS.",
+                        await unexpectedStop.Task);
+                await delay; // Cancellation takes precedence over transcription.
+            }
             finally
             {
                 lock (gate) recording = false;
+                Volatile.Write(ref capturing, 0);
                 try { capture.StopRecording(); }
-                catch (InvalidOperationException) { }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }
             }
             writer.Flush();
         }
