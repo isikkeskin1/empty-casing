@@ -25,6 +25,129 @@ try
             "SAPI microphone stream ends cleanly after capture stops");
     }
 
+    // Session IDs must be monotonic. A STOP invalidates not only pending
+    // audio callbacks, but already-queued WPF dispatcher deliveries too.
+    var micSession = new AudioCaptureSessionGate();
+    Check(!micSession.IsCurrent(0) && !micSession.IsCurrent(-1),
+        "no speech callback accepted before microphone is started");
+    var firstMicSession = micSession.Begin();
+    Check(micSession.IsCurrent(firstMicSession), "first microphone session accepted");
+    micSession.End();
+    Check(!micSession.IsCurrent(firstMicSession),
+        "STOP invalidates all queued recognition for the former session");
+    var secondMicSession = micSession.Begin();
+    Check(secondMicSession != firstMicSession &&
+          micSession.IsCurrent(secondMicSession) &&
+          !micSession.IsCurrent(firstMicSession),
+        "rapid STOP/START cannot replay old speech into the new session");
+    var invalidCount = 0;
+    var burst = Enumerable.Range(0, 800).Select(i => Task.Run(() =>
+    {
+        if (micSession.IsCurrent(firstMicSession))
+            Interlocked.Increment(ref invalidCount);
+    })).ToArray();
+    await Task.WhenAll(burst);
+    Check(invalidCount == 0 && micSession.IsCurrent(secondMicSession),
+        "800 asynchronous stale callbacks cannot escape session gating");
+    micSession.End();
+    micSession.End(); // idempotent repeated STOP
+    Check(!micSession.IsCurrent(secondMicSession) &&
+          !micSession.IsCurrent(firstMicSession),
+        "repeated STOP keeps audio callbacks invalidated");
+    var thirdMicSession = micSession.Begin();
+    Check(thirdMicSession != firstMicSession &&
+          thirdMicSession != secondMicSession &&
+          micSession.IsCurrent(thirdMicSession),
+        "fresh microphone starts always get a unique session token");
+    micSession.End();
+
+    var parallelStarts = new AudioCaptureSessionGate();
+    var startTasks = Enumerable.Range(0, 80)
+        .Select(_ => Task.Run(parallelStarts.Begin)).ToArray();
+    var uniqueTokens = await Task.WhenAll(startTasks);
+    Check(uniqueTokens.Distinct().Count() == 80 &&
+          uniqueTokens.Count(parallelStarts.IsCurrent) == 1,
+        "simultaneous audio starts issue unique IDs with exactly one active capture");
+    parallelStarts.End();
+    Check(uniqueTokens.All(t => !parallelStarts.IsCurrent(t)),
+        "STOP invalidates even racing microphone start requests");
+
+    // Real worker threads can be blocked inside SAPI's PCM Read when STOP
+    // releases a microphone. Completion must wake the blocked reader.
+    using (var blockedMic = new BufferedMicrophoneStream())
+    {
+        var started = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var blockedReader = Task.Run(() =>
+        {
+            started.TrySetResult(true);
+            return blockedMic.Read(new byte[2], 0, 2);
+        });
+        await started.Task;
+        blockedMic.Complete();
+        Check(await blockedReader.WaitAsync(TimeSpan.FromSeconds(3)) == 0,
+            "STOP unblocks SAPI read without deadlock when there is no audio");
+        blockedMic.Push(new byte[2], 2);
+        Check(blockedMic.Read(new byte[2], 0, 2) == 0,
+            "late audio data is dropped after capture completes");
+    }
+
+    using (var noisyMic = new BufferedMicrophoneStream())
+    {
+        noisyMic.Push(new byte[4], -2);
+        noisyMic.Push(new byte[4], 128 * 1024 + 1);
+        noisyMic.Push(new byte[4], 5); // a bad driver byte count
+        noisyMic.Push(new byte[4], 4);
+        var output = new byte[4];
+        Check(noisyMic.Read(output, 0, 4) == 4 &&
+              noisyMic.Position == 4,
+            "invalid NAudio buffer sizes cannot corrupt subsequent valid PCM");
+        noisyMic.Complete();
+        Check(noisyMic.Read(output, 0, 4) == 0,
+            "PCM stream drains and then cleanly ends after STOP");
+    }
+
+    // Stress stop/dispose versus pending producers. Audio callbacks must not
+    // throw on worker threads after the owner closes the window.
+    for (var repeat = 0; repeat < 40; repeat++)
+    {
+        var racingMic = new BufferedMicrophoneStream();
+        var input = Enumerable.Range(0, 50).Select(i => Task.Run(() =>
+        {
+            racingMic.Push(new byte[640], 640);
+        })).ToArray();
+        racingMic.Complete();
+        await Task.WhenAll(input);
+        racingMic.Dispose();
+        racingMic.Push(new byte[640], 640);
+    }
+    Check(true, "40 Stop/Dispose rounds and 2,000 late mic callbacks survived");
+
+    // Model hallucinations on total silence must not become voice prompts.
+    var silence = new VoiceSignalGate();
+    silence.ObservePcm16(new byte[32000], 32000);
+    Check(!silence.HasAudibleInput,
+        "Whisper preflight rejects 1 second of complete digital silence");
+    var activity = new VoiceSignalGate();
+    var audiblePcm = new byte[6400]; // 200ms, 16kHz, signed PCM16.
+    for (var i = 0; i < audiblePcm.Length; i += 2)
+    {
+        audiblePcm[i] = 0xE8;
+        audiblePcm[i + 1] = 0x03; // 1000 / 32768 = 3.1% amplitude
+    }
+    activity.ObservePcm16(audiblePcm, 3200);
+    Check(!activity.HasAudibleInput,
+        "100ms of sound is insufficient to start Whisper transcription");
+    activity.ObservePcm16(audiblePcm, 3200);
+    Check(activity.HasAudibleInput,
+        "two audible 100ms speech-like chunks pass the local amplitude gate");
+    var malformedActivity = new VoiceSignalGate();
+    malformedActivity.ObservePcm16(new byte[8], -1);
+    malformedActivity.ObservePcm16(new byte[8], 9);
+    malformedActivity.ObservePcm16(new byte[8], 128 * 1024 + 1);
+    Check(!malformedActivity.HasAudibleInput,
+        "invalid driver frame lengths cannot create fake audible speech");
+
     var store = new LocalDataStore(directory);
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);

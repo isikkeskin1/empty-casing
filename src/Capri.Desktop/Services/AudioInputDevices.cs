@@ -34,9 +34,11 @@ public static class AudioInputDevices
 
     public static double PeakLevel(byte[] bytes, int count)
     {
-        if (bytes.Length == 0 || count < 2) return 0;
+        if (bytes is null || bytes.Length == 0 || count < 2) return 0;
         var peak = 0;
-        var size = Math.Min(count, bytes.Length) & ~1;
+        // An audio driver can occasionally report an invalid byte count.
+        // Ignore negative/excess data instead of throwing in its callback.
+        var size = Math.Clamp(count, 0, bytes.Length) & ~1;
         for (var n = 0; n < size; n += 2)
         {
             var sample = (short)(bytes[n] | bytes[n + 1] << 8);
@@ -51,25 +53,57 @@ public static class AudioInputDevices
     {
         if (!MicrophoneExists(index))
             throw new ArgumentOutOfRangeException(nameof(index), "Microphone is no longer available.");
+        ArgumentNullException.ThrowIfNull(report);
+        if (duration <= TimeSpan.Zero || duration > TimeSpan.FromSeconds(30))
+            throw new ArgumentOutOfRangeException(nameof(duration));
+        cancellationToken.ThrowIfCancellationRequested();
 
         var peak = 0.0;
+        var capturing = 0;
+        var stopped = new TaskCompletionSource<Exception?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         using var mic = CreateCapture(index);
         mic.DataAvailable += (_, e) =>
         {
-            var level = PeakLevel(e.Buffer, e.BytesRecorded);
-            peak = Math.Max(peak, level);
-            report(level);
+            if (Volatile.Read(ref capturing) == 0) return;
+            try
+            {
+                var level = PeakLevel(e.Buffer, e.BytesRecorded);
+                peak = Math.Max(peak, level);
+                report(level);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // UI may have closed while the hardware callback was queued.
+                // Never crash on an observer/reporting error.
+            }
         };
-        mic.StartRecording();
+        mic.RecordingStopped += (_, e) =>
+        {
+            if (Volatile.Read(ref capturing) != 0)
+                stopped.TrySetResult(e.Exception);
+        };
+
         try
         {
-            await Task.Delay(duration, cancellationToken);
+            Volatile.Write(ref capturing, 1);
+            mic.StartRecording();
+            var delay = Task.Delay(duration, cancellationToken);
+            var finished = await Task.WhenAny(delay, stopped.Task);
+            if (finished == stopped.Task)
+                throw new InvalidOperationException(
+                    "The microphone stopped unexpectedly. Reconnect it or select another input.",
+                    await stopped.Task);
+            await delay; // Propagate cancellation.
+            return peak;
         }
         finally
         {
-            mic.StopRecording();
+            Volatile.Write(ref capturing, 0);
+            try { mic.StopRecording(); }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                System.ComponentModel.Win32Exception) { }
         }
-        return peak;
     }
 
     public static WaveInEvent CreateCapture(int index)

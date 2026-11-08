@@ -64,7 +64,10 @@ public partial class App : System.Windows.Application
     private int? _speakerBeforeCall;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
-    public bool CallCompanionActive => _callListener?.IsListening == true;
+    // Safety gate stays true until both call resources are fully released,
+    // even if an audio device has already disconnected but cleanup is queued.
+    public bool CallCompanionActive =>
+        _callListener is not null || _callMicBridge is not null;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
@@ -228,22 +231,32 @@ public partial class App : System.Windows.Application
             SpeakerDeviceIndex = Settings.SpeakerDeviceIndex
         };
         Reminders = new ReminderScheduler(Store, NotifyReminder);
-        _speech = new SpeechService(text =>
+        _speech = new SpeechService((text, session) =>
         {
             try
             {
                 if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
-                    Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text));
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        // Old SAPI callback may have been queued before
+                        // STOP then delivered after a fresh microphone START.
+                        if (_speech?.IsSessionCurrent(session) == true)
+                            ReceiveRecognizedSpeech(text);
+                    });
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 TaskCanceledException) { }
         });
-        _speech.CaptureFailed += message =>
+        _speech.CaptureFailed += (message, session) =>
         {
             try
             {
                 if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
-                    Dispatcher.BeginInvoke(() => HandleSpeechCaptureFailure(message));
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        if (_speech?.IsSessionCurrent(session) == true)
+                            HandleSpeechCaptureFailure(message);
+                    });
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 TaskCanceledException) { }
@@ -861,6 +874,9 @@ public partial class App : System.Windows.Application
 
     public string ApplyInputSettings(InputShortcuts bindings, int microphone, int speaker)
     {
+        if (VoiceCaptureUiState.IsActive(VoicePhase) || _whisperOnceCts is not null)
+            throw new InvalidOperationException(
+                "Finish or stop Speak Now before switching audio devices or shortcuts.");
         if (CallCompanionActive)
             throw new InvalidOperationException(
                 "End Call Mode before changing microphone or speaker devices.");
@@ -2037,6 +2053,8 @@ public partial class App : System.Windows.Application
             return "Tell participants that Capri is an AI, get their permission, then check the consent box.";
         if (CallCompanionActive)
             return "Call Mode is already running.";
+        if (VoiceCaptureUiState.IsActive(VoicePhase) || _whisperOnceCts is not null)
+            return "Stop Speak Now and let its microphone close before entering Call Mode.";
         if (_quietMode)
             return "Turn off Quiet Mode before starting a call: Capri's voice is intentionally silenced.";
         var virtualSpeakerIndex = CallVirtualSpeakerIndex;
@@ -2069,16 +2087,46 @@ public partial class App : System.Windows.Application
         // One recognized source at a time: call playback and normal mic
         // cannot both authorize requests to the computer.
         if (Settings.ListenToMicrophone) SetMicrophoneEnabled(false);
-        var listener = new CallLoopbackListeningService(
-            recognized => Dispatcher.BeginInvoke(() => _ = ReceiveCallUtteranceAsync(recognized)),
+        CallLoopbackListeningService? startingListener = null;
+        startingListener = new CallLoopbackListeningService(
+            recognized =>
+            {
+                try
+                {
+                    if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                        return;
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        // A queued phrase from a disconnected OLD call cannot
+                        // enter a fresh call session and trigger a new reply.
+                        if (ReferenceEquals(_callListener, startingListener) &&
+                            startingListener?.IsListening == true)
+                            _ = ReceiveCallUtteranceAsync(recognized);
+                    });
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    TaskCanceledException) { }
+            },
             () => _callReplyBusy || _voicePlayback?.IsPlaying == true ||
                   _speech?.IsSpeaking == true);
-        listener.CaptureStopped += () => Dispatcher.BeginInvoke(() =>
+        var listener = startingListener;
+        listener.CaptureStopped += () =>
         {
-            if (!ReferenceEquals(_callListener, listener)) return;
-            StopCallCompanionMode();
-            _callWindow?.SetStatus("Call output disappeared. Incoming capture and mic bridge stopped.");
-        });
+            try
+            {
+                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                    return;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!ReferenceEquals(_callListener, listener)) return;
+                    StopCallCompanionMode();
+                    _callWindow?.SetStatus(
+                        "Call output disconnected. Incoming capture and mic bridge stopped.");
+                });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { }
+        };
         CallMicrophoneBridge? bridge = null;
         try
         {
@@ -2090,6 +2138,24 @@ public partial class App : System.Windows.Application
                 // endpoint as Fish Audio, which Windows mixes for Discord's
                 // virtual recording device. Do not change Discord settings.
                 bridge = new CallMicrophoneBridge();
+                var monitoredBridge = bridge;
+                bridge.BridgeStopped += () =>
+                {
+                    try
+                    {
+                        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                            return;
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            if (!ReferenceEquals(_callMicBridge, monitoredBridge)) return;
+                            StopCallCompanionMode();
+                            _callWindow?.SetStatus(
+                                "Real microphone or virtual cable disconnected. Call Mode stopped.");
+                        });
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or
+                        TaskCanceledException) { }
+                };
                 bridge.Start(Settings.MicrophoneDeviceIndex, virtualSpeakerIndex);
             }
             if (!listener.IsListening)
@@ -2130,7 +2196,8 @@ public partial class App : System.Windows.Application
 
     private async Task ReceiveCallUtteranceAsync(string recognized)
     {
-        if (!CallCompanionActive || _callReplyBusy ||
+        if (!CallCompanionActive || _callListener?.IsListening != true ||
+            _callReplyBusy ||
             !CallCompanionPolicy.TryExtractRequest(recognized, out var question))
             return;
 
@@ -2147,7 +2214,8 @@ public partial class App : System.Windows.Application
                 Text = CallCompanionPolicy.BuildReplyPrompt(question)
             };
             var reply = await Brain.ReplyAsync(new[] { turn }, token);
-            if (!CallCompanionActive || token.IsCancellationRequested) return;
+            if (!CallCompanionActive || _callListener?.IsListening != true ||
+                token.IsCancellationRequested) return;
             reply = reply.Trim();
             if (reply.Length == 0) return;
             if (reply.Length > 330) reply = reply[..330];
