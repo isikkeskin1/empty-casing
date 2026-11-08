@@ -26,7 +26,7 @@ See the [public-preview acceptance checklist](docs/PUBLIC_PREVIEW_ACCEPTANCE.md)
 
 Mainframe's **VOICE LINK** panel now shows CONNECTING, LISTENING, TRANSCRIBING, MIC STANDBY or MIC NEEDS ATTENTION; it also provides a dedicated **STOP** button and direct **INPUTS** access. Windows Speech/NAudio callback failures are contained with inline recovery messages rather than a blocking dialog. **SPEAK NOW** only arms one request once the Windows recognizer and selected device are live; a second click cancels it. Whisper's optional six-second local recording displays a separate transcribing state.
 
-Voice input remains optional: **you can always type in Mainframe** when your microphone, Windows speech language or audio driver is unavailable. See [Speak Now diagnostics and device QA](docs/VOICE_INPUT_RECOVERY.md). Windows CI passing is not proof of compatibility with every real microphone driver.
+Voice input remains optional: **you can always type in Mainframe** when your microphone, Windows speech language or audio driver is unavailable. See [Speak Now diagnostics and device QA](docs/VOICE_INPUT_RECOVERY.md) and the [voice edge-case test matrix](docs/VOICE_EDGE_CASE_TEST_MATRIX.md). Capri now rejects delayed audio from previous sessions after Stop/Start, handles unexpected microphone and virtual-cable disconnects, refuses competing capture modes and filters genuinely silent Whisper clips. Windows CI verifies concurrency/policy stress tests; real mic hotplug, native drivers and local Whisper accuracy still require physical QA.
 
 ## Get started (Windows x64)
 
