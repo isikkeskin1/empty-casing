@@ -346,7 +346,7 @@
                         <ColumnDefinition Width="Auto"/>
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0"
-                                 Text="VOICE OFF UNTIL ACTIVATED  ·  TYPE ANYTIME"
+                                 Text="SPEAK NOW IS OPT-IN  ·  YOU CAN ALWAYS TYPE"
                                  TextWrapping="Wrap" VerticalAlignment="Center"
                                  Foreground="#7FA1B0" FontFamily="Consolas" FontSize="9"/>
                       <Button Grid.Column="1" Content="◎  LOOK NOW"
