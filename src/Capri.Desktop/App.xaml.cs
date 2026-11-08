@@ -102,7 +102,7 @@ public partial class App : System.Windows.Application
 
     public VoiceCapturePhase VoicePhase { get; private set; } = VoiceCapturePhase.Ready;
     public string VoiceCaptureMessage { get; private set; } =
-        "Ready when you are. No microphone is recording.";
+        "Speak Now is idle. Continuous MIC ON is controlled separately.";
 
     private void UpdateVoiceCapture(VoiceCapturePhase phase, string message)
     {
@@ -567,7 +567,9 @@ public partial class App : System.Windows.Application
         }
         _talkOnceRestoresOff = false;
         UpdateVoiceCapture(VoiceCapturePhase.Ready,
-            "Stopped. No one-shot recording is active.");
+            Settings.ListenToMicrophone && !MicrophoneMuted
+                ? "One-shot stopped. Continuous MIC ON remains active until you turn it off."
+                : "Stopped. No one-shot recording is active.");
     }
 
     private void FinishTalkOnce()
@@ -581,7 +583,9 @@ public partial class App : System.Windows.Application
         }
         _talkOnceRestoresOff = false;
         UpdateVoiceCapture(VoiceCapturePhase.Ready,
-            "Heard you. Preparing a reply…");
+            Settings.ListenToMicrophone && !MicrophoneMuted
+                ? "Heard you. Continuous MIC ON is still active."
+                : "Heard you. Preparing a reply…");
     }
 
     public bool TalkOnceArmed => VoiceCaptureUiState.IsActive(VoicePhase);
