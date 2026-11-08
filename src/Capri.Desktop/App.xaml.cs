@@ -228,22 +228,32 @@ public partial class App : System.Windows.Application
             SpeakerDeviceIndex = Settings.SpeakerDeviceIndex
         };
         Reminders = new ReminderScheduler(Store, NotifyReminder);
-        _speech = new SpeechService(text =>
+        _speech = new SpeechService((text, session) =>
         {
             try
             {
                 if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
-                    Dispatcher.BeginInvoke(() => ReceiveRecognizedSpeech(text));
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        // Old SAPI callback may have been queued before
+                        // STOP then delivered after a fresh microphone START.
+                        if (_speech?.IsSessionCurrent(session) == true)
+                            ReceiveRecognizedSpeech(text);
+                    });
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 TaskCanceledException) { }
         });
-        _speech.CaptureFailed += message =>
+        _speech.CaptureFailed += (message, session) =>
         {
             try
             {
                 if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
-                    Dispatcher.BeginInvoke(() => HandleSpeechCaptureFailure(message));
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        if (_speech?.IsSessionCurrent(session) == true)
+                            HandleSpeechCaptureFailure(message);
+                    });
             }
             catch (Exception ex) when (ex is InvalidOperationException or
                 TaskCanceledException) { }
