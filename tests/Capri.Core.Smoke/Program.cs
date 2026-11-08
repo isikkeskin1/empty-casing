@@ -112,6 +112,31 @@ try
     }
     Check(true, "40 Stop/Dispose rounds and 2,000 late mic callbacks survived");
 
+    // Model hallucinations on total silence must not become voice prompts.
+    var silence = new VoiceSignalGate();
+    silence.ObservePcm16(new byte[32000], 32000);
+    Check(!silence.HasAudibleInput,
+        "Whisper preflight rejects 1 second of complete digital silence");
+    var activity = new VoiceSignalGate();
+    var audiblePcm = new byte[6400]; // 200ms, 16kHz, signed PCM16.
+    for (var i = 0; i < audiblePcm.Length; i += 2)
+    {
+        audiblePcm[i] = 0xE8;
+        audiblePcm[i + 1] = 0x03; // 1000 / 32768 = 3.1% amplitude
+    }
+    activity.ObservePcm16(audiblePcm, 3200);
+    Check(!activity.HasAudibleInput,
+        "100ms of sound is insufficient to start Whisper transcription");
+    activity.ObservePcm16(audiblePcm, 3200);
+    Check(activity.HasAudibleInput,
+        "two audible 100ms speech-like chunks pass the local amplitude gate");
+    var malformedActivity = new VoiceSignalGate();
+    malformedActivity.ObservePcm16(new byte[8], -1);
+    malformedActivity.ObservePcm16(new byte[8], 9);
+    malformedActivity.ObservePcm16(new byte[8], 128 * 1024 + 1);
+    Check(!malformedActivity.HasAudibleInput,
+        "invalid driver frame lengths cannot create fake audible speech");
+
     var store = new LocalDataStore(directory);
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
