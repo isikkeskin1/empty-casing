@@ -135,7 +135,8 @@ public static class LocalWhisperTranscriber
     }
 
     public static async Task<string> CaptureAndTranscribeAsync(
-        int microphoneIndex, TimeSpan duration, CancellationToken cancellationToken)
+        int microphoneIndex, TimeSpan duration, CancellationToken cancellationToken,
+        Action? onTranscribing = null)
     {
         if (!ModelInstalled)
             throw new InvalidOperationException(
@@ -172,6 +173,8 @@ public static class LocalWhisperTranscriber
             writer.Flush();
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        onTranscribing?.Invoke();
         cancellationToken.ThrowIfCancellationRequested();
         var bytes = buffer.ToArray();
         if (bytes.Length < 16000)
