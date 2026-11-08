@@ -3,6 +3,7 @@ using System.Speech.Recognition;
 using NAudio.Wave;
 using NAudio.CoreAudioApi;
 using NAudio.Wave.SampleProviders;
+using Capri.Core;
 
 namespace Capri.Desktop.Services;
 
@@ -25,6 +26,9 @@ public sealed class CallLoopbackListeningService : IDisposable
     private long _lastAudioAt;
     private volatile bool _active;
     private bool _disposed;
+    private readonly AudioCaptureSessionGate _sessions = new();
+
+    public bool IsSessionCurrent(long session) => _sessions.IsCurrent(session);
 
     public bool IsListening => _active;
     public event Action? CaptureStopped;
@@ -39,6 +43,7 @@ public sealed class CallLoopbackListeningService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_active) return;
+        Stop(); // Clear any partially failed prior session before rearming.
 
         var languages = SpeechRecognitionEngine.InstalledRecognizers();
         if (languages.Count == 0)
@@ -51,6 +56,7 @@ public sealed class CallLoopbackListeningService : IDisposable
         if (chosen is null)
             throw new InvalidOperationException("The chosen call recognition language is not installed on Windows.");
 
+        var session = _sessions.Begin();
         try
         {
             // The selected Windows speaker endpoint is used for call audio.
@@ -94,14 +100,27 @@ public sealed class CallLoopbackListeningService : IDisposable
                     16000, AudioBitsPerSample.Sixteen, AudioChannel.Mono));
             _recognizer.SpeechRecognized += (_, e) =>
             {
-                if (_active && !_capriIsSpeaking() && e.Result.Confidence >= 0.75 &&
-                    !string.IsNullOrWhiteSpace(e.Result.Text))
-                    _heard(e.Result.Text);
+                if (!_active || !_sessions.IsCurrent(session) ||
+                    _capriIsSpeaking() || e.Result.Confidence < 0.75 ||
+                    string.IsNullOrWhiteSpace(e.Result.Text))
+                    return;
+                try
+                {
+                    if (_sessions.IsCurrent(session))
+                        _heard(e.Result.Text);
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    NotifyUnexpectedStop(session);
+                }
             };
+            _recognizer.RecognizeCompleted += (_, _) =>
+                NotifyUnexpectedStop(session);
 
             _capture.DataAvailable += (_, args) =>
             {
-                if (!_active || _capriIsSpeaking()) return;
+                if (!_active || !_sessions.IsCurrent(session) ||
+                    _capriIsSpeaking()) return;
                 var buffer = _buffered;
                 var pcm = _pcm;
                 var stream = _stream;
@@ -119,16 +138,13 @@ public sealed class CallLoopbackListeningService : IDisposable
                     Interlocked.Exchange(ref _lastAudioAt, Environment.TickCount64);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or
-                    ObjectDisposedException or ArgumentException) { }
+                    ArgumentException or System.Runtime.InteropServices.COMException)
+                {
+                    NotifyUnexpectedStop(session);
+                }
             };
             _capture.RecordingStopped += (_, _) =>
-            {
-                // The session controls the lifetime; do not silently restart a
-                // closed or disconnected output device.
-                var wasActive = _active;
-                _active = false;
-                if (wasActive) CaptureStopped?.Invoke();
-            };
+                NotifyUnexpectedStop(session);
 
             _active = true;
             Interlocked.Exchange(ref _lastAudioAt, Environment.TickCount64);
@@ -139,11 +155,12 @@ public sealed class CallLoopbackListeningService : IDisposable
             // Locally synthesize zero samples so dictation can finish phrases.
             _silencePump = new System.Threading.Timer(_ =>
             {
-                if (!_active) return;
+                if (!_active || !_sessions.IsCurrent(session)) return;
                 if (Environment.TickCount64 -
                     Interlocked.Read(ref _lastAudioAt) < 160) return;
                 try { _stream?.Push(new byte[3200], 3200); }
-                catch (ObjectDisposedException) { }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    ArgumentException) { }
             }, null, 100, 100);
         }
         catch
@@ -153,26 +170,39 @@ public sealed class CallLoopbackListeningService : IDisposable
         }
     }
 
+    private void NotifyUnexpectedStop(long session)
+    {
+        if (!_active || !_sessions.IsCurrent(session)) return;
+        _active = false;
+        try { CaptureStopped?.Invoke(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+    }
+
     public void Stop()
     {
+        _sessions.End();
         _active = false;
         _silencePump?.Dispose();
         _silencePump = null;
         var capture = _capture;
         _capture = null;
         try { capture?.StopRecording(); }
-        catch (InvalidOperationException) { }
-        capture?.Dispose();
-        _selectedDevice?.Dispose();
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { capture?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { _selectedDevice?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         _selectedDevice = null;
 
         _stream?.Complete();
         var recognizer = _recognizer;
         _recognizer = null;
         try { recognizer?.RecognizeAsyncCancel(); }
-        catch (InvalidOperationException) { }
-        recognizer?.Dispose();
-        _stream?.Dispose();
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { recognizer?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        try { _stream?.Dispose(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
         _stream = null;
         _pcm = null;
         _buffered = null;
