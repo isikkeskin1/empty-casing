@@ -117,7 +117,7 @@ public partial class App : System.Windows.Application
             "Windows microphone permission is off. Enable it under Privacy & security → Microphone.",
         System.Runtime.InteropServices.COMException =>
             "The Windows speech engine did not start. Try Windows recognition language setup.",
-        NAudio.Wave.MmException =>
+        System.ComponentModel.Win32Exception =>
             "Windows could not open that microphone. Select another device in INPUTS.",
         InvalidOperationException when
             ex.Message.Contains("language", StringComparison.OrdinalIgnoreCase) ||
