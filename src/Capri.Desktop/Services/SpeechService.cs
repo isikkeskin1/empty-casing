@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Speech.AudioFormat;
 using System.Speech.Recognition;
 using System.Speech.Synthesis;
@@ -21,6 +22,11 @@ public sealed class SpeechService : IDisposable
     private bool _disposed;
 
     public event Action? SpeechFinished;
+    /// <summary>
+    /// Raised for unexpected device/recognizer errors, not normal Stop/Cancel.
+    /// Listeners must marshal this callback to the WPF dispatcher.
+    /// </summary>
+    public event Action<string>? CaptureFailed;
     public bool IsListening => _listening;
     public bool IsSpeaking => _speaking;
 
@@ -67,10 +73,26 @@ public sealed class SpeechService : IDisposable
             }
             _recognizer.SpeechRecognized += (_, args) =>
             {
-                if (_listening && args.Result.Confidence >= 0.68 &&
-                    !string.IsNullOrWhiteSpace(args.Result.Text) &&
-                    (!_speaking || Capri.Core.VoiceTurnRouter.IsInterruptPhrase(args.Result.Text)))
-                    _heard(args.Result.Text);
+                if (!_listening || args.Result.Confidence < 0.68 ||
+                    string.IsNullOrWhiteSpace(args.Result.Text) ||
+                    (_speaking && !Capri.Core.VoiceTurnRouter.IsInterruptPhrase(args.Result.Text)))
+                    return;
+                // System.Speech invokes callbacks on an audio worker thread.
+                // A closed WPF Dispatcher or cancelled session must never
+                // terminate the entire desktop app from this callback.
+                try { _heard(args.Result.Text); }
+                catch (Exception ex) when (ex is InvalidOperationException or
+                    ObjectDisposedException or System.Threading.Tasks.TaskCanceledException)
+                {
+                    RaiseCaptureFailed("Voice UI is unavailable. Open Capri again.");
+                }
+            };
+            _recognizer.RecognizeCompleted += (_, args) =>
+            {
+                if (!_listening) return; // Normal cancellation during STOP.
+                RaiseCaptureFailed(args.Error is not null
+                    ? "Windows speech recognition stopped unexpectedly. Check INPUTS."
+                    : "The speech recognizer ended the session. Try Speak Now again.");
             };
 
             if (deviceIndex != -1)
@@ -78,7 +100,20 @@ public sealed class SpeechService : IDisposable
                 _capture = AudioInputDevices.CreateCapture(deviceIndex);
                 _capture.DataAvailable += (_, args) =>
                 {
-                    if (_listening) _pcmStream?.Push(args.Buffer, args.BytesRecorded);
+                    try
+                    {
+                        if (_listening) _pcmStream?.Push(args.Buffer, args.BytesRecorded);
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or
+                        ObjectDisposedException)
+                    {
+                        // Late audio callback during StopListening: safe to drop.
+                    }
+                };
+                _capture.RecordingStopped += (_, args) =>
+                {
+                    if (_listening && args.Exception is not null)
+                        RaiseCaptureFailed("The microphone disconnected or Windows stopped capture.");
                 };
             }
 
@@ -93,14 +128,25 @@ public sealed class SpeechService : IDisposable
         }
     }
 
+    private void RaiseCaptureFailed(string message)
+    {
+        if (!_listening || _disposed) return;
+        _listening = false;
+        try { CaptureFailed?.Invoke(message); }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            ObjectDisposedException or TaskCanceledException) { }
+    }
+
     public void StopListening()
     {
         _listening = false;
         var capture = _capture;
         _capture = null;
         try { capture?.StopRecording(); }
-        catch (InvalidOperationException) { }
-        capture?.Dispose();
+        catch (Exception ex) when (ex is InvalidOperationException or
+            ObjectDisposedException or MmException) { }
+        try { capture?.Dispose(); }
+        catch (ObjectDisposedException) { }
 
         var stream = _pcmStream;
         _pcmStream = null;
@@ -109,9 +155,12 @@ public sealed class SpeechService : IDisposable
         var recognizer = _recognizer;
         _recognizer = null;
         try { recognizer?.RecognizeAsyncCancel(); }
-        catch (InvalidOperationException) { }
-        recognizer?.Dispose();
-        stream?.Dispose();
+        catch (Exception ex) when (ex is InvalidOperationException or
+            ObjectDisposedException or COMException) { }
+        try { recognizer?.Dispose(); }
+        catch (Exception ex) when (ex is ObjectDisposedException or COMException) { }
+        try { stream?.Dispose(); }
+        catch (ObjectDisposedException) { }
     }
 
     public static string[] AvailableVoices()
