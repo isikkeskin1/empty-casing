@@ -64,7 +64,10 @@ public partial class App : System.Windows.Application
     private int? _speakerBeforeCall;
     private CancellationTokenSource? _callReplyCts;
     private bool _callReplyBusy;
-    public bool CallCompanionActive => _callListener?.IsListening == true;
+    // Safety gate stays true until both call resources are fully released,
+    // even if an audio device has already disconnected but cleanup is queued.
+    public bool CallCompanionActive =>
+        _callListener is not null || _callMicBridge is not null;
     private System.Windows.Forms.NotifyIcon? _tray;
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
@@ -2193,7 +2196,8 @@ public partial class App : System.Windows.Application
 
     private async Task ReceiveCallUtteranceAsync(string recognized)
     {
-        if (!CallCompanionActive || _callReplyBusy ||
+        if (!CallCompanionActive || _callListener?.IsListening != true ||
+            _callReplyBusy ||
             !CallCompanionPolicy.TryExtractRequest(recognized, out var question))
             return;
 
@@ -2210,7 +2214,8 @@ public partial class App : System.Windows.Application
                 Text = CallCompanionPolicy.BuildReplyPrompt(question)
             };
             var reply = await Brain.ReplyAsync(new[] { turn }, token);
-            if (!CallCompanionActive || token.IsCancellationRequested) return;
+            if (!CallCompanionActive || _callListener?.IsListening != true ||
+                token.IsCancellationRequested) return;
             reply = reply.Trim();
             if (reply.Length == 0) return;
             if (reply.Length > 330) reply = reply[..330];
