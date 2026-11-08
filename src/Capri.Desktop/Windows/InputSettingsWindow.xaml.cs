@@ -14,6 +14,7 @@ public partial class InputSettingsWindow : Window
 {
     private CancellationTokenSource? _testCancellation;
     private CancellationTokenSource? _whisperDownloadCancellation;
+    private bool _closed;
     public InputSettingsWindow()
     {
         InitializeComponent();
@@ -31,6 +32,9 @@ public partial class InputSettingsWindow : Window
         RefreshWhisperStatus();
         Closed += (_, _) =>
         {
+            // Avoid stale NAudio meter callbacks writing into a closed WPF
+            // Window, especially when Windows shuts down its dispatcher.
+            _closed = true;
             _testCancellation?.Cancel();
             _whisperDownloadCancellation?.Cancel();
         };
@@ -206,8 +210,13 @@ public partial class InputSettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        var previousMode = App.Instance.Settings.SpeechRecognitionMode;
+        var previousLanguage = App.Instance.Settings.SpeechRecognitionLanguage;
         try
         {
+            if (VoiceCaptureUiState.IsActive(App.Instance.VoicePhase))
+                throw new InvalidOperationException(
+                    "Stop Speak Now before changing microphone or recognition settings.");
             var bindings = ReadBindings();
             if (!InputShortcuts.TryValidate(bindings, out var reason))
                 throw new ArgumentException(reason);
@@ -234,15 +243,24 @@ public partial class InputSettingsWindow : Window
                 ? "Input devices and all shortcuts saved and active."
                 : "Saved, with conflicts: " + result;
         }
-        catch (Exception ex) { StatusText.Text = "Save failed: " + ex.Message; }
+        catch (Exception ex)
+        {
+            // Keep the last working voice engine/language if another setting
+            // (shortcuts, output device, unplugged mic) failed validation.
+            App.Instance.Settings.SpeechRecognitionMode = previousMode;
+            App.Instance.Settings.SpeechRecognitionLanguage = previousLanguage;
+            StatusText.Text = "Save failed: " + ex.Message;
+        }
     }
 
     private async void TestMic_Click(object sender, RoutedEventArgs e)
     {
         if (_testCancellation is not null) return;
-        if (App.Instance.Settings.ListenToMicrophone)
+        if (App.Instance.Settings.ListenToMicrophone ||
+            VoiceCaptureUiState.IsActive(App.Instance.VoicePhase) ||
+            App.Instance.CallCompanionActive)
         {
-            StatusText.Text = "Turn off voice listening before testing a recording device.";
+            StatusText.Text = "Stop Speak Now, MIC ON and Call Mode before testing a microphone.";
             return;
         }
         var tokenSource = new CancellationTokenSource();
@@ -254,25 +272,48 @@ public partial class InputSettingsWindow : Window
         {
             var peak = await AudioInputDevices.TestMicrophoneAsync(
                 SelectedIndex(MicBox), TimeSpan.FromSeconds(5),
-                level => Dispatcher.BeginInvoke(() => MicLevel.Value = Math.Min(100, level * 250)),
+                level =>
+                {
+                    if (_closed || tokenSource.IsCancellationRequested ||
+                        Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                        return;
+                    try
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            if (!_closed && !tokenSource.IsCancellationRequested)
+                                MicLevel.Value = Math.Min(100, level * 250);
+                        });
+                    }
+                    catch (InvalidOperationException) { /* window closed */ }
+                },
                 tokenSource.Token);
+            if (_closed || tokenSource.IsCancellationRequested) return;
             StatusText.Text = peak < 0.01
                 ? "No significant audio detected. Check device and Windows microphone permission."
                 : "Microphone signal detected. Peak: " + (peak * 100).ToString("0") + "%.";
         }
-        catch (OperationCanceledException) { StatusText.Text = "Microphone test stopped."; }
-        catch (Exception ex) { StatusText.Text = "Cannot test microphone: " + ex.Message; }
+        catch (OperationCanceledException)
+        {
+            if (!_closed) StatusText.Text = "Microphone test stopped.";
+        }
+        catch (Exception ex)
+        {
+            if (!_closed) StatusText.Text = "Cannot test microphone: " + ex.Message;
+        }
         finally
         {
-            TestMicButton.IsEnabled = true;
+            if (!_closed) TestMicButton.IsEnabled = true;
+            if (ReferenceEquals(_testCancellation, tokenSource))
+                _testCancellation = null;
             tokenSource.Dispose();
-            _testCancellation = null;
         }
     }
 
     private void StopInputs_Click(object sender, RoutedEventArgs e)
     {
+        _testCancellation?.Cancel();
         App.Instance.StopAllInputs();
-        StatusText.Text = "Stopped screen watching, mic capture, desktop actions and speech.";
+        StatusText.Text = "Stopped screen watching, microphone tests, desktop actions and speech.";
     }
 }
