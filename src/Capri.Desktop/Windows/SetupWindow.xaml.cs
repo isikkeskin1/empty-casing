@@ -160,39 +160,58 @@ public partial class SetupWindow : Window
 
     private void SaveSelection(bool completed)
     {
-        _settings.BrainProvider = SelectedProvider;
-        _settings.OllamaModel = LocalModelBox.Text.Trim();
-        _settings.VisionModel = LocalVisionBox.Text.Trim();
-        _settings.CloudTextModel = CloudModelBox.Text.Trim();
-        _settings.CloudVisionModel = CloudVisionBox.Text.Trim();
-        _settings.SpeechVoice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
-        _settings.VoiceProvider = SelectedVoiceProvider;
-        _settings.FishModel = SelectedFishModel;
-        _settings.FishReferenceId = SelectedFishReference;
-        _settings.SpeakReplies = SpeakOnCheck.IsChecked == true;
-        if (_settings.VoiceProvider == "fish")
+        // Validate the entire selection before mutating live settings.
+        // Previously a failed model/voice/API-key check left the app with a
+        // half-updated brain or voice provider despite "Setup incomplete".
+        var provider = SelectedProvider;
+        var localModel = LocalModelBox.Text.Trim();
+        var visionModel = LocalVisionBox.Text.Trim();
+        var cloudModel = CloudModelBox.Text.Trim();
+        var cloudVision = CloudVisionBox.Text.Trim();
+        var speechVoice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+        var voiceProvider = SelectedVoiceProvider;
+        var fishModel = SelectedFishModel;
+        var fishReference = SelectedFishReference;
+        var speakReplies = SpeakOnCheck.IsChecked == true;
+
+        if (string.IsNullOrWhiteSpace(localModel) ||
+            string.IsNullOrWhiteSpace(visionModel) ||
+            (!ProviderCatalog.IsLocal(provider) && string.IsNullOrWhiteSpace(cloudModel)))
+            throw new InvalidOperationException("Choose valid model names first.");
+        if (voiceProvider == "fish" &&
+            (!FishAudioClient.IsSupportedModel(fishModel) ||
+             !FishAudioClient.IsValidReference(fishReference)))
+            throw new InvalidOperationException("Invalid Fish voice model or reference ID.");
+
+        // Credentials use Windows-encrypted SecretStore, never the JSON
+        // settings file. Keys are applied only after ordinary validation.
+        if (!ProviderCatalog.IsLocal(provider) &&
+            !string.IsNullOrWhiteSpace(CloudKeyBox.Password))
         {
-            if (!FishAudioClient.IsSupportedModel(_settings.FishModel) ||
-                !FishAudioClient.IsValidReference(_settings.FishReferenceId))
-                throw new InvalidOperationException("Invalid Fish voice model or reference ID.");
+            _secrets.Save(provider, CloudKeyBox.Password);
+            CloudKeyBox.Clear();
+        }
+        if (!ProviderCatalog.IsLocal(provider) && !_secrets.HasKey(provider))
+            throw new InvalidOperationException("Enter a cloud API key or select LOCAL.");
+
+        if (voiceProvider == "fish")
+        {
             SaveFishKeyIfEntered();
             if (!_secrets.HasKey(FishAudioClient.KeyId))
                 throw new InvalidOperationException(
-                    "Enter a new Fish Audio key before selecting the cloud voice.");
-        }
-        if (string.IsNullOrWhiteSpace(_settings.OllamaModel) ||
-            string.IsNullOrWhiteSpace(_settings.VisionModel) ||
-            (!ProviderCatalog.IsLocal(SelectedProvider) && string.IsNullOrWhiteSpace(_settings.CloudTextModel)))
-            throw new InvalidOperationException("Choose valid model names first.");
-
-        if (!ProviderCatalog.IsLocal(SelectedProvider) && !string.IsNullOrWhiteSpace(CloudKeyBox.Password))
-        {
-            _secrets.Save(SelectedProvider, CloudKeyBox.Password);
-            CloudKeyBox.Clear();
+                    "Enter a Fish Audio key before selecting cloud speech.");
         }
 
-        if (!ProviderCatalog.IsLocal(SelectedProvider) && !_secrets.HasKey(SelectedProvider))
-            throw new InvalidOperationException("Paste a cloud API key, or select LOCAL.");
+        _settings.BrainProvider = provider;
+        _settings.OllamaModel = localModel;
+        _settings.VisionModel = visionModel;
+        _settings.CloudTextModel = cloudModel;
+        _settings.CloudVisionModel = cloudVision;
+        _settings.SpeechVoice = speechVoice;
+        _settings.VoiceProvider = voiceProvider;
+        _settings.FishModel = fishModel;
+        _settings.FishReferenceId = fishReference;
+        _settings.SpeakReplies = speakReplies;
         _settings.SetupCompleted |= completed;
         App.Instance.Store.SaveSettings(_settings);
         App.Instance.RefreshChatConfiguration();
