@@ -69,6 +69,26 @@ public partial class App : System.Windows.Application
     public bool CallCompanionActive =>
         _callListener is not null || _callMicBridge is not null;
     private System.Windows.Forms.NotifyIcon? _tray;
+    private Mutex? _instanceMutex;
+    private EventWaitHandle? _showMainframeRequest;
+    private bool _duplicateLaunch;
+    private readonly DispatcherTimer _secondLaunchPoll = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(750)
+    };
+
+    private void PollSecondLaunch()
+    {
+        if (_showMainframeRequest is null) return;
+        try
+        {
+            if (_showMainframeRequest.WaitOne(0))
+                ShowChat(); // Clicking Capri's installer/shortcut again opens chat.
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or
+            InvalidOperationException) { }
+    }
+
     private IntPtr _windowHandle;
     private GlobalHotkeyService? _hotkeys;
     public bool MicrophoneMuted { get; private set; }
@@ -177,7 +197,52 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // One UI/voice stack per interactive Windows session. Two instances
+        // otherwise compete for microphone devices, the tray and global keys.
+        // A second launch signals the running app to show Mainframe rather
+        // than silently opening another overlay.
+        _instanceMutex = new Mutex(true,
+            @"Local\CapriDesktop.Companion.OneInstance", out var first);
+        if (!first)
+        {
+            _duplicateLaunch = true;
+            _instanceMutex.Dispose();
+            _instanceMutex = null;
+            try
+            {
+                using var show = new EventWaitHandle(false,
+                    EventResetMode.AutoReset,
+                    @"Local\CapriDesktop.Companion.ShowMainframe");
+                show.Set();
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or
+                InvalidOperationException or System.Threading.WaitHandleCannotBeOpenedException)
+            {
+                System.Windows.MessageBox.Show(
+                    "Capri is already open. Use its tray icon to open Mainframe.",
+                    "Capri Desktop", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            base.OnStartup(e);
+            Shutdown(); // OnExit has a separate harmless duplicate path.
+            return;
+        }
         base.OnStartup(e);
+        try
+        {
+            _showMainframeRequest = new EventWaitHandle(false,
+                EventResetMode.AutoReset,
+                @"Local\CapriDesktop.Companion.ShowMainframe");
+            _secondLaunchPoll.Tick += (_, _) => PollSecondLaunch();
+            _secondLaunchPoll.Start();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or
+            InvalidOperationException or System.Threading.WaitHandleCannotBeOpenedException)
+        {
+            // An unavailable IPC event must never prevent a first launch.
+            _showMainframeRequest?.Dispose();
+            _showMainframeRequest = null;
+        }
         Store = new LocalDataStore();
         Diagnostics = new CapriDiagnosticJournal(Store.DataFolder);
         Diagnostics.Record("startup");
@@ -3289,6 +3354,14 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_duplicateLaunch)
+        {
+            base.OnExit(e);
+            return;
+        }
+        _secondLaunchPoll.Stop();
+        _showMainframeRequest?.Dispose();
+        _showMainframeRequest = null;
         _whisperOnceCts?.Cancel();
         _discordPresenceTimer.Stop();
         _discordPresence?.Dispose();
@@ -3331,6 +3404,12 @@ public partial class App : System.Windows.Application
                 Settings.AutoUpdateEnabled, Settings.AutoInstallUpdates,
                 CanAutomaticallyInstallUpdates, UpdateReady))
             TryLaunchVerifiedInstaller();
+        // Mutex ownership belongs to this UI thread. On hard crashes the OS
+        // also releases the handle, permitting recovery on the next launch.
+        try { _instanceMutex?.ReleaseMutex(); }
+        catch (ApplicationException) { }
+        _instanceMutex?.Dispose();
+        _instanceMutex = null;
         base.OnExit(e);
     }
 }
