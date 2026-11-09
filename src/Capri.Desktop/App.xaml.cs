@@ -83,7 +83,11 @@ public partial class App : System.Windows.Application
         try
         {
             if (_showMainframeRequest.WaitOne(0))
-                ShowChat(); // Clicking Capri's installer/shortcut again opens chat.
+            {
+                // Respect first-run setup on an already-running instance.
+                if (Settings.SetupCompleted) ShowChat();
+                else OpenSetup();
+            }
         }
         catch (Exception ex) when (ex is ObjectDisposedException or
             InvalidOperationException) { }
@@ -212,8 +216,16 @@ public partial class App : System.Windows.Application
             {
                 using var show = new EventWaitHandle(false,
                     EventResetMode.AutoReset,
-                    @"Local\CapriDesktop.Companion.ShowMainframe");
-                show.Set();
+                    @"Local\CapriDesktop.Companion.ShowMainframe",
+                    out var signalCreatedNew);
+                if (signalCreatedNew)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Capri is already running. Open Mainframe from the tray icon.",
+                        "Capri Desktop", MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else show.Set();
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or
                 InvalidOperationException or System.Threading.WaitHandleCannotBeOpenedException)
