@@ -148,6 +148,30 @@ try
     Check(!malformedActivity.HasAudibleInput,
         "invalid driver frame lengths cannot create fake audible speech");
 
+    // Real Windows named handles used by the single-instance launcher.
+    // Two executable entrypoints must find the same event/mutex, never
+    // create separate audio stacks or lose the request to reopen Mainframe.
+    if (OperatingSystem.IsWindows())
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var mutexName = @"Local\CapriDesktop.Smoke." + suffix;
+        using var firstInstance = new Mutex(true, mutexName, out var firstCreated);
+        using var secondInstance = new Mutex(false, mutexName, out var secondCreated);
+        Check(firstCreated && !secondCreated,
+            "second launch detects the existing process mutex");
+        var signalName = @"Local\CapriDesktop.Signal.Smoke." + suffix;
+        using var primarySignal = new EventWaitHandle(false,
+            EventResetMode.AutoReset, signalName, out var signalCreated);
+        using var secondarySignal = new EventWaitHandle(false,
+            EventResetMode.AutoReset, signalName, out var signalCreatedAgain);
+        secondarySignal.Set();
+        Check(signalCreated && !signalCreatedAgain &&
+              primarySignal.WaitOne(TimeSpan.FromSeconds(1)) &&
+              !primarySignal.WaitOne(0),
+            "repeat launch forwards exactly one open-Mainframe event");
+        firstInstance.ReleaseMutex();
+    }
+
     var store = new LocalDataStore(directory);
     var settings = new AppSettings { OllamaModel = "test-model", OverlayLeft = 101, OverlayTop = 202 };
     store.SaveSettings(settings);
