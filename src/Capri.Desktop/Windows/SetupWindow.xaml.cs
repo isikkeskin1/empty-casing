@@ -12,6 +12,22 @@ public partial class SetupWindow : Window
     private readonly SecretStore _secrets;
     private CancellationTokenSource? _pullCancellation;
     private bool _loading;
+    private bool _closed;
+
+    private void PostStatus(string message)
+    {
+        if (_closed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            return;
+        try
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!_closed) StatusText.Text = message;
+            });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+            TaskCanceledException) { /* Window was closed during download. */ }
+    }
 
     public SetupWindow()
     {
@@ -59,8 +75,11 @@ public partial class SetupWindow : Window
         UpdateProvider();
         Closed += (_, _) =>
         {
-            _pullCancellation?.Cancel();
-            _pullCancellation?.Dispose();
+            _closed = true;
+            // Pull_Click owns the CTS and disposes it in finally. Disposing
+            // it here races the in-flight Ollama request and its callbacks.
+            try { _pullCancellation?.Cancel(); }
+            catch (ObjectDisposedException) { }
         };
     }
 
@@ -141,39 +160,58 @@ public partial class SetupWindow : Window
 
     private void SaveSelection(bool completed)
     {
-        _settings.BrainProvider = SelectedProvider;
-        _settings.OllamaModel = LocalModelBox.Text.Trim();
-        _settings.VisionModel = LocalVisionBox.Text.Trim();
-        _settings.CloudTextModel = CloudModelBox.Text.Trim();
-        _settings.CloudVisionModel = CloudVisionBox.Text.Trim();
-        _settings.SpeechVoice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
-        _settings.VoiceProvider = SelectedVoiceProvider;
-        _settings.FishModel = SelectedFishModel;
-        _settings.FishReferenceId = SelectedFishReference;
-        _settings.SpeakReplies = SpeakOnCheck.IsChecked == true;
-        if (_settings.VoiceProvider == "fish")
+        // Validate the entire selection before mutating live settings.
+        // Previously a failed model/voice/API-key check left the app with a
+        // half-updated brain or voice provider despite "Setup incomplete".
+        var provider = SelectedProvider;
+        var localModel = LocalModelBox.Text.Trim();
+        var visionModel = LocalVisionBox.Text.Trim();
+        var cloudModel = CloudModelBox.Text.Trim();
+        var cloudVision = CloudVisionBox.Text.Trim();
+        var speechVoice = (VoiceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+        var voiceProvider = SelectedVoiceProvider;
+        var fishModel = SelectedFishModel;
+        var fishReference = SelectedFishReference;
+        var speakReplies = SpeakOnCheck.IsChecked == true;
+
+        if (string.IsNullOrWhiteSpace(localModel) ||
+            string.IsNullOrWhiteSpace(visionModel) ||
+            (!ProviderCatalog.IsLocal(provider) && string.IsNullOrWhiteSpace(cloudModel)))
+            throw new InvalidOperationException("Choose valid model names first.");
+        if (voiceProvider == "fish" &&
+            (!FishAudioClient.IsSupportedModel(fishModel) ||
+             !FishAudioClient.IsValidReference(fishReference)))
+            throw new InvalidOperationException("Invalid Fish voice model or reference ID.");
+
+        // Credentials use Windows-encrypted SecretStore, never the JSON
+        // settings file. Keys are applied only after ordinary validation.
+        if (!ProviderCatalog.IsLocal(provider) &&
+            !string.IsNullOrWhiteSpace(CloudKeyBox.Password))
         {
-            if (!FishAudioClient.IsSupportedModel(_settings.FishModel) ||
-                !FishAudioClient.IsValidReference(_settings.FishReferenceId))
-                throw new InvalidOperationException("Invalid Fish voice model or reference ID.");
+            _secrets.Save(provider, CloudKeyBox.Password);
+            CloudKeyBox.Clear();
+        }
+        if (!ProviderCatalog.IsLocal(provider) && !_secrets.HasKey(provider))
+            throw new InvalidOperationException("Enter a cloud API key or select LOCAL.");
+
+        if (voiceProvider == "fish")
+        {
             SaveFishKeyIfEntered();
             if (!_secrets.HasKey(FishAudioClient.KeyId))
                 throw new InvalidOperationException(
-                    "Enter a new Fish Audio key before selecting the cloud voice.");
-        }
-        if (string.IsNullOrWhiteSpace(_settings.OllamaModel) ||
-            string.IsNullOrWhiteSpace(_settings.VisionModel) ||
-            (!ProviderCatalog.IsLocal(SelectedProvider) && string.IsNullOrWhiteSpace(_settings.CloudTextModel)))
-            throw new InvalidOperationException("Choose valid model names first.");
-
-        if (!ProviderCatalog.IsLocal(SelectedProvider) && !string.IsNullOrWhiteSpace(CloudKeyBox.Password))
-        {
-            _secrets.Save(SelectedProvider, CloudKeyBox.Password);
-            CloudKeyBox.Clear();
+                    "Enter a Fish Audio key before selecting cloud speech.");
         }
 
-        if (!ProviderCatalog.IsLocal(SelectedProvider) && !_secrets.HasKey(SelectedProvider))
-            throw new InvalidOperationException("Paste a cloud API key, or select LOCAL.");
+        _settings.BrainProvider = provider;
+        _settings.OllamaModel = localModel;
+        _settings.VisionModel = visionModel;
+        _settings.CloudTextModel = cloudModel;
+        _settings.CloudVisionModel = cloudVision;
+        _settings.SpeechVoice = speechVoice;
+        _settings.VoiceProvider = voiceProvider;
+        _settings.FishModel = fishModel;
+        _settings.FishReferenceId = fishReference;
+        _settings.SpeakReplies = speakReplies;
         _settings.SetupCompleted |= completed;
         App.Instance.Store.SaveSettings(_settings);
         App.Instance.RefreshChatConfiguration();
@@ -194,37 +232,53 @@ public partial class SetupWindow : Window
     private async void Pull_Click(object sender, RoutedEventArgs e)
     {
         if (_pullCancellation is not null) return;
-        _pullCancellation = new CancellationTokenSource();
+        var pull = new CancellationTokenSource();
+        _pullCancellation = pull;
         PullButton.IsEnabled = false;
         CancelPullButton.IsEnabled = true;
         try
         {
             StatusText.Text = "Downloading chat model...";
             await LocalModelSetup.PullAsync(LocalModelBox.Text.Trim(), text =>
-                Dispatcher.BeginInvoke(() => StatusText.Text = "CHAT: " + text),
-                _pullCancellation.Token);
+                PostStatus("CHAT: " + text), pull.Token);
+            if (_closed || pull.IsCancellationRequested) return;
 
             if (LocalVisionBox.Text.Trim() != LocalModelBox.Text.Trim())
             {
                 StatusText.Text = "Downloading vision model...";
                 await LocalModelSetup.PullAsync(LocalVisionBox.Text.Trim(), text =>
-                    Dispatcher.BeginInvoke(() => StatusText.Text = "VISION: " + text),
-                    _pullCancellation.Token);
+                    PostStatus("VISION: " + text), pull.Token);
             }
-            StatusText.Text = "Both local models are ready.";
+            if (!_closed && !pull.IsCancellationRequested)
+                StatusText.Text = "Both local models are ready.";
         }
-        catch (OperationCanceledException) { StatusText.Text = "Model download cancelled."; }
-        catch (Exception ex) { StatusText.Text = "Download failed: " + ex.Message; }
+        catch (OperationCanceledException)
+        {
+            if (!_closed) StatusText.Text = "Model download cancelled.";
+        }
+        catch (Exception ex)
+        {
+            if (!_closed) StatusText.Text = "Download failed: " + ex.GetType().Name +
+                ". Check Ollama connection and available disk space.";
+        }
         finally
         {
-            _pullCancellation.Dispose();
-            _pullCancellation = null;
-            PullButton.IsEnabled = true;
-            CancelPullButton.IsEnabled = false;
+            if (ReferenceEquals(_pullCancellation, pull))
+                _pullCancellation = null;
+            pull.Dispose();
+            if (!_closed)
+            {
+                PullButton.IsEnabled = true;
+                CancelPullButton.IsEnabled = false;
+            }
         }
     }
 
-    private void CancelPull_Click(object sender, RoutedEventArgs e) => _pullCancellation?.Cancel();
+    private void CancelPull_Click(object sender, RoutedEventArgs e)
+    {
+        try { _pullCancellation?.Cancel(); }
+        catch (ObjectDisposedException) { } // Concurrent completion.
+    }
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
@@ -242,10 +296,14 @@ public partial class SetupWindow : Window
                 ? await App.Instance.Brain.ReplyAsync(new[]
                     { new ChatTurn { Role = "user", Text = "Say just one word: ready." } })
                 : await App.Instance.Brain.TestCloudAsync();
-            StatusText.Text = "Brain replied: " + answer[..Math.Min(140, answer.Length)];
+            if (!_closed)
+                StatusText.Text = "Brain replied: " + answer[..Math.Min(140, answer.Length)];
         }
-        catch (Exception ex) { StatusText.Text = "Test failed: " + ex.Message; }
-        finally { TestButton.IsEnabled = true; }
+        catch (Exception ex)
+        {
+            if (!_closed) StatusText.Text = "Test failed: " + ex.GetType().Name;
+        }
+        finally { if (!_closed) TestButton.IsEnabled = true; }
     }
 
     private async void PreviewVoice_Click(object sender, RoutedEventArgs e)
@@ -263,7 +321,8 @@ public partial class SetupWindow : Window
                     throw new InvalidOperationException("Enter a new Fish Audio API key.");
                 StatusText.Text = "Requesting Fish voice preview (text sent to Fish Audio)...";
                 await App.Instance.PreviewFishVoiceAsync(SelectedFishModel, SelectedFishReference);
-                StatusText.Text = "Fish voice preview playing. The speech request may count toward your quota.";
+                if (!_closed)
+                    StatusText.Text = "Fish voice preview playing. The speech request may count toward your quota.";
             }
             else
             {
@@ -272,8 +331,11 @@ public partial class SetupWindow : Window
                 StatusText.Text = "Playing local Windows voice preview.";
             }
         }
-        catch (Exception ex) { StatusText.Text = "Voice preview failed: " + ex.Message; }
-        finally { PreviewVoiceButton.IsEnabled = true; }
+        catch (Exception ex)
+        {
+            if (!_closed) StatusText.Text = "Voice preview failed: " + ex.GetType().Name;
+        }
+        finally { if (!_closed) PreviewVoiceButton.IsEnabled = true; }
     }
 
     private void Finish_Click(object sender, RoutedEventArgs e)

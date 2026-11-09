@@ -51,6 +51,16 @@
 | Offline/cloud provider unavailable | Speech text stays local until user-authorized brain request; UI shows reply failure | Existing app flow; live-provider QA required |
 | Small screen, 125–200% DPI, second monitor | Buttons, voice status and animation remain usable | Manual UI QA required |
 | Windows driver crash or native library access violation | Managed exception handling cannot guarantee recovery | External native crash QA and crash dump investigation required |
+| Audio output device removed during Fish playback | Stop/Dispose native device safely; surface a status message, preserve chat | Code path hardened; unplug hardware QA required |
+| MP3 playback reports error during app shutdown | Ignore late event; no WPF dispatcher crash or stale completion of new output | Code path reviewed; real Windows exit QA required |
+| Rapidly cancel and replace Fish MP3 playback | Old output's completion must not affect the new session | Session identity guarded; device QA required |
+| Windows TTS voice missing or failing to start | Return companion to idle, show setup guidance and keep text chat usable | Code path reviewed; Windows language/device QA required |
+| Close setup while Ollama model is downloading | Cancel owner token, ignore queued progress, never dispose CTS midrequest | Code path reviewed; network cancellation QA required |
+| Close setup during cloud brain/Fish preview | Ignore late window updates, keep next launch functional | Code path reviewed; provider QA required |
+| Close INPUTS during Whisper model install | Ignore queued progress callbacks, cancel download and preserve verified model | Code path reviewed; network QA required |
+| Fail setup due to invalid model or missing provider key | Do not leave partially applied brain/voice settings | Transactional validation implemented; manual QA required |
+| Launch Capri twice while running | Exactly one audio/tray/hotkey stack; second launch opens existing Mainframe | **Windows named-object smoke**; installed-app interaction QA required |
+| Launch again before first-run setup completed | Existing setup wizard appears instead of second overlay | Code path reviewed; first-run hardware QA required |
 
 ## What can be called complete?
 

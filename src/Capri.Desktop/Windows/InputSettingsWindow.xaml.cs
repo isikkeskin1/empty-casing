@@ -161,6 +161,7 @@ public partial class InputSettingsWindow : Window
 
     private void RefreshWhisperStatus()
     {
+        if (_closed) return;
         var installed = LocalWhisperTranscriber.ModelInstalled;
         WhisperModelStatus.Text = installed
             ? "Whisper multilingual base model VERIFIED & installed (local)."
@@ -185,27 +186,36 @@ public partial class InputSettingsWindow : Window
         _whisperDownloadCancellation = cts;
         InstallWhisperButton.IsEnabled = false;
         var report = new Progress<double>(ratio =>
-            WhisperModelStatus.Text = "Downloading Whisper multilingual: " +
-                (ratio * 100).ToString("0") + "%");
+        {
+            // Progress<T> is dispatched asynchronously; the owner can close
+            // INPUTS before an already queued progress event is delivered.
+            if (!_closed && !cts.IsCancellationRequested)
+                WhisperModelStatus.Text = "Downloading Whisper multilingual: " +
+                    (ratio * 100).ToString("0") + "%";
+        });
         try
         {
             await LocalWhisperTranscriber.InstallModelAsync(report, cts.Token);
-            StatusText.Text = "Verified multilingual Whisper model installed. " +
-                "Choose the Whisper recognition mode and SAVE. Talk Once is ready.";
+            if (!_closed && !cts.IsCancellationRequested)
+                StatusText.Text = "Verified multilingual Whisper model installed. " +
+                    "Choose the Whisper recognition mode and SAVE. Talk Once is ready.";
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Whisper model download cancelled; partial data cleared.";
+            if (!_closed)
+                StatusText.Text = "Whisper model download cancelled; partial data cleared.";
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Whisper setup failed: " + ex.GetType().Name +
-                ". Check internet connection and available disk space.";
+            if (!_closed)
+                StatusText.Text = "Whisper setup failed: " + ex.GetType().Name +
+                    ". Check internet connection and available disk space.";
         }
         finally
         {
-            _whisperDownloadCancellation = null;
-            RefreshWhisperStatus();
+            if (ReferenceEquals(_whisperDownloadCancellation, cts))
+                _whisperDownloadCancellation = null;
+            if (!_closed) RefreshWhisperStatus();
         }
     }
 
