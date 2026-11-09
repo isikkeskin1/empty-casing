@@ -272,6 +272,11 @@ public partial class App : System.Windows.Application
                 TaskCanceledException) { } // Voice finished during WPF shutdown.
         };
         _voicePlayback.PlaybackFinished += OnVoicePlaybackFinished;
+        _voicePlayback.PlaybackFailed += message =>
+        {
+            Diagnostics.Record("voice-device-error");
+            _companion?.ShowReaction(message);
+        };
 
         _companion = new CompanionWindow();
         MainWindow = _companion;
@@ -1354,7 +1359,11 @@ public partial class App : System.Windows.Application
     {
         if (!Dispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(OnVoicePlaybackFinished);
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                return;
+            try { Dispatcher.BeginInvoke(OnVoicePlaybackFinished); }
+            catch (Exception ex) when (ex is InvalidOperationException or
+                TaskCanceledException) { }
             return;
         }
         if (_liveSpeechBuffer is not null)
@@ -1407,7 +1416,13 @@ public partial class App : System.Windows.Application
                 CancelVoiceOutput();
                 _speech.Speak(text, Settings.SpeechVoice);
             }
-            catch (Exception ex) { Debug.WriteLine("Windows speech output failed: " + ex.Message); }
+            catch (Exception ex)
+            {
+                Diagnostics.Record("voice-device-error", ex);
+                _companion?.ShowReaction(
+                    "Windows speech output unavailable. Select a different voice in SETUP; chat still works.");
+                OnVoicePlaybackFinished();
+            }
             return;
         }
         _ = SpeakFishSafelyAsync(text);
